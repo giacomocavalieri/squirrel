@@ -1,0 +1,37 @@
+---
+version: 1.1.8
+title: array encoding
+file: ./test/squirrel_test.gleam
+test_name: array_encoding_test
+---
+/// A row you get from running the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type QueryRow {
+  QueryRow(res: Bool)
+}
+
+/// Runs the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This function was generated automatically using v-test of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn query(db, arg_1) {
+  let decoder =
+    decode.into({
+      use res <- decode.parameter
+      QueryRow(res: res)
+    })
+    |> decode.field(0, decode.bool)
+
+  "select true as res where $1 = array[1, 2, 3]"
+  |> pgo.execute(
+    db,
+    [pgo.array(list.map(arg_1, fn(a) {pgo.int(a)}))],
+    decode.from(decoder, _),
+  )
+}

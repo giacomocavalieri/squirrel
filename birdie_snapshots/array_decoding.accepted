@@ -1,0 +1,33 @@
+---
+version: 1.1.8
+title: array decoding
+file: ./test/squirrel_test.gleam
+test_name: array_decoding_test
+---
+/// A row you get from running the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type QueryRow {
+  QueryRow(res: List(Int))
+}
+
+/// Runs the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This function was generated automatically using v-test of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn query(db) {
+  let decoder =
+    decode.into({
+      use res <- decode.parameter
+      QueryRow(res: res)
+    })
+    |> decode.field(0, decode.list(decode.int))
+
+  "select array[1, 2, 3] as res"
+  |> pgo.execute(db, [], decode.from(decoder, _))
+}

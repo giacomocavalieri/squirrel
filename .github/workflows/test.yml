@@ -1,0 +1,69 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_call:
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: TanklesXL/gleam_actions/.github/actions/install_gleam@main
+        with:
+          gleam_version: 1.4.1
+          erlang_version: 27
+      - uses: TanklesXL/gleam_actions/.github/actions/format@main
+
+  deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: TanklesXL/gleam_actions/.github/actions/install_gleam@main
+        with:
+          gleam_version: 1.4.1
+          erlang_version: 27
+      - uses: TanklesXL/gleam_actions/.github/actions/deps_cache@main
+        with:
+          gleam_version: 1.4.1
+
+  test:
+    runs-on: ubuntu-latest
+    needs: deps
+    strategy:
+      fail-fast: true
+      matrix:
+        erlang: ["26", "27"]
+
+    # Setup a postgres service to run the tests.
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_PASSWORD: postgres_password
+          POSTGRES_USER: squirrel_test
+          POSTGRES_DB: squirrel_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: TanklesXL/gleam_actions/.github/actions/deps_restore@main
+      - uses: TanklesXL/gleam_actions/.github/actions/install_gleam@main
+        with:
+          gleam_version: 1.4.1
+          erlang_version: ${{ matrix.erlang }}
+      - uses: TanklesXL/gleam_actions/.github/actions/test@main
+        with:
+          target: "erlang"
