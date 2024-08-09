@@ -3,6 +3,7 @@ import filepath
 import gleam/dynamic
 import gleam/list
 import gleam/pgo
+import gleam/set
 import gleam/string
 import gleeunit
 import simplifile
@@ -54,8 +55,21 @@ create table if not exists squirrel(
 fn should_codegen(query: String) -> String {
   // We assert everything went smoothly and we have no errors in the query.
   let assert Ok(#(queries, [])) = codegen_queries([#("query", query)])
-  list.map(queries, query.generate_code("v-test", _))
-  |> string.join(with: "\n\n")
+
+  let #(queries, imports) = {
+    use #(queries, imports), query <- list.fold(queries, #([], set.new()))
+    let #(query, query_imports) = query.generate_code("v-test", query)
+    #([query, ..queries], imports |> set.union(query_imports))
+  }
+
+  set.to_list(imports)
+  |> list.sort(string.compare)
+  |> string.join(with: "\n")
+  |> string.append("\n\n")
+  |> string.append(
+    list.reverse(queries)
+    |> string.join(with: "\n\n"),
+  )
 }
 
 fn codegen_queries(

@@ -4,6 +4,9 @@ title: query with multiline comment
 file: ./test/squirrel_test.gleam
 test_name: query_with_multiline_comment_test
 ---
+import decode
+import gleam/pgo
+
 /// A row you get from running the `query` query
 /// defined in `query.sql`.
 ///

@@ -4,6 +4,7 @@ import gleam/int
 import gleam/list
 import gleam/option.{type Option}
 import gleam/result
+import gleam/set.{type Set}
 import gleam/string
 import simplifile
 import squirrel/internal/error.{
@@ -128,7 +129,13 @@ fn do_take_comment(query: String, lines: List(String)) -> List(String) {
 
 // --- CODE GENERATION ---------------------------------------------------------
 
-pub fn generate_code(version: String, query: TypedQuery) -> String {
+/// Returns the generated code and a set with the needed imports to make it
+/// compile.
+///
+pub fn generate_code(
+  version: String,
+  query: TypedQuery,
+) -> #(String, Set(String)) {
   let TypedQuery(
     file: file,
     name: name,
@@ -148,6 +155,8 @@ pub fn generate_code(version: String, query: TypedQuery) -> String {
 
   let function_name = gleam.identifier_to_string(name)
   let constructor_name = gleam.identifier_to_type_name(name) <> "Row"
+  let constructor_has_option =
+    list.any(returns, fn(return) { gleam.contains_option(return.type_) })
 
   let record_doc =
     "/// A row you get from running the `" <> function_name <> "` query
@@ -170,24 +179,34 @@ pub fn generate_code(version: String, query: TypedQuery) -> String {
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///"
 
-  [
-    doc.from_string(record_doc),
-    doc.line,
-    record(constructor_name, returns),
-    doc.lines(2),
-    doc.from_string(fun_doc),
-    doc.line,
-    fun(function_name, ["db", ..inputs], [
-      var("decoder", decoder(constructor_name, returns)),
-      pipe_call("pgo.execute", string(content), [
-        doc.from_string("db"),
-        list(inputs_encoders),
-        doc.from_string("decode.from(decoder, _)"),
+  let code =
+    [
+      doc.from_string(record_doc),
+      doc.line,
+      record(constructor_name, returns),
+      doc.lines(2),
+      doc.from_string(fun_doc),
+      doc.line,
+      fun(function_name, ["db", ..inputs], [
+        var("decoder", decoder(constructor_name, returns)),
+        pipe_call("pgo.execute", string(content), [
+          doc.from_string("db"),
+          list(inputs_encoders),
+          doc.from_string("decode.from(decoder, _)"),
+        ]),
       ]),
-    ]),
-  ]
-  |> doc.concat
-  |> doc.to_string(80)
+    ]
+    |> doc.concat
+    |> doc.to_string(80)
+
+  let imports = case constructor_has_option {
+    True -> [
+      "import gleam/option.{type Option}", "import decode", "import gleam/pgo",
+    ]
+    False -> ["import decode", "import gleam/pgo"]
+  }
+
+  #(code, set.from_list(imports))
 }
 
 fn gleam_type_to_decoder(type_: gleam.Type) -> String {

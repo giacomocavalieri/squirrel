@@ -4,6 +4,10 @@ title: generated type fields are labelled with their name in the select list
 file: ./test/squirrel_test.gleam
 test_name: generated_type_fields_are_labelled_with_their_name_in_the_select_list_test
 ---
+import decode
+import gleam/option.{type Option}
+import gleam/pgo
+
 /// A row you get from running the `query` query
 /// defined in `query.sql`.
 ///

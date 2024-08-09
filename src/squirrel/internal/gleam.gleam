@@ -78,6 +78,16 @@ pub fn identifier(
   }
 }
 
+/// Returns true if a type is `Option` or contains an `Option`.
+///
+pub fn contains_option(type_: Type) -> Bool {
+  case type_ {
+    Int | Float | Bool | String -> False
+    Option(_) -> True
+    List(type_) -> contains_option(type_)
+  }
+}
+
 fn to_identifier_rest(
   name: String,
   rest: String,

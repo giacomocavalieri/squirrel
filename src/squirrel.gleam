@@ -7,6 +7,7 @@ import gleam/int
 import gleam/io
 import gleam/list
 import gleam/result
+import gleam/set
 import gleam/string
 import gleam_community/ansi
 import simplifile
@@ -150,11 +151,22 @@ fn write_queries(
   let _ = simplifile.create_directory_all(directory)
 
   // We need the top level imports.
-  let imports = "import gleam/pgo\nimport decode\n"
-  let #(count, code) = {
-    use #(count, code), query <- list.fold(queries, #(0, imports))
-    #(count + 1, code <> "\n" <> query.generate_code(squirrel_version, query))
+  let #(count, code, imports) = {
+    let acc = #(0, "", set.new())
+    use #(count, code, imports), query <- list.fold(queries, acc)
+    let #(query_code, query_imports) =
+      query.generate_code(squirrel_version, query)
+
+    #(
+      count + 1,
+      code <> "\n" <> query_code,
+      imports |> set.union(query_imports),
+    )
   }
+
+  let imports =
+    set.to_list(imports) |> list.sort(string.compare) |> string.join(with: "\n")
+  let code = imports <> "\n" <> code
 
   let try_write =
     simplifile.write(code, to: file)
