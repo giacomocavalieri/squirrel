@@ -5,6 +5,7 @@ packages = [
   { name = "argv", version = "1.0.2", build_tools = ["gleam"], requirements = [], otp_app = "argv", source = "hex", outer_checksum = "BA1FF0929525DEBA1CE67256E5ADF77A7CDDFE729E3E3F57A5BDCAA031DED09D" },
   { name = "backoff", version = "1.1.6", build_tools = ["rebar3"], requirements = [], otp_app = "backoff", source = "hex", outer_checksum = "CF0CFFF8995FB20562F822E5CC47D8CCF664C5ECDC26A684CBE85C225F9D7C39" },
   { name = "birdie", version = "1.1.8", build_tools = ["gleam"], requirements = ["argv", "filepath", "glance", "gleam_community_ansi", "gleam_erlang", "gleam_stdlib", "justin", "rank", "simplifile", "trie_again"], otp_app = "birdie", source = "hex", outer_checksum = "D225C0A3035FCD73A88402925A903AAD3567A1515C9EAE8364F11C17AD1805BB" },
+  { name = "decode", version = "0.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "decode", source = "hex", outer_checksum = "965F517F67B8C172CA27A5C8E34C73733139E8C9E64736181B8C3179281F9793" },
   { name = "envoy", version = "1.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "envoy", source = "hex", outer_checksum = "CFAACCCFC47654F7E8B75E614746ED924C65BD08B1DE21101548AC314A8B6A41" },
   { name = "eval", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "eval", source = "hex", outer_checksum = "264DAF4B49DF807F303CA4A4E4EBC012070429E40BE384C58FE094C4958F9BDA" },
   { name = "exception", version = "2.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "exception", source = "hex", outer_checksum = "F5580D584F16A20B7FCDCABF9E9BE9A2C1F6AC4F9176FA6DD0B63E3B20D450AA" },
@@ -37,6 +38,7 @@ packages = [
 [requirements]
 argv = { version = ">= 1.0.2 and < 2.0.0" }
 birdie = { version = ">= 1.1.8 and < 2.0.0" }
+decode = { version = ">= 0.2.0 and < 1.0.0" }
 envoy = { version = ">= 1.0.1 and < 2.0.0" }
 eval = { version = ">= 1.0.0 and < 2.0.0" }
 filepath = { version = ">= 1.0.0 and < 2.0.0" }
@@ -48,6 +50,7 @@ gleam_stdlib = { version = ">= 0.34.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 justin = { version = ">= 1.0.1 and < 2.0.0" }
 mug = { version = ">= 1.1.0 and < 2.0.0" }
+pgo = { version = ">= 0.14.0 and < 1.0.0" }
 simplifile = { version = ">= 2.0.1 and < 3.0.0" }
 temporary = { version = ">= 1.0.0 and < 2.0.0" }
 term_size = { version = ">= 1.0.1 and < 2.0.0" }
