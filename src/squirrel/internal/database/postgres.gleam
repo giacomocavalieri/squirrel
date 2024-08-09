@@ -46,7 +46,7 @@ select
     when elem.typname is null then type.typname
     else elem.typname
  	end as type,
-  -- Tells us how to interpret the firs column: if this is true then the first
+  -- Tells us how to interpret the first column: if this is true then the first
   -- column is the type of the elements of the array type.
   -- Otherwise it means we've found a base type.
   case
