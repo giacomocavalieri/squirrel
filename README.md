@@ -73,12 +73,13 @@ And run `gleam run -m squirrel`. Just like magic you'll now have a type-safe
 function `find_squirrel` you can use just as you'd expect:
 
 ```gleam
+import gleam/pgo
 import squirrels/sql
 
 pub fn main() {
   let db = todo as "the pgo connection"
   // And it just works as you'd expect:
-  let assert Ok(#(_rows_count, rows)) = sql.find_squirrel("sandy")
+  let assert Ok(pgo.Returned(_rows_count, rows)) = sql.find_squirrel("sandy")
   let assert [FindSquirrelRow(name: "sandy", owned_acorns: 11_111)] = rows
 }
 ```
