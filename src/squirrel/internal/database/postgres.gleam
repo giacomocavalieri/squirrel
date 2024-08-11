@@ -30,10 +30,10 @@ import squirrel/internal/error.{
   type Error, type Pointer, type ValueIdentifierError, ByteIndex,
   CannotParseQuery, PgCannotConnectUserDatabase, PgCannotDecodeReceivedMessage,
   PgCannotDescribeQuery, PgCannotReceiveMessage, PgCannotSendMessage,
-  PgInvalidPassword, PgInvalidSha256ServerProof, PgUnexpectedAuthMethodMessage,
-  PgUnexpectedCleartextAuthMessage, PgUnexpectedSha256AuthMessage,
-  PgUnsupportedAuthentication, Pointer, QueryHasInvalidColumn,
-  QueryHasUnsupportedType,
+  PgInvalidPassword, PgInvalidSha256ServerProof, PgPermissionDenied,
+  PgUnexpectedAuthMethodMessage, PgUnexpectedCleartextAuthMessage,
+  PgUnexpectedSha256AuthMessage, PgUnsupportedAuthentication, Pointer,
+  QueryHasInvalidColumn, QueryHasUnsupportedType,
 }
 import squirrel/internal/eval_extra
 import squirrel/internal/gleam
@@ -332,7 +332,8 @@ fn sha_256_authenticate(user: String, password: String) -> Db(Nil) {
   // - We decode that message to get a hold of various server-sent parameters
   //   like its own nonce, the number of iterations to use to salt the password,
   //   and the salt to use
-  use raw_server_first_msg <- eval.try(expect_sasl_continue_message())
+  use msg <- eval.try(receive())
+  use raw_server_first_msg <- eval.try(expect_sasl_continue_message(msg))
   let assert Ok(server_first_msg) =
     scram.parse_server_first(raw_server_first_msg, nonce)
   // - We then send a last message including our password.
@@ -355,15 +356,15 @@ fn sha_256_authenticate(user: String, password: String) -> Db(Nil) {
   //   something was wrong with our implementation of the protocol and is a bug.
   // - If the response is ok we need to check that the proof the server sent us
   //   is the one we were expecting to receive.
-  use msg <- eval.try(expect_sasl_final_message(user))
+  use msg <- eval.try(receive())
+  use msg <- eval.try(expect_sasl_final_message(msg, user))
   check_sasl_final_message(msg, expected_server_proof, user)
 }
 
 /// Receive a message and expect it to be a SASLContinue message, returning its
 /// content.
 ///
-fn expect_sasl_continue_message() {
-  use msg <- eval.try(receive())
+fn expect_sasl_continue_message(msg: pg.BackendMessage) -> Db(BitArray) {
   case msg {
     pg.BeAuthenticationSASLContinue(server_first) -> eval.return(server_first)
     _ ->
@@ -381,22 +382,22 @@ fn expect_sasl_continue_message() {
 /// If the message is an `ErrorResponse` with the invalid password error code,
 /// it throws an `InvalidPassword` error, failing the authentication.
 ///
-fn expect_sasl_final_message(user: String) {
-  let unexpected_message = unexpected_message(
-    PgUnexpectedSha256AuthMessage,
-    "AuthenticationSASLFinal or BeErrorResponse",
-    _,
-  )
+fn expect_sasl_final_message(msg: pg.BackendMessage, user: String) {
+  let unexpected_message =
+    unexpected_message(
+      PgUnexpectedSha256AuthMessage,
+      "AuthenticationSASLFinal or BeErrorResponse",
+      msg,
+    )
 
-  use msg <- eval.try(receive())
   case msg {
     pg.BeAuthenticationSASLFinal(msg) -> eval.return(msg)
     pg.BeErrorResponse(fields) ->
       case set.contains(fields, pg.Code("28P01")) {
         True -> eval.throw(PgInvalidPassword(user))
-        False -> unexpected_message(msg)
+        False -> unexpected_message
       }
-    _ -> unexpected_message(msg)
+    _ -> unexpected_message
   }
 }
 
@@ -568,7 +569,10 @@ fn find_gleam_type(query: UntypedQuery, oid: Int) -> Db(gleam.Type) {
   // The only parameter to this query is the oid of the type to lookup:
   // that's a 32bit integer (its oid needed to prepare the query is 23).
   let params = [pg.Parameter(<<oid:32>>)]
-  let run_query = find_postgres_type_query |> run_query(params, [23])
+  let run_query =
+    find_postgres_type_query
+    |> run_query(query.file, params, [23])
+
   use res <- eval.try(run_query)
 
   // We know the output must only contain two values: the name and a boolean to
@@ -599,9 +603,9 @@ fn query_plan(query: UntypedQuery, parameters: Int) -> Db(Plan) {
   // all the possible holes in the user supplied query with null values;
   // otherwise, the server would complain that it has arguments that are not
   // bound.
-  let query = "explain (format json, verbose) " <> query.content
+  let explain_query = "explain (format json, verbose) " <> query.content
   let params = list.repeat(pg.Null, parameters)
-  let run_query = run_query(query, params, [])
+  let run_query = run_query(explain_query, query.file, params, [])
   use res <- eval.try(run_query)
 
   // We know the output will only contain a single row that is the json string
@@ -729,7 +733,8 @@ fn column_nullability(table table: Int, column column: Int) -> Db(Nullability) {
   // - the oid of the table (a 32bit integer, oid is 23)
   // - the index of the column (a 32 bit integer, oid is 23)
   let params = [pg.Parameter(<<table:32>>), pg.Parameter(<<column:32>>)]
-  let run_query = find_column_nullability_query |> run_query(params, [23, 23])
+  let run_query =
+    find_column_nullability_query |> run_query("", params, [23, 23])
   use res <- eval.try(run_query)
 
   // We know the output will only have only one column, that is the boolean
@@ -760,6 +765,7 @@ fn column_nullability(table table: Int, column column: Int) -> Db(Nullability) {
 ///
 fn run_query(
   query: String,
+  query_file: String,
   parameters: List(pg.ParameterValue),
   parameters_object_ids: List(Int),
 ) -> Db(List(BitArray)) {
@@ -805,7 +811,7 @@ fn run_query(
   use msg <- eval.try(receive())
   let assert pg.BeBindComplete = msg
   use msg <- eval.try(receive())
-  let assert pg.BeMessageDataRow(res) = msg
+  use res <- eval.try(expect_data_row(msg, query_file))
   use msg <- eval.try(receive())
   let assert pg.BeCommandComplete(_, _) = msg
   use msg <- eval.try(receive())
@@ -815,6 +821,42 @@ fn run_query(
   use msg <- eval.try(receive())
   let assert pg.BeReadyForQuery(_) = msg
   eval.return(res)
+}
+
+/// Receives a message and expects it to be a data row message.
+///
+fn expect_data_row(
+  msg: pg.BackendMessage,
+  query_file: String,
+) -> Db(List(BitArray)) {
+  case msg {
+    pg.BeMessageDataRow(res) -> eval.return(res)
+    pg.BeErrorResponse(fields) ->
+      case fields_to_premission_denied_error(query_file, fields) {
+        Ok(error) -> eval.throw(error)
+        Error(_) -> panic as string.inspect(msg)
+      }
+    _ -> panic as string.inspect(msg)
+  }
+}
+
+fn fields_to_premission_denied_error(
+  query_file: String,
+  fields: Set(pg.ErrorOrNoticeField),
+) -> Result(Error, Nil) {
+  let #(code, reason) = {
+    use #(code, reason), field <- set.fold(over: fields, from: #(None, None))
+    case field {
+      pg.Code(code) -> #(Some(code), reason)
+      pg.Message(reason) -> #(code, Some(reason))
+      _ -> #(code, reason)
+    }
+  }
+  case code, reason {
+    Some("42501"), Some(reason) ->
+      Ok(PgPermissionDenied(query_file: query_file, reason: reason))
+    _, _ -> Error(Nil)
+  }
 }
 
 /// Receive a single message from the database.

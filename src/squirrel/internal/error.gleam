@@ -68,6 +68,12 @@ pub type Error {
     got: String,
   )
 
+  /// When a query fails because the authenticated user doesn't have the
+  /// permission to run it (for example if they can't access a table that
+  /// belongs to another user).
+  ///
+  PgPermissionDenied(query_file: String, reason: String)
+
   // --- OTHER GENERIC ERRORS --------------------------------------------------
   /// When I cannot read a file containing queries.
   ///
@@ -250,6 +256,16 @@ database server.",
 out the types of query " <> style_inline_code(query_name) <> "
 defined in " <> style_file(file) <> ". This is most definitely a bug!")
       |> report_bug("Expected: " <> expected <> ", Got: " <> got)
+
+    PgPermissionDenied(query_file: query_file, reason: reason) ->
+      printable_error("Permission denied")
+      |> add_paragraph(
+        "I cannot type the query defined in " <> style_link(query_file) <> "
+because the server denied me permission with the following message: " <> reason <> ".",
+      )
+      |> hint(
+        "Make sure the current user has the privileges to run this query.",
+      )
 
     CannotReadFile(file: file, reason: reason) ->
       printable_error("Cannot read file")

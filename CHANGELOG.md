@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Avoid panicking when the authenticated user doesn't have the permission to
+  access a given table.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 - Squirrel now supports the `SCRAM-SHA-256` authentication.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
