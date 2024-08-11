@@ -209,15 +209,6 @@ fn pretty_report(dirs: Dict(String, #(Int, List(Error)))) -> String {
       )
       |> doc.to_string(width)
       |> ansi.green
-      |> string.append("\n")
-      |> string.append(
-        text_with_header(
-          "🥜 ",
-          "Don't forget to run `gleam add decode gleam_pgo` if you haven't yet!",
-        )
-        |> doc.to_string(width)
-        |> ansi.cyan,
-      )
 
     n, [_, ..] ->
       [
