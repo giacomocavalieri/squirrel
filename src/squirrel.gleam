@@ -57,7 +57,7 @@ pub fn main() {
 
 fn read_connection_options() -> postgres.ConnectionOptions {
   let host = envoy.get("PGHOST") |> result.unwrap("localhost")
-  let user = envoy.get("PGUSER") |> result.unwrap("root")
+  let user = envoy.get("PGUSER") |> result.unwrap("postgres")
   let database = envoy.get("PGDATABASE") |> result.unwrap("database")
   let password = envoy.get("PGPASSWORD") |> result.unwrap("")
   let port =
