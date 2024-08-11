@@ -10,9 +10,12 @@ import simplifile
 
 pub type Error {
   // --- POSTGRES RELATED ERRORS -----------------------------------------------
+  /// When the server immediately closes the connection right after we try to
+  /// connect using the given username and database.
+  ///
+  PgCannotConnectUserDatabase(user: String, database: String)
+
   /// When authentication workflow goes wrong.
-  /// TODO)) For now I only support no authentication so people might report
-  /// this issue.
   ///
   PgCannotAuthenticate(expected: String, got: String)
 
@@ -127,6 +130,31 @@ pub fn to_doc(error: Error) -> Document {
   // that is actually printed and we do not have to make any effort to add and
   // print new errors.
   let printable_error = case error {
+    PgCannotConnectUserDatabase(user: user, database: database) ->
+      printable_error("Cannot connect")
+      |> add_paragraph(
+        "I couldn't connect to database "
+        <> style_inline_code(database)
+        <> " with user "
+        <> style_inline_code(user)
+        <> ".",
+      )
+      |> hint(
+        "You can change the default user and database by setting the "
+        <> style_inline_code("PGUSER")
+        <> " and "
+        <> style_inline_code("PGDATABASE")
+        <> " environment variables.",
+      )
+
+    PgCannotAuthenticate(expected: expected, got: got) ->
+      printable_error("Cannot authenticate")
+      |> add_paragraph(
+        "I ran into an unexpected problem while trying to authenticate with the
+Postgres server. This is most definitely a bug!",
+      )
+      |> report_bug("Expected: " <> expected <> ", Got: " <> got)
+
     PgCannotSendMessage(reason: reason) ->
       printable_error("Cannot send message")
       |> add_paragraph(
@@ -150,6 +178,18 @@ received from the Postgres database server.",
 database server.",
       )
       |> report_bug(reason)
+
+    PgCannotDescribeQuery(
+      file: file,
+      query_name: query_name,
+      expected: expected,
+      got: got,
+    ) ->
+      printable_error("Cannot inspect query")
+      |> add_paragraph("I ran into an unexpected problem while trying to figure
+out the types of query " <> style_inline_code(query_name) <> "
+defined in " <> style_file(file) <> ". This is most definitely a bug!")
+      |> report_bug("Expected: " <> expected <> ", Got: " <> got)
 
     CannotReadFile(file: file, reason: reason) ->
       printable_error("Cannot read file")
@@ -274,26 +314,6 @@ contain lowercase letters, numbers and underscores.",
         starting_line: starting_line,
       )
       |> maybe_hint(hint)
-
-    PgCannotAuthenticate(expected: expected, got: got) ->
-      printable_error("Cannot authenticate")
-      |> add_paragraph(
-        "I ran into an unexpected problem while trying to authenticate with the
-Postgres server. This is most definitely a bug!",
-      )
-      |> report_bug("Expected: " <> expected <> ", Got: " <> got)
-
-    PgCannotDescribeQuery(
-      file: file,
-      query_name: query_name,
-      expected: expected,
-      got: got,
-    ) ->
-      printable_error("Cannot inspect query")
-      |> add_paragraph("I ran into an unexpected problem while trying to figure
-out the types of query " <> style_inline_code(query_name) <> "
-defined in " <> style_file(file) <> ". This is most definitely a bug!")
-      |> report_bug("Expected: " <> expected <> ", Got: " <> got)
   }
 
   printable_error_to_doc(printable_error)

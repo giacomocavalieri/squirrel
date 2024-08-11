@@ -28,9 +28,9 @@ import gleam/string
 import squirrel/internal/database/postgres_protocol as pg
 import squirrel/internal/error.{
   type Error, type Pointer, type ValueIdentifierError, ByteIndex,
-  CannotParseQuery, PgCannotAuthenticate, PgCannotDecodeReceivedMessage,
-  PgCannotDescribeQuery, PgCannotReceiveMessage, PgCannotSendMessage, Pointer,
-  QueryHasInvalidColumn, QueryHasUnsupportedType,
+  CannotParseQuery, PgCannotAuthenticate, PgCannotConnectUserDatabase,
+  PgCannotDecodeReceivedMessage, PgCannotDescribeQuery, PgCannotReceiveMessage,
+  PgCannotSendMessage, Pointer, QueryHasInvalidColumn, QueryHasUnsupportedType,
 }
 import squirrel/internal/eval_extra
 import squirrel/internal/gleam
@@ -254,7 +254,17 @@ fn authenticate(connection: ConnectionOptions) -> Db(Nil) {
     _ -> unexpected_message(PgCannotAuthenticate, "AuthenticationOk", msg)
   })
 
-  use _ <- eval.try(wait_until_ready())
+  use _ <- eval.try(
+    wait_until_ready()
+    // In case there's a receive error while waiting for the server to be ready
+    // we want to display a more helpful error message because the problem here
+    // must be with an invalid username/database combination.
+    |> eval.replace_error(PgCannotConnectUserDatabase(
+      user: connection.user,
+      database: connection.database,
+    )),
+  )
+
   eval.return(Nil)
 }
 
