@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## Unreleased
+
+- Squirrel now supports the `SCRAM-SHA-256` authentication.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v1.1.0 - 2024-11-09
 
 - Squirrel now supports plaintext password authentication.

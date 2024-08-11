@@ -15,13 +15,27 @@ pub type Error {
   ///
   PgCannotConnectUserDatabase(user: String, database: String)
 
-  /// When authentication workflow goes wrong.
+  /// When we receive an unexpected message while waiting for the authentication
+  /// methods allowed by the server.
   ///
-  PgUnexpectedAuthMessage(expected: String, got: String)
+  PgUnexpectedAuthMethodMessage(expected: String, got: String)
 
-  /// When cleartext authentication fails for a given user.
+  /// When the password provided to authenticate is invalid.
   ///
-  PgFailedCleartextAuthentication(user: String, password: String)
+  PgInvalidPassword(user: String)
+
+  /// When the cleartext authentication workflow goes wrong.
+  ///
+  PgUnexpectedCleartextAuthMessage(expected: String, got: String)
+
+  /// When the sals-sha256 authentication workflow goes wrong.
+  ///
+  PgUnexpectedSha256AuthMessage(expected: String, got: String)
+
+  /// When sasl-sha256 authentication fails because the server sends us the
+  /// wrong proof back.
+  ///
+  PgInvalidSha256ServerProof
 
   /// When the server is expecting an authentication method that is not
   /// currently supported.
@@ -156,28 +170,41 @@ pub fn to_doc(error: Error) -> Document {
         <> " environment variables.",
       )
 
-    PgFailedCleartextAuthentication(user: user, password: password) -> {
-      let error =
-        printable_error("Cannot authenticate")
-        |> add_paragraph(
-          "Invalid password for user " <> style_inline_code(user) <> ".",
-        )
-      case password {
-        "" ->
-          error
-          |> hint("You can change the default password used to
-authenticate by setting the " <> style_inline_code("PGPASSWORD") <> " environment variable.")
-        _ -> error
-      }
-    }
-
-    PgUnexpectedAuthMessage(expected: expected, got: got) ->
-      printable_error("Cannot authenticate")
+    PgUnexpectedAuthMethodMessage(expected: expected, got: got) ->
+      printable_error("Cannot authenticate (no-method)")
       |> add_paragraph(
         "I ran into an unexpected problem while trying to authenticate with the
 Postgres server. This is most definitely a bug!",
       )
       |> report_bug("Expected: " <> expected <> ", Got: " <> got)
+
+    PgInvalidPassword(user: user) ->
+      printable_error("Cannot authenticate")
+      |> add_paragraph(
+        "Invalid password for user " <> style_inline_code(user) <> ".",
+      )
+      |> hint("You can change the default password used to
+authenticate by setting the " <> style_inline_code("PGPASSWORD") <> " environment variable.")
+
+    PgUnexpectedCleartextAuthMessage(expected: expected, got: got) ->
+      printable_error("Cannot authenticate (cleartext)")
+      |> add_paragraph(
+        "I ran into an unexpected problem while trying to authenticate with the
+Postgres server. This is most definitely a bug!",
+      )
+      |> report_bug("Expected: " <> expected <> ", Got: " <> got)
+
+    PgUnexpectedSha256AuthMessage(expected: expected, got: got) ->
+      printable_error("Cannot authenticate (sha256)")
+      |> add_paragraph(
+        "I ran into an unexpected problem while trying to authenticate with the
+Postgres server. This is most definitely a bug!",
+      )
+      |> report_bug("Expected: " <> expected <> ", Got: " <> got)
+
+    PgInvalidSha256ServerProof ->
+      printable_error("Cannot authenticate")
+      |> add_paragraph("I couldn't authenticate with the Postgres server.")
 
     PgUnsupportedAuthentication(auth: auth) ->
       printable_error("Unsupported authentication method")

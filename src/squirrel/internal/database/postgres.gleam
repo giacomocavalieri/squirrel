@@ -30,7 +30,8 @@ import squirrel/internal/error.{
   type Error, type Pointer, type ValueIdentifierError, ByteIndex,
   CannotParseQuery, PgCannotConnectUserDatabase, PgCannotDecodeReceivedMessage,
   PgCannotDescribeQuery, PgCannotReceiveMessage, PgCannotSendMessage,
-  PgFailedCleartextAuthentication, PgUnexpectedAuthMessage,
+  PgInvalidPassword, PgInvalidSha256ServerProof, PgUnexpectedAuthMethodMessage,
+  PgUnexpectedCleartextAuthMessage, PgUnexpectedSha256AuthMessage,
   PgUnsupportedAuthentication, Pointer, QueryHasInvalidColumn,
   QueryHasUnsupportedType,
 }
@@ -39,6 +40,7 @@ import squirrel/internal/gleam
 import squirrel/internal/query.{
   type TypedQuery, type UntypedQuery, TypedQuery, UntypedQuery,
 }
+import squirrel/internal/scram
 
 const find_postgres_type_query = "
 select
@@ -258,12 +260,27 @@ fn authenticate(connection: ConnectionOptions) -> Db(Nil) {
     pg.BeAuthenticationOk -> eval.return(Nil)
     pg.BeAuthenticationCleartextPassword ->
       cleartext_authenticate(user, password)
-    pg.BeAuthenticationMD5Password(salt) -> md5_authenticate(password, salt)
+    pg.BeAuthenticationMD5Password(_) -> unsupported_authentication("md5")
     pg.BeAuthenticationGSS -> unsupported_authentication("GSS")
-    pg.BeAuthenticationSASL(_) -> unsupported_authentication("SASL")
+    pg.BeAuthenticationSASL(methods) ->
+      // Methods is a list of the possible authentication methods, for now we
+      // only support SCRAM-SHA-256.
+      case list.contains(methods, "SCRAM-SHA-256") {
+        True -> sha_256_authenticate(user, password)
+        // Any other method is not supported and we will report it as such
+        // (we need to filter away the empty strings from the `method` list
+        // since sometimes the server sends an unexpected empty string we don't
+        // want to appear in the error).
+        _ ->
+          case list.filter(methods, keeping: fn(method) { method != "" }) {
+            [_, ..] -> "SASL(" <> string.join(methods, ",") <> ")"
+            [] -> "SASL"
+          }
+          |> unsupported_authentication
+      }
     pg.BeAuthenticationSSPI -> unsupported_authentication("SSPI")
     pg.BeAuthenticationKerberosV5 -> unsupported_authentication("KerberosV5")
-    _ -> unexpected_message(PgUnexpectedAuthMessage, "Auth method", msg)
+    _ -> unexpected_message(PgUnexpectedAuthMethodMessage, "AuthMethod", msg)
   })
 
   use _ <- eval.try(
@@ -285,22 +302,121 @@ fn cleartext_authenticate(user: String, password: String) -> Db(Nil) {
   use msg <- eval.try(receive())
   case msg {
     pg.BeAuthenticationOk -> eval.return(Nil)
-    pg.BeErrorResponse(_) ->
-      eval.throw(PgFailedCleartextAuthentication(user: user, password: password))
+    pg.BeErrorResponse(_) -> eval.throw(PgInvalidPassword(user: user))
 
     // The response should only ever be Ok or Error (in case the password is
     // not correct).
     _ ->
       unexpected_message(
-        PgUnexpectedAuthMessage,
+        PgUnexpectedCleartextAuthMessage,
         "AuthenticationOk ok ErrorRespose",
         msg,
       )
   }
 }
 
-fn md5_authenticate(_password: String, _salt: BitArray) -> Db(Nil) {
-  unsupported_authentication("md5")
+fn sha_256_authenticate(user: String, password: String) -> Db(Nil) {
+  // The authentication works as follow:
+  // - We create a client `nonce` to include in the first message
+  // - We send a `ClientFirst` message asking
+  let nonce = scram.nonce()
+  let client_first_msg = scram.ClientFirst(user: user, nonce: nonce)
+  use _ <- eval.try(
+    scram.encode_client_first(client_first_msg)
+    |> pg.FeSaslInitialResponse("SCRAM-SHA-256", _)
+    |> pg.FeAmbigous
+    |> send,
+  )
+  // - If the server has no problems with the first message we will receive an
+  //   ok from the server to go on with the authentication.
+  // - We decode that message to get a hold of various server-sent parameters
+  //   like its own nonce, the number of iterations to use to salt the password,
+  //   and the salt to use
+  use raw_server_first_msg <- eval.try(expect_sasl_continue_message())
+  let assert Ok(server_first_msg) =
+    scram.parse_server_first(raw_server_first_msg, nonce)
+  // - We then send a last message including our password.
+  // - When encoding the message to send we also get back the expected server
+  //   proof we need to get back from the server to be sure authentication was
+  //   ok.
+  let client_last_msg =
+    scram.ClientLast(client_first_msg, server_first_msg, password)
+  let #(client_last_msg, expected_server_proof) =
+    scram.encode_client_last(client_last_msg)
+  use _ <- eval.try(
+    client_last_msg
+    |> pg.FeSaslResponse
+    |> pg.FeAmbigous
+    |> send,
+  )
+  // - At this point can either respond with an ok (signalling the
+  //   authentication was ok), or with an error.
+  //   A `28P01` error means the password is invalid, any other error signals
+  //   something was wrong with our implementation of the protocol and is a bug.
+  // - If the response is ok we need to check that the proof the server sent us
+  //   is the one we were expecting to receive.
+  use msg <- eval.try(expect_sasl_final_message(user))
+  check_sasl_final_message(msg, expected_server_proof, user)
+}
+
+/// Receive a message and expect it to be a SASLContinue message, returning its
+/// content.
+///
+fn expect_sasl_continue_message() {
+  use msg <- eval.try(receive())
+  case msg {
+    pg.BeAuthenticationSASLContinue(server_first) -> eval.return(server_first)
+    _ ->
+      unexpected_message(
+        PgUnexpectedSha256AuthMessage,
+        "AuthenticationSASLContinue(server-first)",
+        msg,
+      )
+  }
+}
+
+/// Received a message and expects it to be a SASLFinal message, returning its
+/// content.
+///
+/// If the message is an `ErrorResponse` with the invalid password error code,
+/// it throws an `InvalidPassword` error, failing the authentication.
+///
+fn expect_sasl_final_message(user: String) {
+  let unexpected_message = unexpected_message(
+    PgUnexpectedSha256AuthMessage,
+    "AuthenticationSASLFinal or BeErrorResponse",
+    _,
+  )
+
+  use msg <- eval.try(receive())
+  case msg {
+    pg.BeAuthenticationSASLFinal(msg) -> eval.return(msg)
+    pg.BeErrorResponse(fields) ->
+      case set.contains(fields, pg.Code("28P01")) {
+        True -> eval.throw(PgInvalidPassword(user))
+        False -> unexpected_message(msg)
+      }
+    _ -> unexpected_message(msg)
+  }
+}
+
+/// Checs that the SASLFinal message content is valid and has the expected
+/// server proof.
+///
+fn check_sasl_final_message(
+  msg: BitArray,
+  expected_server_proof: BitArray,
+  user: String,
+) -> Db(Nil) {
+  case scram.parse_server_final(msg) {
+    Error(Nil) -> eval.throw(PgInvalidSha256ServerProof)
+    Ok(scram.Failed(_)) -> eval.throw(PgInvalidPassword(user))
+    Ok(scram.Successful(server_proof)) ->
+      case server_proof == expected_server_proof {
+        True -> eval.return(Nil)
+        False -> eval.throw(PgInvalidSha256ServerProof)
+      }
+  }
 }
 
 /// Returns type information about a query.
