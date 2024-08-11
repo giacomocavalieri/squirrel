@@ -17,7 +17,16 @@ pub type Error {
 
   /// When authentication workflow goes wrong.
   ///
-  PgCannotAuthenticate(expected: String, got: String)
+  PgUnexpectedAuthMessage(expected: String, got: String)
+
+  /// When cleartext authentication fails for a given user.
+  ///
+  PgFailedCleartextAuthentication(user: String, password: String)
+
+  /// When the server is expecting an authentication method that is not
+  /// currently supported.
+  ///
+  PgUnsupportedAuthentication(auth: String)
 
   /// When there's an error with the underlying socket and I cannot send
   /// messages to the server.
@@ -147,13 +156,37 @@ pub fn to_doc(error: Error) -> Document {
         <> " environment variables.",
       )
 
-    PgCannotAuthenticate(expected: expected, got: got) ->
+    PgFailedCleartextAuthentication(user: user, password: password) -> {
+      let error =
+        printable_error("Cannot authenticate")
+        |> add_paragraph(
+          "Invalid password for user " <> style_inline_code(user) <> ".",
+        )
+      case password {
+        "" ->
+          error
+          |> hint("You can change the default password used to
+authenticate by setting the " <> style_inline_code("PGPASSWORD") <> " environment variable.")
+        _ -> error
+      }
+    }
+
+    PgUnexpectedAuthMessage(expected: expected, got: got) ->
       printable_error("Cannot authenticate")
       |> add_paragraph(
         "I ran into an unexpected problem while trying to authenticate with the
 Postgres server. This is most definitely a bug!",
       )
       |> report_bug("Expected: " <> expected <> ", Got: " <> got)
+
+    PgUnsupportedAuthentication(auth: auth) ->
+      printable_error("Unsupported authentication method")
+      |> add_paragraph(
+        "The Postgres server is asking to authenticate using the "
+        <> auth
+        <> " authentication method, which I currently do not support.",
+      )
+      |> call_to_action(for: "this authentication method to be supported")
 
     PgCannotSendMessage(reason: reason) ->
       printable_error("Cannot send message")

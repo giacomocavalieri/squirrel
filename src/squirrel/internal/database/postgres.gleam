@@ -28,9 +28,11 @@ import gleam/string
 import squirrel/internal/database/postgres_protocol as pg
 import squirrel/internal/error.{
   type Error, type Pointer, type ValueIdentifierError, ByteIndex,
-  CannotParseQuery, PgCannotAuthenticate, PgCannotConnectUserDatabase,
-  PgCannotDecodeReceivedMessage, PgCannotDescribeQuery, PgCannotReceiveMessage,
-  PgCannotSendMessage, Pointer, QueryHasInvalidColumn, QueryHasUnsupportedType,
+  CannotParseQuery, PgCannotConnectUserDatabase, PgCannotDecodeReceivedMessage,
+  PgCannotDescribeQuery, PgCannotReceiveMessage, PgCannotSendMessage,
+  PgFailedCleartextAuthentication, PgUnexpectedAuthMessage,
+  PgUnsupportedAuthentication, Pointer, QueryHasInvalidColumn,
+  QueryHasUnsupportedType,
 }
 import squirrel/internal/eval_extra
 import squirrel/internal/gleam
@@ -245,13 +247,23 @@ pub fn main(
 }
 
 fn authenticate(connection: ConnectionOptions) -> Db(Nil) {
-  let params = [#("user", connection.user), #("database", connection.database)]
+  let ConnectionOptions(user: user, database: database, password: password, ..) =
+    connection
+
+  let params = [#("user", user), #("database", database)]
   use _ <- eval.try(send(pg.FeStartupMessage(params)))
 
   use msg <- eval.try(receive())
   use _ <- eval.try(case msg {
     pg.BeAuthenticationOk -> eval.return(Nil)
-    _ -> unexpected_message(PgCannotAuthenticate, "AuthenticationOk", msg)
+    pg.BeAuthenticationCleartextPassword ->
+      cleartext_authenticate(user, password)
+    pg.BeAuthenticationMD5Password(salt) -> md5_authenticate(password, salt)
+    pg.BeAuthenticationGSS -> unsupported_authentication("GSS")
+    pg.BeAuthenticationSASL(_) -> unsupported_authentication("SASL")
+    pg.BeAuthenticationSSPI -> unsupported_authentication("SSPI")
+    pg.BeAuthenticationKerberosV5 -> unsupported_authentication("KerberosV5")
+    _ -> unexpected_message(PgUnexpectedAuthMessage, "Auth method", msg)
   })
 
   use _ <- eval.try(
@@ -266,6 +278,29 @@ fn authenticate(connection: ConnectionOptions) -> Db(Nil) {
   )
 
   eval.return(Nil)
+}
+
+fn cleartext_authenticate(user: String, password: String) -> Db(Nil) {
+  use _ <- eval.try(send(pg.FeAmbigous(pg.FePasswordMessage(password))))
+  use msg <- eval.try(receive())
+  case msg {
+    pg.BeAuthenticationOk -> eval.return(Nil)
+    pg.BeErrorResponse(_) ->
+      eval.throw(PgFailedCleartextAuthentication(user: user, password: password))
+
+    // The response should only ever be Ok or Error (in case the password is
+    // not correct).
+    _ ->
+      unexpected_message(
+        PgUnexpectedAuthMessage,
+        "AuthenticationOk ok ErrorRespose",
+        msg,
+      )
+  }
+}
+
+fn md5_authenticate(_password: String, _salt: BitArray) -> Db(Nil) {
+  unsupported_authentication("md5")
 }
 
 /// Returns type information about a query.
@@ -734,6 +769,12 @@ fn unexpected_message(
   got got: pg.BackendMessage,
 ) {
   builder(expected, string.inspect(got)) |> eval.throw
+}
+
+/// Throws a `PgUnexpectedAuthentication` error.
+///
+fn unsupported_authentication(auth: String) {
+  eval.throw(PgUnsupportedAuthentication(auth))
 }
 
 /// Looks up for a type with the given id in a global cache.

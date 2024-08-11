@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Squirrel now supports plaintext password authentication.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 - Squirrel now uses `"postgres"` as the default user in case the `PGUSER`
   environment variable is not set.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
