@@ -151,6 +151,30 @@ pub fn string_encoding_test() {
   |> birdie.snap(title: "string encoding")
 }
 
+pub fn char_decoding_test() {
+  "select 'a'::char as res"
+  |> should_codegen
+  |> birdie.snap(title: "char decoding")
+}
+
+pub fn char_encoding_test() {
+  "select true as res where $1 = 'a'::char"
+  |> should_codegen
+  |> birdie.snap(title: "char encoding")
+}
+
+pub fn varchar_decoding_test() {
+  "select 'wibble'::varchar(6) as res"
+  |> should_codegen
+  |> birdie.snap(title: "varchar decoding")
+}
+
+pub fn varchar_encoding_test() {
+  "select true as res where $1 = 'wibble'::varchar(6)"
+  |> should_codegen
+  |> birdie.snap(title: "varchar encoding")
+}
+
 pub fn bool_decoding_test() {
   "select true as res"
   |> should_codegen

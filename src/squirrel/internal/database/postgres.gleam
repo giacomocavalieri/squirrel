@@ -196,7 +196,7 @@ fn pg_to_gleam_type(type_: PgType) -> Result(gleam.Type, String) {
     PBase(name: name) ->
       case name {
         "bool" -> Ok(gleam.Bool)
-        "text" | "char" -> Ok(gleam.String)
+        "text" | "char" | "bpchar" | "varchar" -> Ok(gleam.String)
         "float4" | "float8" | "numeric" -> Ok(gleam.Float)
         "int2" | "int4" | "int8" -> Ok(gleam.Int)
         _ -> Error(name)

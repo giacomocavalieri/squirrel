@@ -4,6 +4,7 @@
 
 - Use `postgres` as the default user in case the `PGUSER` env variable is not
   set.
+- Add support for `varchar` and `bpchar` types.
 
 ## v1.0.1 - 2024-08-09
 
