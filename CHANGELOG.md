@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v1.1.0 - 2024-11-09
 
 - Squirrel now supports plaintext password authentication.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))

@@ -16,7 +16,7 @@ import squirrel/internal/error.{type Error, CannotWriteToFile}
 import squirrel/internal/query.{type TypedQuery}
 import term_size
 
-const squirrel_version = "v1.0.1"
+const squirrel_version = "v1.1.0"
 
 /// 🐿️ Performs code generation for your Gleam project.
 ///
