@@ -59,7 +59,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: TanklesXL/gleam_actions/.github/actions/deps_restore@main
+      - uses: TanklesXL/gleam_actions/.github/actions/deps_cache@main
       - uses: TanklesXL/gleam_actions/.github/actions/install_gleam@main
         with:
           gleam_version: 1.4.1

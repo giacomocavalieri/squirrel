@@ -32,7 +32,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: TanklesXL/gleam_actions/.github/actions/deps_restore@main
+      - uses: TanklesXL/gleam_actions/.github/actions/deps_cache@main
       - name: Release
         uses: softprops/action-gh-release@v1
 
@@ -43,7 +43,7 @@ jobs:
       - version
     steps:
       - uses: actions/checkout@v4
-      - uses: TanklesXL/gleam_actions/.github/actions/deps_restore@main
+      - uses: TanklesXL/gleam_actions/.github/actions/deps_cache@main
       - uses: TanklesXL/gleam_actions/.github/actions/install_gleam@main
         with:
           erlang_version: 27
