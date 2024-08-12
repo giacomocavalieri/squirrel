@@ -13,6 +13,7 @@ import gleam_community/ansi
 import simplifile
 import squirrel/internal/database/postgres
 import squirrel/internal/error.{type Error, CannotWriteToFile}
+import squirrel/internal/project
 import squirrel/internal/query.{type TypedQuery}
 import term_size
 
@@ -40,7 +41,7 @@ const squirrel_version = "v1.1.0"
 /// > - `PGHOST`: `"localhost"`
 /// > - `PGPORT`: `5432`
 /// > - `PGUSER`: `"root"`
-/// > - `PGDATABASE`: `"database"`
+/// > - `PGDATABASE`: the name of your Gleam project
 /// > - `PGPASSWORD`: `""`
 ///
 /// > ⚠️ The generated code relies on the
@@ -49,7 +50,7 @@ const squirrel_version = "v1.1.0"
 /// > add those as dependencies to your project.
 ///
 pub fn main() {
-  walk("src")
+  walk(project.src())
   |> run(read_connection_options())
   |> pretty_report
   |> io.println
@@ -58,7 +59,8 @@ pub fn main() {
 fn read_connection_options() -> postgres.ConnectionOptions {
   let host = envoy.get("PGHOST") |> result.unwrap("localhost")
   let user = envoy.get("PGUSER") |> result.unwrap("postgres")
-  let database = envoy.get("PGDATABASE") |> result.unwrap("database")
+  let project_name = project.name() |> result.unwrap("database")
+  let database = envoy.get("PGDATABASE") |> result.unwrap(project_name)
   let password = envoy.get("PGPASSWORD") |> result.unwrap("")
   let port =
     envoy.get("PGPORT")

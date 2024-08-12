@@ -156,7 +156,7 @@ and use the following defaults if one is not set:
 - `PGHOST`: `"localhost"`
 - `PGPORT`: `5432`
 - `PGUSER`: `"root"`
-- `PGDATABASE`: `"database"`
+- `PGDATABASE`: the name of your Gleam project
 - `PGPASSWORD`: `""`
 
 ## FAQ

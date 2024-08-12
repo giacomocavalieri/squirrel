@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Squirrel now uses the name of your Gleam project as the default database name
+  to connect to.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 - Avoid panicking when the authenticated user doesn't have the permission to
   access a given table.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
