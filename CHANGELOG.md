@@ -1,23 +1,23 @@
 # CHANGELOG
 
-## Unreleased
+## v1.2.0 - 2024-08-12
 
-- Fixed a bug where Squirrel couldn't generate code for queries that return no
-  rows like `insert into`.
+- Squirrel now supports the `SCRAM-SHA-256` authentication.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
 - Squirrel now uses the name of your Gleam project as the default database name
   to connect to.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
+- Fixed a bug where Squirrel couldn't generate code for queries that return no
+  rows like `insert into`.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 - Avoid panicking when the authenticated user doesn't have the permission to
   access a given table.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
-- Squirrel now supports the `SCRAM-SHA-256` authentication.
-  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
-
-## v1.1.0 - 2024-11-09
+## v1.1.0 - 2024-08-11
 
 - Squirrel now supports plaintext password authentication.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
