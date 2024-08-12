@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed a bug where Squirrel couldn't generate code for queries that return no
+  rows like `insert into`.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 - Squirrel now uses the name of your Gleam project as the default database name
   to connect to.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))

@@ -252,3 +252,11 @@ from
     title: "generated type fields are labelled with their name in the select list",
   )
 }
+
+pub fn insert_with_no_returned_values_returns_just_nil_and_doesnt_define_a_type_test() {
+  "insert into squirrel values ('sandy', 1000)"
+  |> should_codegen
+  |> birdie.snap(
+    title: "insert with no returned values returns just nil and doesnt define a type",
+  )
+}

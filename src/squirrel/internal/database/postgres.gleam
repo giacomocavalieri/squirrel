@@ -488,12 +488,14 @@ fn parameters_and_returns(query: UntypedQuery) -> Db(_) {
       use msg <- eval.try(receive())
       use parameters <- eval.try(case msg {
         pg.BeParameterDescription(parameters) -> eval.return(parameters)
+        pg.BeNoData -> eval.return([])
         _ -> unexpected_message(cannot_describe, "ParameterDescription", msg)
       })
 
       use msg <- eval.try(receive())
       use rows <- eval.try(case msg {
         pg.BeRowDescriptions(rows) -> eval.return(rows)
+        pg.BeNoData -> eval.return([])
         _ -> unexpected_message(cannot_describe, "RowDescriptions", msg)
       })
 

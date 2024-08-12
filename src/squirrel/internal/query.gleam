@@ -1,5 +1,6 @@
 import filepath
 import glam/doc.{type Document}
+import gleam/bool
 import gleam/int
 import gleam/list
 import gleam/option.{type Option}
@@ -158,14 +159,6 @@ pub fn generate_code(
   let constructor_has_option =
     list.any(returns, fn(return) { gleam.contains_option(return.type_) })
 
-  let record_doc =
-    "/// A row you get from running the `" <> function_name <> "` query
-/// defined in `" <> file <> "`.
-///
-/// > 🐿️ This type definition was generated automatically using " <> version <> " of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///"
-
   let fun_doc = case comment {
     [] -> "/// Runs the `" <> function_name <> "` query
 /// defined in `" <> file <> "`."
@@ -179,12 +172,14 @@ pub fn generate_code(
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///"
 
+  let record = case record_doc(version, constructor_name, query) {
+    Ok(record) -> record |> doc.append(doc.lines(2))
+    Error(_) -> doc.empty
+  }
+
   let code =
     [
-      doc.from_string(record_doc),
-      doc.line,
-      record(constructor_name, returns),
-      doc.lines(2),
+      record,
       doc.from_string(fun_doc),
       doc.line,
       fun(function_name, ["db", ..inputs], [
@@ -207,6 +202,35 @@ pub fn generate_code(
   }
 
   #(code, set.from_list(imports))
+}
+
+/// Returns the document of a record type definition if the query warrants its
+/// creation: if a query doesn't return anything, then it doesn't make sense
+/// to create a new record type and this function will return an `Error`.
+///
+/// Otherwise it returns the document defining a commented type definition with
+/// the name passed in as a parameter.
+///
+fn record_doc(
+  version: String,
+  constructor_name: String,
+  query: TypedQuery,
+) -> Result(Document, Nil) {
+  let TypedQuery(name: name, returns: returns, file: file, ..) = query
+  use <- bool.guard(when: returns == [], return: Error(Nil))
+
+  let function_name = gleam.identifier_to_string(name)
+  let record_doc =
+    "/// A row you get from running the `" <> function_name <> "` query
+/// defined in `" <> file <> "`.
+///
+/// > 🐿️ This type definition was generated automatically using " <> version <> " of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///"
+
+  [doc.from_string(record_doc), doc.line, record(constructor_name, returns)]
+  |> doc.concat
+  |> Ok
 }
 
 fn gleam_type_to_decoder(type_: gleam.Type) -> String {
@@ -336,10 +360,16 @@ pub fn list(elems: List(Document)) -> Document {
   comma_list("[", elems, "]")
 }
 
+/// A decoder that discards its value and always returns `Nil` instead.
+///
+const nil_decoder = "decode.map(decode.dynamic, fn(_) { Nil })"
+
 /// A pretty printed decoder that decodes an n-item dynamic tuple using the
 /// `decode` package.
 ///
 pub fn decoder(constructor: String, returns: List(gleam.Field)) -> Document {
+  use <- bool.guard(when: returns == [], return: doc.from_string(nil_decoder))
+
   let parameters =
     list.map(returns, fn(field) {
       let label = gleam.identifier_to_string(field.label)
