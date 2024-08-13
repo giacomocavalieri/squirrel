@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v1.3.0 - 2024-08-13
 
 - One can now use the `DATABASE_URL` env variable to specify a connection string
   that Squirrel will use to connect to the Postgres database.
