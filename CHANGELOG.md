@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- One can now use the `DATABASE_URL` env variable to specify a connection string
+  that Squirrel will use to connect to the Postgres database.
+  All the regular Postgres variables are still supported, but Squirrel will pick
+  `DATABASE_URL` over those if it is set.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 - Added support for the `jsonb` type, encoded as a `Json` (from the `gleam_json`
   package) and decoded as a Gleam `String`.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))

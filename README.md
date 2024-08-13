@@ -150,6 +150,14 @@ work:
 
 In order to understand the type of your queries, Squirrel needs to connect to
 the Postgres server where the database is defined. To connect, it will read the
+`DATABASE_URL` env variable that has to be a valid connection string with the
+following format:
+
+```txt
+postgres://user:password@host:port/database
+```
+
+If a `DATABASE_URL` variable is not set, Squirrel will instead read your
 [Postgres env variables](https://www.postgresql.org/docs/current/libpq-envars.html)
 and use the following defaults if one is not set:
 

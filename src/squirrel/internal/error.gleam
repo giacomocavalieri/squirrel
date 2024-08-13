@@ -75,6 +75,10 @@ pub type Error {
   PgPermissionDenied(query_file: String, reason: String)
 
   // --- OTHER GENERIC ERRORS --------------------------------------------------
+  /// When the connection string provided as an env variable cannot be parsed.
+  ///
+  InvalidConnectionString(string: String)
+
   /// When I cannot read a file containing queries.
   ///
   CannotReadFile(file: String, reason: simplifile.FileError)
@@ -265,6 +269,22 @@ because the server denied me permission with the following message: " <> reason 
       )
       |> hint(
         "Make sure the current user has the privileges to run this query.",
+      )
+
+    InvalidConnectionString(string: string) ->
+      printable_error("Invalid connection string")
+      |> add_paragraph(
+        "The value of the "
+        <> style_inline_code("DATABASE_URL")
+        <> " variable "
+        <> style_inline_code(string)
+        <> " is not a valid connection string.",
+      )
+      |> hint(
+        "A connection string should have the following format: "
+        <> style_inline_code(
+          "postgres://username:password@host:port/database_name",
+        ),
       )
 
     CannotReadFile(file: file, reason: reason) ->

@@ -6,13 +6,17 @@ import gleam/dict.{type Dict}
 import gleam/int
 import gleam/io
 import gleam/list
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/set
 import gleam/string
+import gleam/uri.{Uri}
 import gleam_community/ansi
 import simplifile
 import squirrel/internal/database/postgres
-import squirrel/internal/error.{type Error, CannotWriteToFile}
+import squirrel/internal/error.{
+  type Error, CannotWriteToFile, InvalidConnectionString,
+}
 import squirrel/internal/project
 import squirrel/internal/query.{type TypedQuery}
 import term_size
@@ -34,10 +38,16 @@ const squirrel_version = "v1.2.0"
 ///
 /// > ⚠️ In order to generate type safe code, `squirrel` has to connect
 /// > to your Postgres database. To know what host, user, etc. values to use
-/// > when connecting, it will read your
-/// > [Postgres env variables.](https://www.postgresql.org/docs/current/libpq-envars.html)
+/// > when connecting, it will read the `DATABASE_URL` env variable that has to
+/// > be a valid connection string with the following format:
 /// >
-/// > If a variable is not set it will go with the following defaults:
+/// > ```txt
+/// > postgres://user:password@host:port/database
+/// > ```
+/// >
+/// > If a `DATABASE_URL` variable is not set, Squirrel will instead read your
+/// > [Postgres env variables](https://www.postgresql.org/docs/current/libpq-envars.html)
+/// > and use the following defaults if one is not set:
 /// > - `PGHOST`: `"localhost"`
 /// > - `PGPORT`: `5432`
 /// > - `PGUSER`: `"root"`
@@ -50,22 +60,65 @@ const squirrel_version = "v1.2.0"
 /// > add those as dependencies to your project.
 ///
 pub fn main() {
-  walk(project.src())
-  |> run(read_connection_options())
-  |> pretty_report
-  |> io.println
+  case connection_options() {
+    // In case we cannot read the connection options we just immediately fail.
+    Error(error) ->
+      error.to_doc(error)
+      |> doc.to_string(term_width())
+      |> io.println
+    // Otherwise we can walk through the file system and type all the queries,
+    // connecting to the database.
+    Ok(options) ->
+      walk(project.src())
+      |> run(options)
+      |> pretty_report
+      |> io.println
+  }
 }
 
-fn read_connection_options() -> postgres.ConnectionOptions {
-  let host = envoy.get("PGHOST") |> result.unwrap("localhost")
-  let user = envoy.get("PGUSER") |> result.unwrap("postgres")
-  let project_name = project.name() |> result.unwrap("database")
-  let database = envoy.get("PGDATABASE") |> result.unwrap(project_name)
-  let password = envoy.get("PGPASSWORD") |> result.unwrap("")
+/// Returns the connection options to use to connect to the database.
+/// It first tries to read and parse a `DATABASE_URL` env variable (failing if
+/// it has an invalid format).
+///
+/// If the `DATABASE_URL` variable is not set, it uses the Postgres env vars and
+/// some defaults if any of those are not set.
+///
+fn connection_options() -> Result(postgres.ConnectionOptions, Error) {
+  case envoy.get("DATABASE_URL") {
+    Ok(url) ->
+      parse_connection_url(url)
+      |> result.replace_error(InvalidConnectionString(url))
+    Error(_) -> Ok(connection_options_from_variables())
+  }
+}
+
+const default_host = "localhost"
+
+const default_user = "postgres"
+
+const default_database = "database"
+
+const default_password = ""
+
+const default_port = 5432
+
+const default_timeout = 1000
+
+/// Creates a `ConnectionOptions` reading values from env variables and falling
+/// back to some defaults if any required one is not set.
+///
+fn connection_options_from_variables() -> postgres.ConnectionOptions {
+  let host = envoy.get("PGHOST") |> result.unwrap(default_host)
+  let user = envoy.get("PGUSER") |> result.unwrap(default_user)
+  let password = envoy.get("PGPASSWORD") |> result.unwrap(default_password)
+  let database =
+    envoy.get("PGDATABASE")
+    |> result.or(project.name())
+    |> result.unwrap(default_database)
   let port =
     envoy.get("PGPORT")
     |> result.then(int.parse)
-    |> result.unwrap(5432)
+    |> result.unwrap(default_port)
 
   postgres.ConnectionOptions(
     host: host,
@@ -73,8 +126,62 @@ fn read_connection_options() -> postgres.ConnectionOptions {
     user: user,
     password: password,
     database: database,
-    timeout: 1000,
+    timeout: default_timeout,
   )
+}
+
+/// Parses a connection string into a `ConnectionOptions` failing if it has an
+/// invalid format instead of silently producing a default one.
+///
+fn parse_connection_url(raw: String) -> Result(postgres.ConnectionOptions, Nil) {
+  use
+    Uri(
+      scheme: scheme,
+      userinfo: userinfo,
+      host: host,
+      port: port,
+      path: path,
+      query: _,
+      fragment: _,
+    )
+  <- result.try(uri.parse(raw))
+
+  let is_valid_scheme = scheme == None || scheme == Some("postgres")
+  use <- bool.guard(when: !is_valid_scheme, return: Error(Nil))
+
+  let host = host |> option.unwrap(default_host)
+  let port = port |> option.unwrap(default_port)
+  let #(user, password) = parse_userinfo(userinfo)
+  use database <- result.try(parse_database(path))
+
+  Ok(postgres.ConnectionOptions(
+    host: host,
+    port: port,
+    user: user,
+    password: password,
+    database: database,
+    timeout: default_timeout,
+  ))
+}
+
+fn parse_userinfo(userinfo: Option(String)) -> #(String, String) {
+  case userinfo {
+    None -> #(default_user, default_password)
+    Some(userinfo) ->
+      case string.split(userinfo, on: ":") {
+        [user, password] -> #(user, password)
+        [user] -> #(user, default_password)
+        _ -> #(default_user, default_password)
+      }
+  }
+}
+
+fn parse_database(path: String) -> Result(String, Nil) {
+  case uri.path_segments(path) {
+    [] -> Ok(default_database)
+    [database] -> Ok(database)
+    [_, _, ..] -> Error(Nil)
+  }
 }
 
 /// Finds all `from/**/sql` directories and lists the full paths of the `*.sql`
@@ -180,8 +287,11 @@ fn write_queries(
 
 // --- PRETTY REPORT PRINTING --------------------------------------------------
 
+fn term_width() -> Int {
+  term_size.columns() |> result.unwrap(80)
+}
+
 fn pretty_report(dirs: Dict(String, #(Int, List(Error)))) -> String {
-  let width = term_size.columns() |> result.unwrap(80)
   let #(ok, errors) = {
     use #(all_ok, all_errors), _, result <- dict.fold(dirs, #(0, []))
     let #(ok, errors) = result
@@ -192,13 +302,13 @@ fn pretty_report(dirs: Dict(String, #(Int, List(Error)))) -> String {
     |> doc.join(with: doc.lines(2))
 
   case ok, errors {
-    0, [_, ..] -> doc.to_string(errors_doc, width)
+    0, [_, ..] -> doc.to_string(errors_doc, term_width())
     0, [] ->
       text_with_header(
         "🐿️  ",
         "I couldn't find any `*.sql` file to generate queries from",
       )
-      |> doc.to_string(width)
+      |> doc.to_string(term_width())
       |> ansi.yellow
 
     n, [] ->
@@ -209,7 +319,7 @@ fn pretty_report(dirs: Dict(String, #(Int, List(Error)))) -> String {
           <> " "
           <> pluralise(n, "query", "queries"),
       )
-      |> doc.to_string(width)
+      |> doc.to_string(term_width())
       |> ansi.green
 
     n, [_, ..] ->
@@ -225,7 +335,7 @@ fn pretty_report(dirs: Dict(String, #(Int, List(Error)))) -> String {
         ),
       ]
       |> doc.concat
-      |> doc.to_string(width)
+      |> doc.to_string(term_width())
   }
 }
 
