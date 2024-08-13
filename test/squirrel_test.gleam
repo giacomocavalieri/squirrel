@@ -43,6 +43,16 @@ fn setup_database() {
 create table if not exists squirrel(
   name text primary key,
   acorns int
+);
+"
+    |> pgo.execute(db, [], dynamic.dynamic)
+
+  let assert Ok(_) =
+    "
+create table if not exists jsons(
+  id bigserial primary key,
+  json json,
+  jsonb jsonb
 )
 "
     |> pgo.execute(db, [], dynamic.dynamic)
@@ -149,6 +159,30 @@ pub fn string_encoding_test() {
   "select true as res where $1 = 'wibble'"
   |> should_codegen
   |> birdie.snap(title: "string encoding")
+}
+
+pub fn json_decoding_test() {
+  "select '{\"a\": 1}'::json as res"
+  |> should_codegen
+  |> birdie.snap(title: "json decoding")
+}
+
+pub fn json_encoding_test() {
+  "insert into jsons(json) values ($1)"
+  |> should_codegen
+  |> birdie.snap(title: "json encoding")
+}
+
+pub fn jsonb_decoding_test() {
+  "select '{\"a\": 1}'::jsonb as res"
+  |> should_codegen
+  |> birdie.snap(title: "jsonb decoding")
+}
+
+pub fn jsonb_encoding_test() {
+  "insert into jsons(jsonb) values($1)"
+  |> should_codegen
+  |> birdie.snap(title: "jsonb encoding")
 }
 
 pub fn char_decoding_test() {

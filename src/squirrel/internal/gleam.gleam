@@ -14,6 +14,7 @@ pub type Type {
   Float
   Bool
   String
+  Json
 }
 
 /// The labelled field of a Gleam record.
@@ -82,9 +83,19 @@ pub fn identifier(
 ///
 pub fn contains_option(type_: Type) -> Bool {
   case type_ {
-    Int | Float | Bool | String -> False
+    Int | Float | Bool | String | Json -> False
     Option(_) -> True
     List(type_) -> contains_option(type_)
+  }
+}
+
+/// Returns true if a type is `Json` or contains a `Json`.
+///
+pub fn contains_json(type_: Type) -> Bool {
+  case type_ {
+    Int | Float | Bool | String -> False
+    Json -> True
+    Option(type_) | List(type_) -> contains_json(type_)
   }
 }
 

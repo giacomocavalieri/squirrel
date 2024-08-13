@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## Unreleased
+
+- Added support for the `jsonb` type, encoded as a `Json` (from the `gleam_json`
+  package) and decoded as a Gleam `String`.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
+- Added support for the `json` type, encoded as `Json` (from the `gleam_json`
+  package) and decoded as a Gleam `String`.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v1.2.0 - 2024-08-12
 
 - Squirrel now supports the `SCRAM-SHA-256` authentication.

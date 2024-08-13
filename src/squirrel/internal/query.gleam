@@ -153,6 +153,7 @@ pub fn generate_code(
     list.index_map(params, fn(p, i) {
       gleam_type_to_encoder(p, arg_name(i)) |> doc.from_string
     })
+  let inputs_have_json = list.any(params, gleam.contains_json)
 
   let function_name = gleam.identifier_to_string(name)
   let constructor_name = gleam.identifier_to_type_name(name) <> "Row"
@@ -194,12 +195,10 @@ pub fn generate_code(
     |> doc.concat
     |> doc.to_string(80)
 
-  let imports = case constructor_has_option {
-    True -> [
-      "import gleam/option.{type Option}", "import decode", "import gleam/pgo",
-    ]
-    False -> ["import decode", "import gleam/pgo"]
-  }
+  let imports =
+    ["import decode", "import gleam/pgo"]
+    |> append_if(constructor_has_option, "import gleam/option.{type Option}")
+    |> append_if(inputs_have_json, "import gleam/json")
 
   #(code, set.from_list(imports))
 }
@@ -242,6 +241,7 @@ fn gleam_type_to_decoder(type_: gleam.Type) -> String {
     gleam.String -> "decode.string"
     gleam.Option(type_) ->
       "decode.optional(" <> gleam_type_to_decoder(type_) <> ")"
+    gleam.Json -> "decode.string"
   }
 }
 
@@ -263,6 +263,19 @@ fn gleam_type_to_encoder(type_: gleam.Type, name: String) {
     gleam.Float -> "pgo.float(" <> name <> ")"
     gleam.Bool -> "pgo.bool(" <> name <> ")"
     gleam.String -> "pgo.text(" <> name <> ")"
+    gleam.Json -> "pgo.text(json.to_string(" <> name <> "))"
+  }
+}
+
+fn gleam_type_to_field_type(type_: gleam.Type) -> Document {
+  case type_ {
+    gleam.List(type_) -> call("List", [gleam_type_to_field_type(type_)])
+    gleam.Option(type_) -> call("Option", [gleam_type_to_field_type(type_)])
+    gleam.Int -> doc.from_string("Int")
+    gleam.Float -> doc.from_string("Float")
+    gleam.Bool -> doc.from_string("Bool")
+    gleam.String -> doc.from_string("String")
+    gleam.Json -> doc.from_string("String")
   }
 }
 
@@ -282,7 +295,7 @@ pub fn record(name: String, fields: List(gleam.Field)) -> Document {
     list.map(fields, fn(field) {
       let label = gleam.identifier_to_string(field.label)
 
-      [doc.from_string(label <> ": "), pretty_gleam_type(field.type_)]
+      [doc.from_string(label <> ": "), gleam_type_to_field_type(field.type_)]
       |> doc.concat
       |> doc.group
     })
@@ -297,17 +310,6 @@ pub fn record(name: String, fields: List(gleam.Field)) -> Document {
   ]
   |> doc.concat
   |> doc.group
-}
-
-fn pretty_gleam_type(type_: gleam.Type) -> Document {
-  case type_ {
-    gleam.List(type_) -> call("List", [pretty_gleam_type(type_)])
-    gleam.Option(type_) -> call("Option", [pretty_gleam_type(type_)])
-    gleam.Int -> doc.from_string("Int")
-    gleam.Float -> doc.from_string("Float")
-    gleam.Bool -> doc.from_string("Bool")
-    gleam.String -> doc.from_string("String")
-  }
 }
 
 /// A pretty printed public function definition.
@@ -464,4 +466,13 @@ fn comma_list(open: String, content: List(Document), close: String) -> Document 
   ]
   |> doc.concat
   |> doc.group
+}
+
+// --- UTILS -------------------------------------------------------------------
+
+fn append_if(list: List(a), cond: Bool, value: a) -> List(a) {
+  case cond {
+    True -> [value, ..list]
+    False -> list
+  }
 }

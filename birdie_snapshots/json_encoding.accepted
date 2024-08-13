@@ -1,0 +1,22 @@
+---
+version: 1.1.8
+title: json encoding
+file: ./test/squirrel_test.gleam
+test_name: json_encoding_test
+---
+import decode
+import gleam/json
+import gleam/pgo
+
+/// Runs the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This function was generated automatically using v-test of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn query(db, arg_1) {
+  let decoder = decode.map(decode.dynamic, fn(_) { Nil })
+
+  "insert into jsons(json) values ($1)"
+  |> pgo.execute(db, [pgo.text(json.to_string(arg_1))], decode.from(decoder, _))
+}
