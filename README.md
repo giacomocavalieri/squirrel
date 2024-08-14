@@ -167,6 +167,27 @@ and use the following defaults if one is not set:
 - `PGDATABASE`: the name of your Gleam project
 - `PGPASSWORD`: `""`
 
+## Supported types
+
+Squirrel takes care of the mapping between Postgres types and Gleam types.
+This is needed in two places:
+
+- Gleam values need to be _encoded_ into Postgres values when you're filling in
+  the holes of a prepared statement (`$1`, `$2`, ...)
+- Postgres values need to be _decoded_ into a Gleam ones when you're reading the
+  rows returned by a query.
+
+The types that are currently supported are:
+
+| postgres type                                     | encoded as                                                   | decoded as     |
+| ------------------------------------------------- | ------------------------------------------------------------ | -------------- |
+| `bool`                                            | `Bool`                                                       | `Bool`         |
+| `text`, `char`, `bchar`, `varchar`                | `String`                                                     | `String`       |
+| `float4`, `float8`, `numeric`                     | `Float`                                                      | `Float`        |
+| `int2`, `int4`, `int8`                            | `Int`                                                        | `Int`          |
+| `json`, `jsonb`                                   | [`Json`](https://hexdocs.pm/gleam_json/gleam/json.html#Json) | `String`       |
+| `<type>[]` (where `<type>` is any supported type) | `List(<type>)`                                               | `List(<type>)` |
+
 ## FAQ
 
 ### What flavour of SQL does squirrel support?
