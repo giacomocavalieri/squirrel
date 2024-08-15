@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## Unreleased
+
+- Fixed a bug where the generated code would be missing a `gleam/list` import
+  when dealing with Postgres arrays.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v1.3.1 - 2024-08-15
 
 - Fixed a bug where Squirrel would panic if not able to establish a TCP

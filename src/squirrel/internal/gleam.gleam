@@ -82,6 +82,8 @@ pub fn identifier(
 /// Returns true if a type is `Option` or contains an `Option`.
 ///
 pub fn contains_option(type_: Type) -> Bool {
+  // TODO)) I want to remove this and improve code generation so that I don't
+  //        have to keep traversing all the types over and over again.
   case type_ {
     Int | Float | Bool | String | Json -> False
     Option(_) -> True
@@ -92,10 +94,24 @@ pub fn contains_option(type_: Type) -> Bool {
 /// Returns true if a type is `Json` or contains a `Json`.
 ///
 pub fn contains_json(type_: Type) -> Bool {
+  // TODO)) I want to remove this and improve code generation so that I don't
+  //        have to keep traversing all the types over and over again.
   case type_ {
     Int | Float | Bool | String -> False
     Json -> True
     Option(type_) | List(type_) -> contains_json(type_)
+  }
+}
+
+/// Returns true if a type is `List` or contains a `List`.
+///
+pub fn contains_list(type_: Type) -> Bool {
+  // TODO)) I want to remove this and improve code generation so that I don't
+  //        have to keep traversing all the types over and over again.
+  case type_ {
+    Int | Float | Bool | String | Json -> False
+    List(_) -> True
+    Option(type_) -> contains_json(type_)
   }
 }
 

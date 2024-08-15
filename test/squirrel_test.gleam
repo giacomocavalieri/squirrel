@@ -395,3 +395,19 @@ from
   |> should_error
   |> birdie.snap(title: "query with column that doesn't exist")
 }
+
+// --- REGRESSIONS -------------------------------------------------------------
+// Bugs reported from GitHub issues so I make sure those will no longer pop up.
+//
+
+// https://github.com/giacomocavalieri/squirrel/issues/8
+pub fn when_using_a_list_as_argument_the_list_module_is_imported_test() {
+  "
+select
+  true as res
+where
+  $1 = array[1, 2, 3]
+"
+  |> should_codegen
+  |> string.contains("import gleam/list")
+}

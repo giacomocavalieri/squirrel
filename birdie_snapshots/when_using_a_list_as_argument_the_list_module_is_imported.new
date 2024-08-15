@@ -1,8 +1,6 @@
 ---
 version: 1.1.8
-title: array encoding
-file: ./test/squirrel_test.gleam
-test_name: array_encoding_test
+title: when using a list as argument the list module is imported
 ---
 import decode
 import gleam/list
@@ -32,7 +30,12 @@ pub fn query(db, arg_1) {
     })
     |> decode.field(0, decode.bool)
 
-  "select true as res where $1 = array[1, 2, 3]"
+  "
+select
+  true as res
+where
+  $1 = array[1, 2, 3]
+"
   |> pgo.execute(
     db,
     [pgo.array(list.map(arg_1, fn(a) {pgo.int(a)}))],

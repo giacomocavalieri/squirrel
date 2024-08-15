@@ -153,7 +153,9 @@ pub fn generate_code(
     list.index_map(params, fn(p, i) {
       gleam_type_to_encoder(p, arg_name(i)) |> doc.from_string
     })
+
   let inputs_have_json = list.any(params, gleam.contains_json)
+  let inputs_have_list = list.any(params, gleam.contains_list)
 
   let function_name = gleam.identifier_to_string(name)
   let constructor_name = gleam.identifier_to_type_name(name) <> "Row"
@@ -198,6 +200,7 @@ pub fn generate_code(
   let imports =
     ["import decode", "import gleam/pgo"]
     |> append_if(constructor_has_option, "import gleam/option.{type Option}")
+    |> append_if(inputs_have_list, "import gleam/list")
     |> append_if(inputs_have_json, "import gleam/json")
 
   #(code, set.from_list(imports))
