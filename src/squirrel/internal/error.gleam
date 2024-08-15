@@ -6,14 +6,19 @@ import gleam/regex
 import gleam/result
 import gleam/string
 import gleam_community/ansi
+import mug
 import simplifile
 
 pub type Error {
   // --- POSTGRES RELATED ERRORS -----------------------------------------------
+  /// When we can't establish a TCP connection to the server.
+  ///
+  PgCannotEstablishTcpConnection(host: String, port: Int, reason: mug.Error)
+
   /// When the server immediately closes the connection right after we try to
   /// connect using the given username and database.
   ///
-  PgCannotConnectUserDatabase(user: String, database: String)
+  PgInvalidUserDatabase(user: String, database: String)
 
   /// When we receive an unexpected message while waiting for the authentication
   /// methods allowed by the server.
@@ -163,7 +168,43 @@ pub fn to_doc(error: Error) -> Document {
   // that is actually printed and we do not have to make any effort to add and
   // print new errors.
   let printable_error = case error {
-    PgCannotConnectUserDatabase(user: user, database: database) ->
+    PgCannotEstablishTcpConnection(host: host, port: port, reason: reason) ->
+      printable_error("Cannot establish TCP connection")
+      |> add_paragraph(case reason {
+        mug.Econnrefused ->
+          "I couldn't connect to the database because "
+          <> style_inline_code(host)
+          <> " refused the connection to port "
+          <> int.to_string(port)
+          <> "."
+
+        mug.Closed ->
+          "I couldn't connect to the database because "
+          <> style_inline_code(host)
+          <> " closed the connection to port "
+          <> int.to_string(port)
+          <> "."
+
+        mug.Ehostunreach ->
+          "I couldn't connect to the database because "
+          <> style_inline_code(host)
+          <> " is unreachable."
+
+        mug.Timeout ->
+          "I couldn't connect to "
+          <> style_inline_code(host)
+          <> " at port "
+          <> int.to_string(port)
+          <> " because the connection timed out."
+
+        _ ->
+          "I couldn't connect to the database because I ran into the following
+problem while trying to establish a TCP connection to
+" <> style_inline_code(host) <> " at port " <> int.to_string(port) <> ":
+" <> string.inspect(reason)
+      })
+
+    PgInvalidUserDatabase(user: user, database: database) ->
       printable_error("Cannot connect")
       |> add_paragraph(
         "I couldn't connect to database "

@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## Unreleased
+
+- Fixed a bug where Squirrel would panic if not able to establish a TCP
+  connection to the postgres server. Now it gracefully handles the error by
+  showing an appropriate error message.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v1.3.0 - 2024-08-13
 
 - One can now use the `DATABASE_URL` env variable to specify a connection string

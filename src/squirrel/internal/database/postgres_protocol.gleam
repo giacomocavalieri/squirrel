@@ -4,6 +4,8 @@
 ////
 //// I had to make a little change to the existing library:
 ////  - do not fail with an unexpected Command if the outer message is ok
+////  - change the connect function to take in a mug socket instead of asserting
+////    and creating one
 ////
 //// This library parses and generates packages for the PostgreSQL Binary Protocol
 //// It also provides a basic connection abstraction, but this hasn't been used
@@ -23,10 +25,9 @@ pub type Connection {
 }
 
 pub fn connect(host, port, timeout) {
-  let assert Ok(socket) =
-    mug.connect(mug.ConnectionOptions(host: host, port: port, timeout: timeout))
-
-  Connection(socket: socket, buffer: <<>>, timeout: timeout)
+  let options = mug.ConnectionOptions(host: host, port: port, timeout: timeout)
+  use socket <- result.try(mug.connect(options))
+  Ok(Connection(socket: socket, buffer: <<>>, timeout: timeout))
 }
 
 pub type StateInitial {

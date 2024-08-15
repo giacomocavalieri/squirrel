@@ -28,12 +28,13 @@ import gleam/string
 import squirrel/internal/database/postgres_protocol as pg
 import squirrel/internal/error.{
   type Error, type Pointer, type ValueIdentifierError, ByteIndex,
-  CannotParseQuery, PgCannotConnectUserDatabase, PgCannotDecodeReceivedMessage,
-  PgCannotDescribeQuery, PgCannotReceiveMessage, PgCannotSendMessage,
-  PgInvalidPassword, PgInvalidSha256ServerProof, PgPermissionDenied,
-  PgUnexpectedAuthMethodMessage, PgUnexpectedCleartextAuthMessage,
-  PgUnexpectedSha256AuthMessage, PgUnsupportedAuthentication, Pointer,
-  QueryHasInvalidColumn, QueryHasUnsupportedType,
+  CannotParseQuery, PgCannotDecodeReceivedMessage, PgCannotDescribeQuery,
+  PgCannotEstablishTcpConnection, PgCannotReceiveMessage, PgCannotSendMessage,
+  PgInvalidPassword, PgInvalidSha256ServerProof, PgInvalidUserDatabase,
+  PgPermissionDenied, PgUnexpectedAuthMethodMessage,
+  PgUnexpectedCleartextAuthMessage, PgUnexpectedSha256AuthMessage,
+  PgUnsupportedAuthentication, Pointer, QueryHasInvalidColumn,
+  QueryHasUnsupportedType,
 }
 import squirrel/internal/eval_extra
 import squirrel/internal/gleam
@@ -223,12 +224,17 @@ pub fn main(
   queries: List(UntypedQuery),
   connection: ConnectionOptions,
 ) -> Result(#(List(TypedQuery), List(Error)), Error) {
+  use db <- result.try(
+    pg.connect(connection.host, connection.port, connection.timeout)
+    |> result.map_error(PgCannotEstablishTcpConnection(
+      host: connection.host,
+      port: connection.port,
+      reason: _,
+    )),
+  )
+
   let context =
-    Context(
-      db: pg.connect(connection.host, connection.port, connection.timeout),
-      gleam_types: dict.new(),
-      column_nullability: dict.new(),
-    )
+    Context(db: db, gleam_types: dict.new(), column_nullability: dict.new())
 
   // Once the server has confirmed that it is ready to accept query requests we
   // can start gathering information about all the different queries.
@@ -289,7 +295,7 @@ fn authenticate(connection: ConnectionOptions) -> Db(Nil) {
     // In case there's a receive error while waiting for the server to be ready
     // we want to display a more helpful error message because the problem here
     // must be with an invalid username/database combination.
-    |> eval.replace_error(PgCannotConnectUserDatabase(
+    |> eval.replace_error(PgInvalidUserDatabase(
       user: connection.user,
       database: connection.database,
     )),
