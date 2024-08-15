@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v1.3.2 - 2024-08-15
 
 - Fixed a bug where the generated code would be missing a `gleam/list` import
   when dealing with Postgres arrays.
