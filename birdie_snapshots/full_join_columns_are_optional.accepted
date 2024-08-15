@@ -1,0 +1,46 @@
+---
+version: 1.1.8
+title: full join columns are optional
+file: ./test/squirrel_test.gleam
+test_name: full_join_columns_are_optional_test
+---
+import decode
+import gleam/option.{type Option}
+import gleam/pgo
+
+/// A row you get from running the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type QueryRow {
+  QueryRow(optional1: Option(String), optional2: Option(String))
+}
+
+/// Runs the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This function was generated automatically using v-test of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn query(db) {
+  let decoder =
+    decode.into({
+      use optional1 <- decode.parameter
+      use optional2 <- decode.parameter
+      QueryRow(optional1: optional1, optional2: optional2)
+    })
+    |> decode.field(0, decode.optional(decode.string))
+    |> decode.field(1, decode.optional(decode.string))
+
+  "
+select
+  s1.name as optional1,
+  s2.name as optional2
+from
+  squirrel s1
+  full join squirrel s2 using(name)
+"
+  |> pgo.execute(db, [], decode.from(decoder, _))
+}

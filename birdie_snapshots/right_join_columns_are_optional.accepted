@@ -1,0 +1,46 @@
+---
+version: 1.1.8
+title: right join columns are optional
+file: ./test/squirrel_test.gleam
+test_name: right_join_columns_are_optional_test
+---
+import decode
+import gleam/option.{type Option}
+import gleam/pgo
+
+/// A row you get from running the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type QueryRow {
+  QueryRow(optional: Option(String), not_optional: String)
+}
+
+/// Runs the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This function was generated automatically using v-test of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn query(db) {
+  let decoder =
+    decode.into({
+      use optional <- decode.parameter
+      use not_optional <- decode.parameter
+      QueryRow(optional: optional, not_optional: not_optional)
+    })
+    |> decode.field(0, decode.optional(decode.string))
+    |> decode.field(1, decode.string)
+
+  "
+select
+  s1.name as optional,
+  s2.name as not_optional
+from
+  squirrel s1
+  right join squirrel s2 using(name)
+"
+  |> pgo.execute(db, [], decode.from(decoder, _))
+}

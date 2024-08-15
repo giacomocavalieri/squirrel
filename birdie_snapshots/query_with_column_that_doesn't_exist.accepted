@@ -1,0 +1,19 @@
+---
+version: 1.1.8
+title: query with column that doesn't exist
+file: ./test/squirrel_test.gleam
+test_name: query_with_column_that_doesnt_exist_test
+---
+[31m[1mError: [22mInvalid query [42703][39m
+
+    [2m╭─ query.sql[22m
+    [2m│  [22m
+[2m  1 │ [22m[2m[22m
+[2m  2 │ [22m[2m[36mselect[39m[22m
+[2m  3 │ [22m  i_do_not_exist
+        [31m┬
+        ╰─ column "i_do_not_exist" does not exist[0m
+[2m  4 │ [22m[2m[36mfrom[39m[22m
+[2m  5 │ [22m[2m  squirrel[22m
+[2m  6 │ [22m[2m[22m
+    [2m┆[22m

@@ -1,5 +1,6 @@
 import birdie
 import filepath
+import glam/doc
 import gleam/dynamic
 import gleam/list
 import gleam/pgo
@@ -61,6 +62,14 @@ create table if not exists jsons(
 }
 
 // --- ASSERTION HELPERS -------------------------------------------------------
+
+fn should_error(query: String) -> String {
+  let assert Ok(#([], errors)) = codegen_queries([#("query", query)])
+
+  list.map(errors, error.to_doc)
+  |> doc.join(with: doc.lines(2))
+  |> doc.to_string(80)
+}
 
 fn should_codegen(query: String) -> String {
   // We assert everything went smoothly and we have no errors in the query.
@@ -239,6 +248,45 @@ pub fn optional_decoding_test() {
   |> birdie.snap(title: "optional decoding")
 }
 
+pub fn left_join_columns_are_optional_test() {
+  "
+select
+  s1.name as not_optional,
+  s2.name as optional
+from
+  squirrel s1
+  left join squirrel s2 using(name)
+"
+  |> should_codegen
+  |> birdie.snap(title: "left join columns are optional")
+}
+
+pub fn right_join_columns_are_optional_test() {
+  "
+select
+  s1.name as optional,
+  s2.name as not_optional
+from
+  squirrel s1
+  right join squirrel s2 using(name)
+"
+  |> should_codegen
+  |> birdie.snap(title: "right join columns are optional")
+}
+
+pub fn full_join_columns_are_optional_test() {
+  "
+select
+  s1.name as optional1,
+  s2.name as optional2
+from
+  squirrel s1
+  full join squirrel s2 using(name)
+"
+  |> should_codegen
+  |> birdie.snap(title: "full join columns are optional")
+}
+
 // --- CODEGEN STRUCTURE TESTS -------------------------------------------------
 // This is a group of tests to ensure the generated code has some specific
 // structure (e.g. the names and comments are what we expect...)
@@ -293,4 +341,57 @@ pub fn insert_with_no_returned_values_returns_just_nil_and_doesnt_define_a_type_
   |> birdie.snap(
     title: "insert with no returned values returns just nil and doesnt define a type",
   )
+}
+
+// --- ERRROR TESTS ------------------------------------------------------------
+// This is a group of tests to ensure that the errors look good when something
+// goes wrong.
+//
+// > ⚠️ For now I'm just testing errors related to the query parsing and name
+// > checking as I still have to find a good way to end-to-end test connection
+// > stuff...
+//
+
+pub fn column_with_invalid_name_test() {
+  "
+select
+  name as \"not a gleam name\"
+from
+  squirrel
+"
+  |> should_error
+  |> birdie.snap(title: "column with invalid name")
+}
+
+pub fn query_with_syntax_error_test() {
+  "
+select
+  name wibble wobble
+from
+  squirrel
+"
+  |> should_error
+  |> birdie.snap(title: "query with syntax error")
+}
+
+pub fn query_with_table_that_doesnt_exist_test() {
+  "
+select
+  name
+from
+  i_do_not_exist
+"
+  |> should_error
+  |> birdie.snap(title: "query with table that doesn't exist")
+}
+
+pub fn query_with_column_that_doesnt_exist_test() {
+  "
+select
+  i_do_not_exist
+from
+  squirrel
+"
+  |> should_error
+  |> birdie.snap(title: "query with column that doesn't exist")
 }
