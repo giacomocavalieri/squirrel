@@ -2,3 +2,5 @@
 *.ez
 /build
 erl_crash.dump
+src/sql
+src/sql.gleam
