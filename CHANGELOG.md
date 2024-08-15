@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v1.3.1 - 2024-08-15
 
 - Fixed a bug where Squirrel would panic if not able to establish a TCP
   connection to the postgres server. Now it gracefully handles the error by
