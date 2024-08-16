@@ -61,17 +61,24 @@ const squirrel_version = "v1.3.2"
 pub fn main() {
   case connection_options() {
     // In case we cannot read the connection options we just immediately fail.
-    Error(error) ->
+    Error(error) -> {
       error.to_doc(error)
       |> doc.to_string(term_width())
       |> io.println
+
+      exit(1)
+    }
     // Otherwise we can walk through the file system and type all the queries,
     // connecting to the database.
-    Ok(options) ->
-      walk(project.src())
-      |> run(options)
-      |> pretty_report
-      |> io.println
+    Ok(options) -> {
+      let #(report, status_code) =
+        walk(project.src())
+        |> run(options)
+        |> pretty_report
+
+      io.println(report)
+      exit(status_code)
+    }
   }
 }
 
@@ -274,7 +281,7 @@ fn term_width() -> Int {
   term_size.columns() |> result.unwrap(80)
 }
 
-fn pretty_report(dirs: Dict(String, #(Int, List(Error)))) -> String {
+fn pretty_report(dirs: Dict(String, #(Int, List(Error)))) -> #(String, Int) {
   let #(ok, errors) = {
     use #(all_ok, all_errors), _, result <- dict.fold(dirs, #(0, []))
     let #(ok, errors) = result
@@ -284,7 +291,12 @@ fn pretty_report(dirs: Dict(String, #(Int, List(Error)))) -> String {
     list.map(errors, error.to_doc)
     |> doc.join(with: doc.lines(2))
 
-  case ok, errors {
+  let status_code = case errors {
+    [_, ..] -> 1
+    [] -> 0
+  }
+
+  let report = case ok, errors {
     0, [_, ..] -> doc.to_string(errors_doc, term_width())
     0, [] ->
       text_with_header(
@@ -320,6 +332,8 @@ fn pretty_report(dirs: Dict(String, #(Int, List(Error)))) -> String {
       |> doc.concat
       |> doc.to_string(term_width())
   }
+
+  #(report, status_code)
 }
 
 fn text_with_header(header: String, text: String) {
@@ -346,3 +360,8 @@ fn flexible_string(string: String) -> Document {
   |> doc.join(with: doc.flex_space)
   |> doc.group
 }
+
+// --- FFI ---------------------------------------------------------------------
+
+@external(erlang, "squirrel_ffi", "exit")
+pub fn exit(n: Int) -> Nil

@@ -5,6 +5,9 @@
 - Added support for the `uuid` type, represented as a `Uuid` (from the `youid`
   package).
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+- Fixed a bug where `gleam run -m squirrel` would return a `0` exit code even in
+  case of errors.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
 ## v1.3.2 - 2024-08-15
 
