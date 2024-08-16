@@ -8,7 +8,6 @@ import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import gleam/set
 import gleam/string
 import gleam/uri.{Uri}
 import gleam_community/ansi
@@ -260,29 +259,13 @@ fn write_queries(
   let _ = simplifile.create_directory_all(directory)
 
   // We need the top level imports.
-  let #(count, code, imports) = {
-    let acc = #(0, "", set.new())
-    use #(count, code, imports), query <- list.fold(queries, acc)
-    let #(query_code, query_imports) =
-      query.generate_code(squirrel_version, query)
-
-    #(
-      count + 1,
-      code <> "\n" <> query_code,
-      imports |> set.union(query_imports),
-    )
-  }
-
-  let imports =
-    set.to_list(imports) |> list.sort(string.compare) |> string.join(with: "\n")
-  let code = imports <> "\n" <> code
-
+  let code = query.generate_code(queries, squirrel_version)
   let try_write =
     simplifile.write(code, to: file)
     |> result.map_error(CannotWriteToFile(file, _))
 
   use _ <- result.try(try_write)
-  Ok(count)
+  Ok(list.length(queries))
 }
 
 // --- PRETTY REPORT PRINTING --------------------------------------------------

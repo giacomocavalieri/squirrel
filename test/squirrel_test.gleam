@@ -4,7 +4,6 @@ import glam/doc
 import gleam/dynamic
 import gleam/list
 import gleam/pgo
-import gleam/set
 import gleam/string
 import gleeunit
 import simplifile
@@ -64,7 +63,7 @@ create table if not exists jsons(
 // --- ASSERTION HELPERS -------------------------------------------------------
 
 fn should_error(query: String) -> String {
-  let assert Ok(#([], errors)) = codegen_queries([#("query", query)])
+  let assert Ok(#([], errors)) = type_queries([#("query", query)])
 
   list.map(errors, error.to_doc)
   |> doc.join(with: doc.lines(2))
@@ -73,25 +72,11 @@ fn should_error(query: String) -> String {
 
 fn should_codegen(query: String) -> String {
   // We assert everything went smoothly and we have no errors in the query.
-  let assert Ok(#(queries, [])) = codegen_queries([#("query", query)])
-
-  let #(queries, imports) = {
-    use #(queries, imports), query <- list.fold(queries, #([], set.new()))
-    let #(query, query_imports) = query.generate_code("v-test", query)
-    #([query, ..queries], imports |> set.union(query_imports))
-  }
-
-  set.to_list(imports)
-  |> list.sort(string.compare)
-  |> string.join(with: "\n")
-  |> string.append("\n\n")
-  |> string.append(
-    list.reverse(queries)
-    |> string.join(with: "\n\n"),
-  )
+  let assert Ok(#(queries, [])) = type_queries([#("query", query)])
+  query.generate_code(queries, "v-test")
 }
 
-fn codegen_queries(
+fn type_queries(
   queries: List(#(String, String)),
 ) -> Result(#(List(TypedQuery), List(Error)), Error) {
   // If there's any error with the temporary package we just fail the test,
@@ -340,6 +325,16 @@ pub fn insert_with_no_returned_values_returns_just_nil_and_doesnt_define_a_type_
   |> should_codegen
   |> birdie.snap(
     title: "insert with no returned values returns just nil and doesnt define a type",
+  )
+}
+
+pub fn fields_appear_in_the_order_they_have_in_the_select_list_test() {
+  "
+select true as first, 1 as second, 'wibble' as third
+"
+  |> should_codegen
+  |> birdie.snap(
+    title: "fields appear in the order they have in the select list",
   )
 }
 

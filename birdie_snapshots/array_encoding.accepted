@@ -35,7 +35,7 @@ pub fn query(db, arg_1) {
   "select true as res where $1 = array[1, 2, 3]"
   |> pgo.execute(
     db,
-    [pgo.array(list.map(arg_1, fn(a) {pgo.int(a)}))],
+    [pgo.array(list.map(arg_1, fn(value) { pgo.int(value) }))],
     decode.from(decoder, _),
   )
 }
