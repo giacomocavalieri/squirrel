@@ -192,8 +192,7 @@ fn gleam_type_to_encoder(
     }
     gleam.Uuid -> {
       let state = state |> import_module("youid/uuid")
-      let doc =
-        call_doc("pgo.bit_array", [call_doc("uuid.to_bit_array", [name])])
+      let doc = call_doc("pgo.text", [call_doc("uuid.to_string", [name])])
       #(state, doc)
     }
     gleam.Json -> {
