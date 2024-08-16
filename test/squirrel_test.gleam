@@ -71,8 +71,12 @@ fn should_error(query: String) -> String {
 }
 
 fn should_codegen(query: String) -> String {
+  should_codegen_queries([#("query", query)])
+}
+
+fn should_codegen_queries(queries: List(#(String, String))) -> String {
   // We assert everything went smoothly and we have no errors in the query.
-  let assert Ok(#(queries, [])) = type_queries([#("query", query)])
+  let assert Ok(#(queries, [])) = type_queries(queries)
   query.generate_code(queries, "v-test")
 }
 
@@ -272,6 +276,18 @@ from
   |> birdie.snap(title: "full join columns are optional")
 }
 
+pub fn uuid_decoding_test() {
+  "select gen_random_uuid() as res"
+  |> should_codegen
+  |> birdie.snap(title: "uuid decoding")
+}
+
+pub fn uuid_encoding_test() {
+  "select true as res where $1 = gen_random_uuid()"
+  |> should_codegen
+  |> birdie.snap(title: "uuid encoding")
+}
+
 // --- CODEGEN STRUCTURE TESTS -------------------------------------------------
 // This is a group of tests to ensure the generated code has some specific
 // structure (e.g. the names and comments are what we expect...)
@@ -335,6 +351,14 @@ select true as first, 1 as second, 'wibble' as third
   |> should_codegen
   |> birdie.snap(
     title: "fields appear in the order they have in the select list",
+  )
+}
+
+pub fn using_uuids_more_than_once_results_in_a_single_uuid_decoder_helper_test() {
+  [#("one", "select gen_random_uuid()"), #("other", "select gen_random_uuid()")]
+  |> should_codegen_queries
+  |> birdie.snap(
+    title: "using uuids more than once results in a single uuid decoder helper",
   )
 }
 

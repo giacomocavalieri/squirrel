@@ -17,6 +17,7 @@ pub type Type {
   Bool
   String
   Json
+  Uuid
 }
 
 /// The labelled field of a Gleam record.

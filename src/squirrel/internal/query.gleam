@@ -1,10 +1,12 @@
 import filepath
 import glam/doc.{type Document}
 import gleam/bool
+import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
-import gleam/option.{type Option}
+import gleam/option.{type Option, None, Some}
 import gleam/result
+import gleam/set.{type Set}
 import gleam/string
 import simplifile
 import squirrel/internal/error.{
@@ -131,26 +133,40 @@ fn do_take_comment(query: String, lines: List(String)) -> List(String) {
 
 const indent = 2
 
+type CodeGenState {
+  CodeGenState(imports: Dict(String, Set(String)), needs_uuid_decoder: Bool)
+}
+
+fn default_codegen_state() {
+  CodeGenState(imports: dict.new(), needs_uuid_decoder: False)
+  |> import_module("decode")
+  |> import_module("gleam/pgo")
+}
+
 fn gleam_type_to_decoder(
   state: CodeGenState,
   type_: gleam.Type,
 ) -> #(CodeGenState, Document) {
   case type_ {
+    gleam.Uuid -> {
+      let state =
+        CodeGenState(..state, needs_uuid_decoder: True)
+        |> import_module("youid/uuid")
+      #(state, doc.from_string("uuid_decoder()"))
+    }
+    gleam.List(type_) -> {
+      let #(state, inner_decoder) = gleam_type_to_decoder(state, type_)
+      #(state, call_doc("decode.list", [inner_decoder]))
+    }
+    gleam.Option(type_) -> {
+      let #(state, inner_decoder) = gleam_type_to_decoder(state, type_)
+      #(state, call_doc("decode.optional", [inner_decoder]))
+    }
     gleam.Int -> #(state, doc.from_string("decode.int"))
     gleam.Float -> #(state, doc.from_string("decode.float"))
     gleam.Bool -> #(state, doc.from_string("decode.bool"))
     gleam.String -> #(state, doc.from_string("decode.string"))
     gleam.Json -> #(state, doc.from_string("decode.string"))
-
-    gleam.List(type_) -> {
-      let #(state, inner_decoder) = gleam_type_to_decoder(state, type_)
-      #(state, call_doc("decode.list", [inner_decoder]))
-    }
-
-    gleam.Option(type_) -> {
-      let #(state, inner_decoder) = gleam_type_to_decoder(state, type_)
-      #(state, call_doc("decode.optional", [inner_decoder]))
-    }
   }
 }
 
@@ -162,28 +178,29 @@ fn gleam_type_to_encoder(
   let name = doc.from_string(name)
   case type_ {
     gleam.List(type_) -> {
-      let state = CodeGenState(..state, used_list: True)
+      let state = state |> import_module("gleam/list")
       let #(state, inner_encoder) = gleam_type_to_encoder(state, type_, "value")
       let map_fn = fn_doc(["value"], inner_encoder)
       let doc = call_doc("pgo.array", [call_doc("list.map", [name, map_fn])])
-
       #(state, doc)
     }
-
     gleam.Option(type_) -> {
       let #(state, inner_encoder) = gleam_type_to_encoder(state, type_, "value")
       let doc =
         call_doc("pgo.nullable", [fn_doc(["value"], inner_encoder), name])
-
       #(state, doc)
     }
-
+    gleam.Uuid -> {
+      let state = state |> import_module("youid/uuid")
+      let doc =
+        call_doc("pgo.bit_array", [call_doc("uuid.to_bit_array", [name])])
+      #(state, doc)
+    }
     gleam.Json -> {
-      let state = CodeGenState(..state, used_json: True)
+      let state = state |> import_module("gleam/json")
       let doc = call_doc("pgo.text", [call_doc("json.to_string", [name])])
       #(state, doc)
     }
-
     gleam.Int -> #(state, call_doc("pgo.int", [name]))
     gleam.Float -> #(state, call_doc("pgo.float", [name]))
     gleam.Bool -> #(state, call_doc("pgo.bool", [name]))
@@ -201,10 +218,14 @@ fn gleam_type_to_field_type(
       #(state, call_doc("List", [inner_type]))
     }
     gleam.Option(type_) -> {
-      let state = CodeGenState(..state, used_option_type: True)
+      let state = state |> import_qualified("gleam/option", "type Option")
       let #(state, inner_type) = gleam_type_to_field_type(state, type_)
       #(state, call_doc("Option", [inner_type]))
     }
+    gleam.Uuid -> #(
+      state |> import_qualified("youid/uuid", "type Uuid"),
+      doc.from_string("Uuid"),
+    )
     gleam.Int -> #(state, doc.from_string("Int"))
     gleam.Float -> #(state, doc.from_string("Float"))
     gleam.Bool -> #(state, doc.from_string("Bool"))
@@ -213,39 +234,67 @@ fn gleam_type_to_field_type(
   }
 }
 
-type CodeGenState {
-  CodeGenState(used_list: Bool, used_option_type: Bool, used_json: Bool)
-}
-
 /// Generates the code for a single file containing a bunch of typed queries.
 ///
 pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
   let #(state, docs) = {
-    let state =
-      CodeGenState(used_list: False, used_option_type: False, used_json: False)
+    let state = default_codegen_state()
     use #(state, docs), query <- list.fold(over: queries, from: #(state, []))
     let #(state, doc) = query_doc(state, version, query)
     #(state, [doc, ..docs])
   }
+  let docs = list.reverse(docs)
 
-  let CodeGenState(
-    used_list: used_list,
-    used_option_type: used_option_type,
-    used_json: used_json,
-  ) = state
+  let CodeGenState(imports: imports, needs_uuid_decoder: needs_uuid_decoder) =
+    state
 
-  let imports =
-    ["import gleam/pgo", "import decode"]
-    |> append_if(used_list, "import gleam/list")
-    |> append_if(used_json, "import gleam/json")
-    |> append_if(used_option_type, "import gleam/option.{type Option}")
-    |> list.sort(string.compare)
-    |> list.map(doc.from_string)
-    |> doc.join(with: doc.line)
+  let utils = case needs_uuid_decoder {
+    True -> [doc.from_string(uuid_decoder)]
+    False -> []
+  }
 
-  [imports, doc.lines(2), doc.join(docs, with: doc.lines(2))]
-  |> doc.concat
+  case utils {
+    [] -> [imports_doc(imports), ..docs]
+    [_, ..] -> {
+      let utils_comment = string.pad_right("// --- UTILS ", to: 80, with: "-")
+      [imports_doc(imports), ..docs]
+      |> list.append([doc.from_string(utils_comment), ..utils])
+    }
+  }
+  |> doc.join(with: doc.lines(2))
   |> doc.to_string(80)
+}
+
+fn imports_doc(imports: Dict(String, Set(String))) -> Document {
+  let sorted_imports =
+    dict.to_list(imports)
+    |> list.sort(fn(one, other) { string.compare(one.0, other.0) })
+
+  {
+    use #(module, imported_values) <- list.map(sorted_imports)
+    let import_line = doc.from_string("import " <> module)
+    use <- bool.guard(when: set.is_empty(imported_values), return: import_line)
+
+    let imported_values =
+      set.to_list(imported_values)
+      |> list.sort(string.compare)
+      |> list.map(doc.from_string)
+      |> doc.join(with: doc.break(", ", ","))
+      |> doc.group
+
+    [
+      import_line,
+      doc.from_string(".{"),
+      [doc.soft_break, imported_values]
+        |> doc.concat
+        |> doc.group
+        |> doc.nest(by: indent),
+      doc.soft_break,
+      doc.from_string("}"),
+    ]
+    |> doc.concat
+  }
+  |> doc.join(with: doc.line)
 }
 
 /// Returns the generated code and a set with the needed imports to make it
@@ -378,6 +427,17 @@ fn record_doc(
 
   Ok(#(state, result))
 }
+
+const uuid_decoder = "/// A decoder to decode `Uuid`s coming from a Postgres query.
+///
+fn uuid_decoder() {
+  decode.then(decode.bit_array, fn(uuid) {
+    case uuid.from_bit_array(uuid) {
+      Ok(uuid) -> decode.into(uuid)
+      Error(_) -> decode.fail(\"uuid\")
+    }
+  })
+}"
 
 /// A decoder that discards its value and always returns `Nil` instead.
 ///
@@ -561,11 +621,28 @@ fn comma_list(open: String, content: List(Document), close: String) -> Document 
   |> doc.group
 }
 
-// --- UTILS -------------------------------------------------------------------
+// --- UTILS TO WORK WITH STATE ------------------------------------------------
 
-fn append_if(list: List(a), cond: Bool, value: a) -> List(a) {
-  case cond {
-    True -> [value, ..list]
-    False -> list
+fn import_module(state: CodeGenState, name: String) -> CodeGenState {
+  let imports = case dict.has_key(state.imports, name) {
+    False -> dict.insert(state.imports, name, set.new())
+    True -> state.imports
   }
+  CodeGenState(..state, imports: imports)
+}
+
+fn import_qualified(
+  state: CodeGenState,
+  module: String,
+  imported: String,
+) -> CodeGenState {
+  let imports =
+    dict.upsert(state.imports, module, fn(imported_values) {
+      case imported_values {
+        Some(imported_values) -> set.insert(imported_values, imported)
+        None -> set.from_list([imported])
+      }
+    })
+
+  CodeGenState(..state, imports: imports)
 }

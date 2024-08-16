@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## Unreleased
+
+- Added support for the `uuid` type, represented as a `Uuid` (from the `youid`
+  package).
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v1.3.2 - 2024-08-15
 
 - Fixed a bug where the generated code would be missing a `gleam/list` import

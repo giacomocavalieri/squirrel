@@ -179,14 +179,15 @@ This is needed in two places:
 
 The types that are currently supported are:
 
-| postgres type                                     | encoded as                                                   | decoded as     |
-| ------------------------------------------------- | ------------------------------------------------------------ | -------------- |
-| `bool`                                            | `Bool`                                                       | `Bool`         |
-| `text`, `char`, `bchar`, `varchar`                | `String`                                                     | `String`       |
-| `float4`, `float8`, `numeric`                     | `Float`                                                      | `Float`        |
-| `int2`, `int4`, `int8`                            | `Int`                                                        | `Int`          |
-| `json`, `jsonb`                                   | [`Json`](https://hexdocs.pm/gleam_json/gleam/json.html#Json) | `String`       |
-| `<type>[]` (where `<type>` is any supported type) | `List(<type>)`                                               | `List(<type>)` |
+| postgres type                                     | encoded as                                                   | decoded as                                              |
+| ------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------- |
+| `bool`                                            | `Bool`                                                       | `Bool`                                                  |
+| `text`, `char`, `bchar`, `varchar`                | `String`                                                     | `String`                                                |
+| `float4`, `float8`, `numeric`                     | `Float`                                                      | `Float`                                                 |
+| `int2`, `int4`, `int8`                            | `Int`                                                        | `Int`                                                   |
+| `json`, `jsonb`                                   | [`Json`](https://hexdocs.pm/gleam_json/gleam/json.html#Json) | `String`                                                |
+| `uuid`                                            | [`Uuid`](https://hexdocs.pm/youid/youid/uuid.html#Uuid)      | [`Uuid`](https://hexdocs.pm/youid/youid/uuid.html#Uuid) |
+| `<type>[]` (where `<type>` is any supported type) | `List(<type>)`                                               | `List(<type>)`                                          |
 
 ## FAQ
 
