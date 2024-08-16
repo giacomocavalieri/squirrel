@@ -20,7 +20,7 @@ connect to a postgres server that must be running during the tests.
 - Locally you'll need a little bit of setup:
   - There must be a user called `squirrel_test`
   - It must be able to read and write to a database called `squirrel_test`
-  - It will use the empty password to connect at localhost's port 5432
+  - It will use the empty password to connect at `localhost`'s port `5432`
 
 ## Writing tests
 
