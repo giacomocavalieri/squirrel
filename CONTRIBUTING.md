@@ -51,10 +51,12 @@ tests:
 
 Most of the tests are snapshot tests that directly call the `postgres.main`
 function to let it type the queries. In order to do that `squirrel` will have to
-connect to a postgres server that must be running during the tests.
+connect to a Postgres server at `localhost`'s port `5432`.
 
 - In CI this is taken care of automatically
-- Locally you'll need a little bit of setup:
-  - There must be a user called `squirrel_test`
-  - It must be able to read and write to a database called `squirrel_test`
-  - It will use the empty password to connect at `localhost`'s port `5432`
+- Locally you have two options:
+  - Use Docker Compose: the project comes with a `docker-compose.yaml` file that sets up
+    the instance, so you can run `docker compose up` to start it and run your tests
+  - Manually set up a Postgres server: you'll have to make sure you have a server running
+    with a user called `squirrel_test` that must be able to read and write to a database
+    called `squirrel_test`

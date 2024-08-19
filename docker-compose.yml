@@ -1,0 +1,13 @@
+services:
+  postgres:
+    container_name: squirrel-test
+    image: postgres:16
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_USER: squirrel_test
+      POSTGRES_DB: squirrel_test
+    ports:
+      - 5432:5432
+    hostname: postgres
+    expose:
+      - 5432
