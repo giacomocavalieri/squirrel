@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v1.5.0 - 2024-08-19
+
+- Added support for the `bytea` type, represented as a `BitArray`.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v1.4.0 - 2024-08-16
 
 - Added support for the `uuid` type, represented as a `Uuid` (from the `youid`

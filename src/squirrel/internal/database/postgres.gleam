@@ -206,6 +206,7 @@ fn pg_to_gleam_type(type_: PgType) -> Result(gleam.Type, String) {
         "int2" | "int4" | "int8" -> Ok(gleam.Int)
         "json" | "jsonb" -> Ok(gleam.Json)
         "uuid" -> Ok(gleam.Uuid)
+        "bytea" -> Ok(gleam.BitArray)
         _ -> Error(name)
       }
   }

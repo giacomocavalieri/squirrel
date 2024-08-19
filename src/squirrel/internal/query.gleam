@@ -166,6 +166,7 @@ fn gleam_type_to_decoder(
     gleam.Float -> #(state, doc.from_string("decode.float"))
     gleam.Bool -> #(state, doc.from_string("decode.bool"))
     gleam.String -> #(state, doc.from_string("decode.string"))
+    gleam.BitArray -> #(state, doc.from_string("decode.bit_array"))
     gleam.Json -> #(state, doc.from_string("decode.string"))
   }
 }
@@ -204,6 +205,7 @@ fn gleam_type_to_encoder(
     gleam.Float -> #(state, call_doc("pgo.float", [name]))
     gleam.Bool -> #(state, call_doc("pgo.bool", [name]))
     gleam.String -> #(state, call_doc("pgo.text", [name]))
+    gleam.BitArray -> #(state, call_doc("pgo.bytea", [name]))
   }
 }
 
@@ -230,6 +232,7 @@ fn gleam_type_to_field_type(
     gleam.Bool -> #(state, doc.from_string("Bool"))
     gleam.String -> #(state, doc.from_string("String"))
     gleam.Json -> #(state, doc.from_string("String"))
+    gleam.BitArray -> #(state, doc.from_string("BitArray"))
   }
 }
 
