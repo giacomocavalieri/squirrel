@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v1.5.0 - 2024-08-19
 
 - Added support for the `bytea` type, represented as a `BitArray`.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
