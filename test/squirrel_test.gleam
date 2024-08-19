@@ -288,6 +288,18 @@ pub fn uuid_encoding_test() {
   |> birdie.snap(title: "uuid encoding")
 }
 
+pub fn bytea_decoding_test() {
+  "select 'aaa'::bytea as res"
+  |> should_codegen
+  |> birdie.snap(title: "bytea decoding")
+}
+
+pub fn bytea_encoding_test() {
+  "select true as res where $1 = 'aaa'::bytea"
+  |> should_codegen
+  |> birdie.snap(title: "bytea encoding")
+}
+
 // --- CODEGEN STRUCTURE TESTS -------------------------------------------------
 // This is a group of tests to ensure the generated code has some specific
 // structure (e.g. the names and comments are what we expect...)
