@@ -17,7 +17,12 @@ function to let it type the queries. In order to do that `squirrel` will have to
 connect to a postgres server that must be running during the tests.
 
 - In CI this is taken care of automatically
-- Locally you'll need a little bit of setup:
+
+- Locally you can run the tests using Docker Compose to start a postgres db or using a manual setup.
+- To use Docker compose:
+  - In one terminal run `docker compose up`
+  - In another terminal run the tests
+- Without Docker Compose, you will need a PG instance running with:
   - There must be a user called `squirrel_test`
   - It must be able to read and write to a database called `squirrel_test`
   - It will use the empty password to connect at `localhost`'s port `5432`
