@@ -12,6 +12,7 @@ import squirrel/internal/error.{
 pub type Type {
   List(Type)
   Option(Type)
+  Date
   BitArray
   Int
   Float

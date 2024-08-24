@@ -294,6 +294,18 @@ pub fn bytea_encoding_test() {
   |> birdie.snap(title: "bytea encoding")
 }
 
+pub fn date_decoding_test() {
+  "select 'Jan-2-1970'::date as res"
+  |> should_codegen
+  |> birdie.snap(title: "date decoding")
+}
+
+pub fn date_encoding_test() {
+  "select true as res where $1 = 'Jan-2-1970'::date"
+  |> should_codegen
+  |> birdie.snap(title: "date encoding")
+}
+
 // --- CODEGEN STRUCTURE TESTS -------------------------------------------------
 // This is a group of tests to ensure the generated code has some specific
 // structure (e.g. the names and comments are what we expect...)
