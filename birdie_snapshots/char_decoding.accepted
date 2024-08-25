@@ -1,5 +1,5 @@
 ---
-version: 1.1.8
+version: 1.2.0
 title: char decoding
 file: ./test/squirrel_test.gleam
 test_name: char_decoding_test

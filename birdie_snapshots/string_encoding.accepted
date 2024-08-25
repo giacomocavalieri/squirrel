@@ -1,5 +1,5 @@
 ---
-version: 1.1.8
+version: 1.2.0
 title: string encoding
 file: ./test/squirrel_test.gleam
 test_name: string_encoding_test

@@ -1,5 +1,5 @@
 ---
-version: 1.1.8
+version: 1.2.0
 title: float encoding
 file: ./test/squirrel_test.gleam
 test_name: float_encoding_test

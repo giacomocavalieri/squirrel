@@ -247,13 +247,13 @@ fn gleam_type_to_field_type(
 /// Generates the code for a single file containing a bunch of typed queries.
 ///
 pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
-  let #(state, docs) = {
+  let #(state, queries_docs) = {
     let state = default_codegen_state()
     use #(state, docs), query <- list.fold(over: queries, from: #(state, []))
     let #(state, doc) = query_doc(state, version, query)
     #(state, [doc, ..docs])
   }
-  let docs = list.reverse(docs)
+  let queries_docs = list.reverse(queries_docs)
 
   let CodeGenState(imports:, needs_uuid_decoder:, needs_date_decoder:) = state
 
@@ -262,15 +262,27 @@ pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
     |> prepend_if(needs_uuid_decoder, doc.from_string(uuid_decoder))
     |> prepend_if(needs_date_decoder, doc.from_string(date_decoder))
 
+  // We always want to output the imports and the code for the queries.
+  // But in case we also need some helpers we add a final section to our file
+  // with the hard coded helpers we need for the code to compile.
+  let code =
+    [imports_doc(imports), ..queries_docs]
+    |> doc.join(with: doc.lines(2))
+
   case utils {
-    [] -> [imports_doc(imports), ..docs]
+    [] -> code
     [_, ..] -> {
-      let utils_comment = string.pad_right("// --- UTILS ", to: 80, with: "-")
-      [imports_doc(imports), ..docs]
-      |> list.append([doc.from_string(utils_comment), ..utils])
+      [
+        code,
+        doc.lines(2),
+        doc.from_string(string.pad_right("// --- UTILS ", to: 80, with: "-")),
+        doc.lines(2),
+        doc.join(utils, with: doc.lines(2)),
+        doc.line,
+      ]
+      |> doc.concat
     }
   }
-  |> doc.join(with: doc.lines(2))
   |> doc.to_string(80)
 }
 

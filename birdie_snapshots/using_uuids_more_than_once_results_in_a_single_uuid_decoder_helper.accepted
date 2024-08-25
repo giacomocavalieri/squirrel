@@ -1,5 +1,5 @@
 ---
-version: 1.1.8
+version: 1.2.0
 title: using uuids more than once results in a single uuid decoder helper
 file: ./test/squirrel_test.gleam
 test_name: using_uuids_more_than_once_results_in_a_single_uuid_decoder_helper_test

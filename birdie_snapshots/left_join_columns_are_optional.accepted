@@ -1,5 +1,5 @@
 ---
-version: 1.1.8
+version: 1.2.0
 title: left join columns are optional
 file: ./test/squirrel_test.gleam
 test_name: left_join_columns_are_optional_test

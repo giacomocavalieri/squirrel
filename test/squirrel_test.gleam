@@ -29,7 +29,13 @@ const port = 5432
 
 fn setup_database() {
   let config =
-    pgo.Config(..pgo.default_config(), port:, user:, host:, database:)
+    pgo.Config(
+      ..pgo.default_config(),
+      port: port,
+      user: user,
+      host: host,
+      database: database,
+    )
   let db = pgo.connect(config)
 
   let assert Ok(_) =
@@ -99,10 +105,10 @@ fn type_queries(
     postgres.main(
       queries,
       postgres.ConnectionOptions(
-        host:,
-        port:,
-        user:,
-        database:,
+        host: host,
+        port: port,
+        user: user,
+        database: database,
         password: "",
         timeout: 1000,
       ),
@@ -378,6 +384,12 @@ pub fn using_uuids_more_than_once_results_in_a_single_uuid_decoder_helper_test()
   |> birdie.snap(
     title: "using uuids more than once results in a single uuid decoder helper",
   )
+}
+
+pub fn query_that_needs_more_than_a_single_helper_function_test() {
+  "select gen_random_uuid(), 'Jan-2-1970'::date"
+  |> should_codegen
+  |> birdie.snap(title: "query that needs more than a single helper function")
 }
 
 // --- ERRROR TESTS ------------------------------------------------------------
