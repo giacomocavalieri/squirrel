@@ -244,6 +244,13 @@ fn gleam_type_to_field_type(
   }
 }
 
+fn append_if(list: List(a), condition: Bool, item: a) -> List(a) {
+  case condition {
+    True -> [item, ..list]
+    False -> list
+  }
+}
+
 /// Generates the code for a single file containing a bunch of typed queries.
 ///
 pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
@@ -258,13 +265,9 @@ pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
   let CodeGenState(imports:, needs_uuid_decoder:, needs_date_decoder:) = state
 
   let utils =
-    [
-      // conditions that trigger the generation of the util, along with the util
-      #(needs_uuid_decoder, uuid_decoder),
-      #(needs_date_decoder, date_decoder),
-    ]
-    |> list.filter(fn(t) { t.0 })
-    |> list.map(fn(t) { t.1 })
+    []
+    |> append_if(needs_uuid_decoder, uuid_decoder)
+    |> append_if(needs_date_decoder, date_decoder)
     |> list.map(doc.from_string)
 
   case utils {
