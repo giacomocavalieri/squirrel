@@ -188,17 +188,17 @@ pub type ConnectionOptions {
 ///
 fn pg_to_gleam_type(type_: PgType) -> Result(gleam.Type, String) {
   case type_ {
-    PArray(inner: inner) ->
+    PArray(inner:) ->
       pg_to_gleam_type(inner)
       |> result.map(gleam.List)
       |> result.map_error(fn(inner) { inner <> "[]" })
 
-    POption(inner: inner) ->
+    POption(inner:) ->
       pg_to_gleam_type(inner)
       |> result.map(gleam.Option)
       |> result.map_error(fn(inner) { inner <> "?" })
 
-    PBase(name: name) ->
+    PBase(name:) ->
       case name {
         "bool" -> Ok(gleam.Bool)
         "text" | "char" | "bpchar" | "varchar" -> Ok(gleam.String)
@@ -236,7 +236,7 @@ pub fn main(
   )
 
   let context =
-    Context(db: db, gleam_types: dict.new(), column_nullability: dict.new())
+    Context(db:, gleam_types: dict.new(), column_nullability: dict.new())
 
   // Once the server has confirmed that it is ready to accept query requests we
   // can start gathering information about all the different queries.
@@ -258,8 +258,7 @@ pub fn main(
 }
 
 fn authenticate(connection: ConnectionOptions) -> Db(Nil) {
-  let ConnectionOptions(user: user, database: database, password: password, ..) =
-    connection
+  let ConnectionOptions(user:, database:, password:, ..) = connection
 
   let params = [#("user", user), #("database", database)]
   use _ <- eval.try(send(pg.FeStartupMessage(params)))
@@ -311,7 +310,7 @@ fn cleartext_authenticate(user: String, password: String) -> Db(Nil) {
   use msg <- eval.try(receive())
   case msg {
     pg.BeAuthenticationOk -> eval.return(Nil)
-    pg.BeErrorResponse(_) -> eval.throw(PgInvalidPassword(user: user))
+    pg.BeErrorResponse(_) -> eval.throw(PgInvalidPassword(user:))
 
     // The response should only ever be Ok or Error (in case the password is
     // not correct).
@@ -329,7 +328,7 @@ fn sha_256_authenticate(user: String, password: String) -> Db(Nil) {
   // - We create a client `nonce` to include in the first message
   // - We send a `ClientFirst` message asking
   let nonce = scram.nonce()
-  let client_first_msg = scram.ClientFirst(user: user, nonce: nonce)
+  let client_first_msg = scram.ClientFirst(user:, nonce:)
   use _ <- eval.try(
     scram.encode_client_first(client_first_msg)
     |> pg.FeSaslInitialResponse("SCRAM-SHA-256", _)
@@ -484,8 +483,8 @@ fn parameters_and_returns(query: UntypedQuery) -> Db(_) {
     PgCannotDescribeQuery(
       file: query.file,
       query_name: gleam.identifier_to_string(query.name),
-      expected: expected,
-      got: got,
+      expected:,
+      got:,
     )
   }
 
@@ -551,7 +550,7 @@ fn error_fields_to_parse_error(
   // those into a pointer that will be shown in the error message.
   let pointer = case message, position {
     Some(message), Some(position) ->
-      Some(Pointer(point_to: ByteIndex(position), message: message))
+      Some(Pointer(point_to: ByteIndex(position), message:))
     _, _ -> None
   }
 
@@ -689,7 +688,7 @@ fn resolve_returns(
     data_type_oid: type_oid,
     attr_number: column,
     table_oid: table,
-    name: name,
+    name:,
     ..,
   ) = column
 
@@ -705,7 +704,7 @@ fn resolve_returns(
         False ->
           case set.contains(nullables, i) {
             True -> eval.return(Nullable)
-            False -> column_nullability(table: table, column: column)
+            False -> column_nullability(table:, column:)
           }
       }
   })
@@ -727,14 +726,14 @@ fn resolve_returns(
 
   use name <- eval.try(eval.from_result(try_convert_name))
 
-  let field = gleam.Field(label: name, type_: type_)
+  let field = gleam.Field(label: name, type_:)
   eval.return(field)
 }
 
 fn column_nullability(table table: Int, column column: Int) -> Db(Nullability) {
   // We first check if the table+column is cached to avoid making redundant
   // queries to the database.
-  use <- with_cached_column(table: table, column: column)
+  use <- with_cached_column(table:, column:)
 
   // If the table oid is 0 that means the column doesn't come from any table so
   // we just assume it's not nullable.
@@ -864,8 +863,7 @@ fn fields_to_premission_denied_error(
     }
   }
   case code, reason {
-    Some("42501"), Some(reason) ->
-      Ok(PgPermissionDenied(query_file: query_file, reason: reason))
+    Some("42501"), Some(reason) -> Ok(PgPermissionDenied(query_file:, reason:))
     _, _ -> Error(Nil)
   }
 }
@@ -873,9 +871,9 @@ fn fields_to_premission_denied_error(
 /// Receive a single message from the database.
 ///
 fn receive() -> Db(pg.BackendMessage) {
-  use Context(db: db, ..) as context <- eval.from
+  use Context(db:, ..) as context <- eval.from
   case pg.receive(db) {
-    Ok(#(db, msg)) -> #(Context(..context, db: db), Ok(msg))
+    Ok(#(db, msg)) -> #(Context(..context, db:), Ok(msg))
     Error(pg.ReadDecodeError(error)) -> #(
       context,
       Error(PgCannotDecodeReceivedMessage(string.inspect(error))),
@@ -890,7 +888,7 @@ fn receive() -> Db(pg.BackendMessage) {
 /// Send a single message to the database.
 ///
 fn send(message message: pg.FrontendMessage) -> Db(Nil) {
-  use Context(db: db, ..) as context <- eval.from
+  use Context(db:, ..) as context <- eval.from
 
   let result =
     message
@@ -902,7 +900,7 @@ fn send(message message: pg.FrontendMessage) -> Db(Nil) {
     Error(error) -> #(db, Error(PgCannotSendMessage(string.inspect(error))))
   }
 
-  #(Context(..context, db: db), result)
+  #(Context(..context, db:), result)
 }
 
 /// Send many messages, one after the other.
@@ -961,9 +959,9 @@ fn with_cached_gleam_type(
     Error(_) ->
       case eval.step(do(), context) {
         #(_, Error(_)) as result -> result
-        #(Context(gleam_types: gleam_types, ..) as context, Ok(type_)) -> {
+        #(Context(gleam_types:, ..) as context, Ok(type_)) -> {
           let gleam_types = dict.insert(gleam_types, oid, type_)
-          let new_context = Context(..context, gleam_types: gleam_types)
+          let new_context = Context(..context, gleam_types:)
           #(new_context, Ok(type_))
         }
       }
@@ -987,16 +985,9 @@ fn with_cached_column(
     Error(_) ->
       case eval.step(do(), context) {
         #(_, Error(_)) as result -> result
-        #(
-          Context(
-            column_nullability: column_nullability,
-            ..,
-          ) as context,
-          Ok(type_),
-        ) -> {
+        #(Context(column_nullability:, ..) as context, Ok(type_)) -> {
           let column_nullability = dict.insert(column_nullability, key, type_)
-          let new_context =
-            Context(..context, column_nullability: column_nullability)
+          let new_context = Context(..context, column_nullability:)
           #(new_context, Ok(type_))
         }
       }
@@ -1006,19 +997,13 @@ fn with_cached_column(
 // --- HELPERS TO BUILD ERRORS -------------------------------------------------
 
 fn unsupported_type_error(query: UntypedQuery, type_: String) -> Error {
-  let UntypedQuery(
-    content: content,
-    file: file,
-    name: name,
-    starting_line: starting_line,
-    comment: _,
-  ) = query
+  let UntypedQuery(content:, file:, name:, starting_line:, comment: _) = query
   QueryHasUnsupportedType(
-    file: file,
+    file:,
     name: gleam.identifier_to_string(name),
-    content: content,
-    type_: type_,
-    starting_line: starting_line,
+    content:,
+    type_:,
+    starting_line:,
   )
 }
 
@@ -1028,21 +1013,15 @@ fn cannot_parse_error(
   hint: Option(String),
   pointer: Option(Pointer),
 ) -> Error {
-  let UntypedQuery(
-    content: content,
-    file: file,
-    name: name,
-    starting_line: starting_line,
-    comment: _,
-  ) = query
+  let UntypedQuery(content:, file:, name:, starting_line:, comment: _) = query
   CannotParseQuery(
-    content: content,
-    file: file,
+    content:,
+    file:,
     name: gleam.identifier_to_string(name),
-    error_code: error_code,
-    hint: hint,
-    pointer: pointer,
-    starting_line: starting_line,
+    error_code:,
+    hint:,
+    pointer:,
+    starting_line:,
   )
 }
 
@@ -1051,21 +1030,15 @@ fn invalid_column_error(
   column_name: String,
   reason: ValueIdentifierError,
 ) -> Error {
-  let UntypedQuery(
-    name: _,
-    file: file,
-    content: content,
-    starting_line: starting_line,
-    comment: _,
-  ) = query
+  let UntypedQuery(name: _, file:, content:, starting_line:, comment: _) = query
   QueryHasInvalidColumn(
-    file: file,
-    column_name: column_name,
+    file:,
+    column_name:,
     suggested_name: gleam.similar_identifier_string(column_name)
       |> option.from_result,
-    content: content,
-    reason: reason,
-    starting_line: starting_line,
+    content:,
+    reason:,
+    starting_line:,
   )
 }
 

@@ -29,13 +29,7 @@ const port = 5432
 
 fn setup_database() {
   let config =
-    pgo.Config(
-      ..pgo.default_config(),
-      port: port,
-      user: user,
-      host: host,
-      database: database,
-    )
+    pgo.Config(..pgo.default_config(), port:, user:, host:, database:)
   let db = pgo.connect(config)
 
   let assert Ok(_) =
@@ -105,10 +99,10 @@ fn type_queries(
     postgres.main(
       queries,
       postgres.ConnectionOptions(
-        host: host,
-        port: port,
-        user: user,
-        database: database,
+        host:,
+        port:,
+        user:,
+        database:,
         password: "",
         timeout: 1000,
       ),

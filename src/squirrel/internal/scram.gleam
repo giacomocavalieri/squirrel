@@ -59,11 +59,7 @@ fn client_first_without_header(msg: ClientFirst) -> BitArray {
 }
 
 pub fn encode_client_last(client_last: ClientLast) -> #(BitArray, BitArray) {
-  let ClientLast(
-    client_first: client_first,
-    server_first: server_first,
-    password: password,
-  ) = client_last
+  let ClientLast(client_first:, server_first:, password:) = client_last
 
   // Here we hard coded the SHA256 algorithm since it's the one used by
   // Postgres, but it could be anything really.
@@ -144,13 +140,7 @@ pub fn parse_server_first(
       // We've got to make sure the server and client nonce are the same
       // (it is enough for the client_nonce to be a prefix of the server one).
       case string.starts_with(nonce, client_nonce) {
-        True ->
-          Ok(ServerFirst(
-            nonce: nonce,
-            iterations: iterations,
-            salt: salt,
-            raw: msg,
-          ))
+        True -> Ok(ServerFirst(nonce:, iterations:, salt:, raw: msg))
         False -> Error(Nil)
       }
     }

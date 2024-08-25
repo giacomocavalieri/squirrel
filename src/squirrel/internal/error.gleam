@@ -168,7 +168,7 @@ pub fn to_doc(error: Error) -> Document {
   // that is actually printed and we do not have to make any effort to add and
   // print new errors.
   let printable_error = case error {
-    PgCannotEstablishTcpConnection(host: host, port: port, reason: reason) ->
+    PgCannotEstablishTcpConnection(host:, port:, reason:) ->
       printable_error("Cannot establish TCP connection")
       |> add_paragraph(case reason {
         mug.Econnrefused ->
@@ -204,7 +204,7 @@ problem while trying to establish a TCP connection to
 " <> string.inspect(reason)
       })
 
-    PgInvalidUserDatabase(user: user, database: database) ->
+    PgInvalidUserDatabase(user:, database:) ->
       printable_error("Cannot connect")
       |> add_paragraph(
         "I couldn't connect to database "
@@ -221,7 +221,7 @@ problem while trying to establish a TCP connection to
         <> " environment variables.",
       )
 
-    PgUnexpectedAuthMethodMessage(expected: expected, got: got) ->
+    PgUnexpectedAuthMethodMessage(expected:, got:) ->
       printable_error("Cannot authenticate (no-method)")
       |> add_paragraph(
         "I ran into an unexpected problem while trying to authenticate with the
@@ -229,7 +229,7 @@ Postgres server. This is most definitely a bug!",
       )
       |> report_bug("Expected: " <> expected <> ", Got: " <> got)
 
-    PgInvalidPassword(user: user) ->
+    PgInvalidPassword(user:) ->
       printable_error("Cannot authenticate")
       |> add_paragraph(
         "Invalid password for user " <> style_inline_code(user) <> ".",
@@ -237,7 +237,7 @@ Postgres server. This is most definitely a bug!",
       |> hint("You can change the default password used to
 authenticate by setting the " <> style_inline_code("PGPASSWORD") <> " environment variable.")
 
-    PgUnexpectedCleartextAuthMessage(expected: expected, got: got) ->
+    PgUnexpectedCleartextAuthMessage(expected:, got:) ->
       printable_error("Cannot authenticate (cleartext)")
       |> add_paragraph(
         "I ran into an unexpected problem while trying to authenticate with the
@@ -245,7 +245,7 @@ Postgres server. This is most definitely a bug!",
       )
       |> report_bug("Expected: " <> expected <> ", Got: " <> got)
 
-    PgUnexpectedSha256AuthMessage(expected: expected, got: got) ->
+    PgUnexpectedSha256AuthMessage(expected:, got:) ->
       printable_error("Cannot authenticate (sha256)")
       |> add_paragraph(
         "I ran into an unexpected problem while trying to authenticate with the
@@ -257,7 +257,7 @@ Postgres server. This is most definitely a bug!",
       printable_error("Cannot authenticate")
       |> add_paragraph("I couldn't authenticate with the Postgres server.")
 
-    PgUnsupportedAuthentication(auth: auth) ->
+    PgUnsupportedAuthentication(auth:) ->
       printable_error("Unsupported authentication method")
       |> add_paragraph(
         "The Postgres server is asking to authenticate using the "
@@ -266,7 +266,7 @@ Postgres server. This is most definitely a bug!",
       )
       |> call_to_action(for: "this authentication method to be supported")
 
-    PgCannotSendMessage(reason: reason) ->
+    PgCannotSendMessage(reason:) ->
       printable_error("Cannot send message")
       |> add_paragraph(
         "I ran into an unexpected error while trying to talk to the Postgres
@@ -274,7 +274,7 @@ database server.",
       )
       |> report_bug(reason)
 
-    PgCannotDecodeReceivedMessage(reason: reason) ->
+    PgCannotDecodeReceivedMessage(reason:) ->
       printable_error("Cannot decode message")
       |> add_paragraph(
         "I ran into an unexpected error while trying to decode a message
@@ -282,7 +282,7 @@ received from the Postgres database server.",
       )
       |> report_bug(reason)
 
-    PgCannotReceiveMessage(reason: reason) ->
+    PgCannotReceiveMessage(reason:) ->
       printable_error("Cannot receive message")
       |> add_paragraph(
         "I ran into an unexpected error while trying to listen to the Postgres
@@ -290,19 +290,14 @@ database server.",
       )
       |> report_bug(reason)
 
-    PgCannotDescribeQuery(
-      file: file,
-      query_name: query_name,
-      expected: expected,
-      got: got,
-    ) ->
+    PgCannotDescribeQuery(file:, query_name:, expected:, got:) ->
       printable_error("Cannot inspect query")
       |> add_paragraph("I ran into an unexpected problem while trying to figure
 out the types of query " <> style_inline_code(query_name) <> "
 defined in " <> style_file(file) <> ". This is most definitely a bug!")
       |> report_bug("Expected: " <> expected <> ", Got: " <> got)
 
-    PgPermissionDenied(query_file: query_file, reason: reason) ->
+    PgPermissionDenied(query_file:, reason:) ->
       printable_error("Permission denied")
       |> add_paragraph(
         "I cannot type the query defined in " <> style_link(query_file) <> "
@@ -312,7 +307,7 @@ because the server denied me permission with the following message: " <> reason 
         "Make sure the current user has the privileges to run this query.",
       )
 
-    InvalidConnectionString(string: string) ->
+    InvalidConnectionString(string:) ->
       printable_error("Invalid connection string")
       |> add_paragraph(
         "The value of the "
@@ -328,7 +323,7 @@ because the server denied me permission with the following message: " <> reason 
         ),
       )
 
-    CannotReadFile(file: file, reason: reason) ->
+    CannotReadFile(file:, reason:) ->
       printable_error("Cannot read file")
       |> add_paragraph(
         "I couldn't read "
@@ -337,7 +332,7 @@ because the server denied me permission with the following message: " <> reason 
         <> simplifile.describe_error(reason),
       )
 
-    CannotWriteToFile(file: file, reason: reason) ->
+    CannotWriteToFile(file:, reason:) ->
       printable_error("Cannot write to file")
       |> add_paragraph(
         "I couldn't write to "
@@ -346,11 +341,7 @@ because the server denied me permission with the following message: " <> reason 
         <> simplifile.describe_error(reason),
       )
 
-    QueryFileHasInvalidName(
-      file: file,
-      suggested_name: suggested_name,
-      reason: _,
-    ) ->
+    QueryFileHasInvalidName(file:, suggested_name:, reason: _) ->
       printable_error("Query file with invalid name")
       |> add_paragraph(
         "File " <> style_file(file) <> " doesn't have a valid name.
@@ -365,22 +356,17 @@ contain lowercase letters, numbers and underscores." <> case suggested_name {
       })
 
     QueryHasInvalidColumn(
-      file: file,
-      column_name: column_name,
-      suggested_name: suggested_name,
-      content: content,
-      reason: reason,
-      starting_line: starting_line,
+      file:,
+      column_name:,
+      suggested_name:,
+      content:,
+      reason:,
+      starting_line:,
     ) ->
       case reason {
         IsEmpty ->
           printable_error("Column with empty name")
-          |> add_code_paragraph(
-            file: file,
-            content: content,
-            point: None,
-            starting_line: starting_line,
-          )
+          |> add_code_paragraph(file:, content:, point: None, starting_line:)
           |> add_paragraph(
             "A column returned by this query has the empty string as a name,
 all columns should have a valid Gleam name as name.",
@@ -389,9 +375,9 @@ all columns should have a valid Gleam name as name.",
         _ ->
           printable_error("Column with invalid name")
           |> add_code_paragraph(
-            file: file,
-            content: content,
-            starting_line: starting_line,
+            file:,
+            content:,
+            starting_line:,
             point: Some(
               Pointer(point_to: Name(column_name), message: case
                 suggested_name
@@ -410,20 +396,9 @@ contain lowercase letters, numbers and underscores.",
           )
       }
 
-    QueryHasUnsupportedType(
-      file: file,
-      name: _,
-      content: content,
-      type_: type_,
-      starting_line: starting_line,
-    ) ->
+    QueryHasUnsupportedType(file:, name: _, content:, type_:, starting_line:) ->
       printable_error("Unsupported type")
-      |> add_code_paragraph(
-        file: file,
-        content: content,
-        point: None,
-        starting_line: starting_line,
-      )
+      |> add_code_paragraph(file:, content:, point: None, starting_line:)
       |> add_paragraph(
         "One of the rows returned by this query has type "
         <> style_inline_code(type_)
@@ -432,24 +407,19 @@ contain lowercase letters, numbers and underscores.",
       |> call_to_action(for: "this type to be supported")
 
     CannotParseQuery(
-      file: file,
+      file:,
       name: _name,
-      content: content,
-      starting_line: starting_line,
-      error_code: error_code,
-      hint: hint,
-      pointer: pointer,
+      content:,
+      starting_line:,
+      error_code:,
+      hint:,
+      pointer:,
     ) ->
       printable_error(case error_code {
         Some(code) -> "Invalid query [" <> code <> "]"
         None -> "Invalid query"
       })
-      |> add_code_paragraph(
-        file: file,
-        content: content,
-        point: pointer,
-        starting_line: starting_line,
-      )
+      |> add_code_paragraph(file:, content:, point: pointer, starting_line:)
       |> maybe_hint(hint)
   }
 
@@ -496,7 +466,7 @@ type Paragraph {
 ///
 fn printable_error(title: String) -> PrintableError {
   PrintableError(
-    title: title,
+    title:,
     body: [],
     report_bug: None,
     hint: None,
@@ -518,12 +488,7 @@ fn add_code_paragraph(
   PrintableError(
     ..error,
     body: list.append(error.body, [
-      Code(
-        file: file,
-        content: content,
-        pointer: point,
-        starting_line: starting_line,
-      ),
+      Code(file:, content:, pointer: point, starting_line:),
     ]),
   )
 }
@@ -543,7 +508,7 @@ fn hint(error: PrintableError, hint: String) -> PrintableError {
 /// Sets a hint that will be displayed at the bottom of the error message.
 ///
 fn maybe_hint(error: PrintableError, hint: Option(String)) -> PrintableError {
-  PrintableError(..error, hint: hint)
+  PrintableError(..error, hint:)
 }
 
 /// Given something a user might want to be added to the package it sets a
@@ -556,13 +521,7 @@ fn call_to_action(error: PrintableError, for wanted: String) -> PrintableError {
 
 fn printable_error_to_doc(error: PrintableError) -> Document {
   // And now for the tricky bit...
-  let PrintableError(
-    title: title,
-    body: body,
-    report_bug: report_bug,
-    call_to_action: call_to_action,
-    hint: hint,
-  ) = error
+  let PrintableError(title:, body:, report_bug:, call_to_action:, hint:) = error
 
   [
     title_doc(title),
@@ -589,18 +548,8 @@ fn body_doc(body: List(Paragraph)) -> Document {
 fn paragraph_doc(paragraph: Paragraph) -> Document {
   case paragraph {
     Simple(string) -> flexible_string(string)
-    Code(
-      file: file,
-      content: content,
-      pointer: pointer,
-      starting_line: starting_line,
-    ) ->
-      code_doc(
-        file: file,
-        content: content,
-        pointer: pointer,
-        starting_line: starting_line,
-      )
+    Code(file:, content:, pointer:, starting_line:) ->
+      code_doc(file:, content:, pointer:, starting_line:)
   }
 }
 

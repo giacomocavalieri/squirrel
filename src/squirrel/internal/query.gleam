@@ -58,21 +58,15 @@ pub fn add_types(
   params params: List(gleam.Type),
   returns returns: List(gleam.Field),
 ) -> TypedQuery {
-  let UntypedQuery(
-    file: file,
-    name: name,
-    comment: comment,
-    content: content,
-    starting_line: starting_line,
-  ) = query
+  let UntypedQuery(file:, name:, comment:, content:, starting_line:) = query
   TypedQuery(
-    file: file,
-    name: name,
-    comment: comment,
-    content: content,
-    starting_line: starting_line,
-    params: params,
-    returns: returns,
+    file:,
+    name:,
+    comment:,
+    content:,
+    starting_line:,
+    params:,
+    returns:,
   )
 }
 
@@ -98,7 +92,7 @@ pub fn from_file(file: String) -> Result(UntypedQuery, Error) {
   let name =
     gleam.identifier(file_name)
     |> result.map_error(QueryFileHasInvalidName(
-      file: file,
+      file:,
       reason: _,
       suggested_name: gleam.similar_identifier_string(file_name)
         |> option.from_result,
@@ -106,10 +100,10 @@ pub fn from_file(file: String) -> Result(UntypedQuery, Error) {
 
   use name <- result.try(name)
   Ok(UntypedQuery(
-    file: file,
+    file:,
     starting_line: 1,
-    name: name,
-    content: content,
+    name:,
+    content:,
     comment: take_comment(content),
   ))
 }
@@ -247,8 +241,7 @@ pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
   }
   let docs = list.reverse(docs)
 
-  let CodeGenState(imports: imports, needs_uuid_decoder: needs_uuid_decoder) =
-    state
+  let CodeGenState(imports:, needs_uuid_decoder:) = state
 
   let utils = case needs_uuid_decoder {
     True -> [doc.from_string(uuid_decoder)]
@@ -309,11 +302,11 @@ fn query_doc(
 ) -> #(CodeGenState, Document) {
   let TypedQuery(
     file: _,
-    name: name,
-    content: content,
+    name:,
+    content:,
     comment: _,
-    params: params,
-    returns: returns,
+    params:,
+    returns:,
     starting_line: _,
   ) = query
 
@@ -357,7 +350,7 @@ fn query_doc(
 }
 
 fn function_doc(version: String, query: TypedQuery) -> String {
-  let TypedQuery(comment: comment, name: name, file: file, ..) = query
+  let TypedQuery(comment:, name:, file:, ..) = query
   let function_name = gleam.identifier_to_string(name)
 
   let base = case comment {
@@ -388,7 +381,7 @@ fn record_doc(
   type_name: String,
   query: TypedQuery,
 ) -> Result(#(CodeGenState, Document), Nil) {
-  let TypedQuery(name: name, returns: returns, file: file, ..) = query
+  let TypedQuery(name:, returns:, file:, ..) = query
   use <- bool.guard(when: returns == [], return: Error(Nil))
 
   let function_name = gleam.identifier_to_string(name)
@@ -630,7 +623,7 @@ fn import_module(state: CodeGenState, name: String) -> CodeGenState {
     False -> dict.insert(state.imports, name, set.new())
     True -> state.imports
   }
-  CodeGenState(..state, imports: imports)
+  CodeGenState(..state, imports:)
 }
 
 fn import_qualified(
@@ -646,5 +639,5 @@ fn import_qualified(
       }
     })
 
-  CodeGenState(..state, imports: imports)
+  CodeGenState(..state, imports:)
 }

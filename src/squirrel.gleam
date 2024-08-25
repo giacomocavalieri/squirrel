@@ -127,11 +127,11 @@ fn connection_options_from_variables() -> postgres.ConnectionOptions {
     |> result.unwrap(default_port)
 
   postgres.ConnectionOptions(
-    host: host,
-    port: port,
-    user: user,
-    password: password,
-    database: database,
+    host:,
+    port:,
+    user:,
+    password:,
+    database:,
     timeout: default_timeout,
   )
 }
@@ -140,17 +140,9 @@ fn connection_options_from_variables() -> postgres.ConnectionOptions {
 /// invalid format instead of silently producing a default one.
 ///
 fn parse_connection_url(raw: String) -> Result(postgres.ConnectionOptions, Nil) {
-  use
-    Uri(
-      scheme: scheme,
-      userinfo: userinfo,
-      host: host,
-      port: port,
-      path: path,
-      query: _,
-      fragment: _,
-    )
-  <- result.try(uri.parse(raw))
+  use Uri(scheme:, userinfo:, host:, port:, path:, query: _, fragment: _) <- result.try(
+    uri.parse(raw),
+  )
 
   let is_valid_scheme = scheme == None || scheme == Some("postgres")
   use <- bool.guard(when: !is_valid_scheme, return: Error(Nil))
@@ -161,11 +153,11 @@ fn parse_connection_url(raw: String) -> Result(postgres.ConnectionOptions, Nil) 
   use database <- result.try(parse_database(path))
 
   Ok(postgres.ConnectionOptions(
-    host: host,
-    port: port,
-    user: user,
-    password: password,
-    database: database,
+    host:,
+    port:,
+    user:,
+    password:,
+    database:,
     timeout: default_timeout,
   ))
 }
