@@ -128,11 +128,19 @@ fn do_take_comment(query: String, lines: List(String)) -> List(String) {
 const indent = 2
 
 type CodeGenState {
-  CodeGenState(imports: Dict(String, Set(String)), needs_uuid_decoder: Bool)
+  CodeGenState(
+    imports: Dict(String, Set(String)),
+    needs_uuid_decoder: Bool,
+    needs_date_decoder: Bool,
+  )
 }
 
 fn default_codegen_state() {
-  CodeGenState(imports: dict.new(), needs_uuid_decoder: False)
+  CodeGenState(
+    imports: dict.new(),
+    needs_uuid_decoder: False,
+    needs_date_decoder: False,
+  )
   |> import_module("decode")
   |> import_module("gleam/pgo")
 }
@@ -155,6 +163,10 @@ fn gleam_type_to_decoder(
     gleam.Option(type_) -> {
       let #(state, inner_decoder) = gleam_type_to_decoder(state, type_)
       #(state, call_doc("decode.optional", [inner_decoder]))
+    }
+    gleam.Date -> {
+      let state = CodeGenState(..state, needs_date_decoder: True)
+      #(state, doc.from_string("date_decoder()"))
     }
     gleam.Int -> #(state, doc.from_string("decode.int"))
     gleam.Float -> #(state, doc.from_string("decode.float"))
@@ -195,6 +207,7 @@ fn gleam_type_to_encoder(
       let doc = call_doc("pgo.text", [call_doc("json.to_string", [name])])
       #(state, doc)
     }
+    gleam.Date -> #(state, call_doc("pgo.date", [name]))
     gleam.Int -> #(state, call_doc("pgo.int", [name]))
     gleam.Float -> #(state, call_doc("pgo.float", [name]))
     gleam.Bool -> #(state, call_doc("pgo.bool", [name]))
@@ -221,6 +234,7 @@ fn gleam_type_to_field_type(
       state |> import_qualified("youid/uuid", "type Uuid"),
       doc.from_string("Uuid"),
     )
+    gleam.Date -> #(state, doc.from_string("#(Int, Int, Int)"))
     gleam.Int -> #(state, doc.from_string("Int"))
     gleam.Float -> #(state, doc.from_string("Float"))
     gleam.Bool -> #(state, doc.from_string("Bool"))
@@ -241,12 +255,12 @@ pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
   }
   let docs = list.reverse(docs)
 
-  let CodeGenState(imports:, needs_uuid_decoder:) = state
+  let CodeGenState(imports:, needs_uuid_decoder:, needs_date_decoder:) = state
 
-  let utils = case needs_uuid_decoder {
-    True -> [doc.from_string(uuid_decoder)]
-    False -> []
-  }
+  let utils =
+    []
+    |> prepend_if(needs_uuid_decoder, doc.from_string(uuid_decoder))
+    |> prepend_if(needs_date_decoder, doc.from_string(date_decoder))
 
   case utils {
     [] -> [imports_doc(imports), ..docs]
@@ -432,6 +446,16 @@ fn uuid_decoder() {
       Error(_) -> decode.fail(\"uuid\")
     }
   })
+}"
+
+const date_decoder = "/// A decoder to decode `date`s coming from a Postgres query.
+///
+fn date_decoder() {
+  use dynamic <- decode.then(decode.dynamic)
+  case pgo.decode_date(dynamic) {
+    Ok(date) -> decode.into(date)
+    Error(_) -> decode.fail(\"date\")
+  }
 }"
 
 /// A decoder that discards its value and always returns `Nil` instead.
@@ -640,4 +664,13 @@ fn import_qualified(
     })
 
   CodeGenState(..state, imports:)
+}
+
+// --- MISC UTILS --------------------------------------------------------------
+
+fn prepend_if(list: List(a), condition: Bool, item: a) -> List(a) {
+  case condition {
+    True -> [item, ..list]
+    False -> list
+  }
 }

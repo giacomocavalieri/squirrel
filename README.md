@@ -188,6 +188,7 @@ The types that are currently supported are:
 | `json`, `jsonb`                                   | [`Json`](https://hexdocs.pm/gleam_json/gleam/json.html#Json) | `String`                                                |
 | `uuid`                                            | [`Uuid`](https://hexdocs.pm/youid/youid/uuid.html#Uuid)      | [`Uuid`](https://hexdocs.pm/youid/youid/uuid.html#Uuid) |
 | `bytea`                                           | `BitArray`                                                   | `BitArray`                                              |
+| `date`                                            | `#(Int, Int, Int)` with `#(year, month, day)`                | `#(Int, Int, Int)` with `#(year, month, day)`           |
 | `<type>[]` (where `<type>` is any supported type) | `List(<type>)`                                               | `List(<type>)`                                          |
 
 ## FAQ

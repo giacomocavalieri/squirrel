@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## Unreleased
+
+- Added support for the `date` type, represented as a triple `#(Int, Int, Int)`
+  with `#(year, month, day)`.
+  ([Giovanni Paone](https://github.com/PavoJ))
+
 ## v1.5.0 - 2024-08-19
 
 - Added support for the `bytea` type, represented as a `BitArray`.
