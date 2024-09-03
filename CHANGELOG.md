@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v1.6.0 - 2024-09-03
 
 - Added support for the `date` type, represented as a triple `#(Int, Int, Int)`
   with `#(year, month, day)`.
