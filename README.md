@@ -3,7 +3,7 @@
 [![Package Version](https://img.shields.io/hexpm/v/squirrel)](https://hex.pm/packages/squirrel)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/squirrel/)
 
-![Squirrel showcase](https://github.com/user-attachments/assets/4abd308b-b191-4296-a0b6-093db0595794)
+[![Squirrel showcase](https://github.com/user-attachments/assets/4abd308b-b191-4296-a0b6-093db0595794)](https://github.com/user-attachments/assets/4abd308b-b191-4296-a0b6-093db0595794)
 
 ## What's Squirrel?
 
