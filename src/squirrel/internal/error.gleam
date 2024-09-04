@@ -673,11 +673,12 @@ fn find_byte_span(
 }
 
 const keywords = [
-  "and", "any", "as", "asc", "begin", "between", "by", "case", "count", "desc",
-  "distinct", "else", "end", "exists", "from", "full", "group", "having", "if",
-  "in", "inner", "insert", "into", "join", "key", "left", "like", "not", "null",
-  "on", "or", "order", "primary", "revert", "right", "select", "set", "table",
-  "top", "trigger", "union", "update", "use", "values", "view", "where", "with",
+  "and", "any", "as", "asc", "begin", "between", "by", "case", "conflict",
+  "constraint", "count", "desc", "distinct", "do", "else", "end", "exists",
+  "from", "full", "group", "having", "if", "in", "inner", "insert", "into",
+  "join", "key", "left", "like", "not", "nothing", "null", "on", "or", "order",
+  "primary", "revert", "right", "select", "set", "table", "top", "trigger",
+  "union", "update", "use", "values", "view", "where", "with",
 ]
 
 fn syntax_highlight(content: String) -> String {

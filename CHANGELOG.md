@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Improved syntax highlighting for sql queries displayed in error messages.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 - Added a small hint in case no query is found, suggesting the correct project
   structure to follow.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
