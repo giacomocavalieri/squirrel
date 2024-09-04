@@ -1,5 +1,5 @@
 ---
-version: 1.2.0
+version: 1.2.1
 title: column with invalid name
 file: ./test/squirrel_test.gleam
 test_name: column_with_invalid_name_test
@@ -7,7 +7,7 @@ test_name: column_with_invalid_name_test
 [31m[1mError: [22mColumn with invalid name[39m
 
     [2m╭─ query.sql[22m
-    [2m│  [22m
+    [2m│[22m  
 [2m  1 │ [22m[2m[22m
 [2m  2 │ [22m[2m[36mselect[39m[22m
 [2m  3 │ [22m  name [36mas[39m "[36mnot[39m a gleam name"

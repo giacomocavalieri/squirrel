@@ -593,26 +593,37 @@ fn code_doc(
           |> doc.nest(by: from + max_digits + 5),
       ]
 
-      Ok(_) | Error(_) -> [
+      Ok(_) -> [
         doc.from_string(ansi.dim(prefix <> " │ ")),
         doc.from_string(ansi.dim(line)),
       ]
+
+      // If there's no pointer whatsoever do not dim any line at all, or
+      // everything would be dimmed!
+      Error(_) -> [doc.from_string(prefix <> " │ " <> line)]
     }
     |> doc.concat
   }
 
+  // If there's no pointer whatsoever do not dim any line at all, or everything
+  // would be dimmed!
+  let #(file_line, solid_line, dashed_line) = case pointer {
+    Ok(_) -> #(ansi.dim("╭─ " <> file), ansi.dim("│"), ansi.dim("┆"))
+    Error(_) -> #("╭─ " <> file, "│", "┆")
+  }
+
   let padding = string.repeat(" ", max_digits + 3)
   [
-    doc.from_string(padding <> ansi.dim("╭─ " <> file)),
+    doc.from_string(padding <> file_line),
     case starting_line {
-      1 -> doc.from_string(padding <> ansi.dim("│  "))
-      _ -> doc.from_string(padding <> ansi.dim("┆  "))
+      1 -> doc.from_string(padding <> solid_line <> "  ")
+      _ -> doc.from_string(padding <> dashed_line <> "  ")
     },
     ..code_lines
   ]
   |> doc.join(with: doc.line)
   |> doc.append(doc.line)
-  |> doc.append(doc.from_string(padding <> ansi.dim("┆")))
+  |> doc.append(doc.from_string(padding <> dashed_line))
   |> doc.group
 }
 
