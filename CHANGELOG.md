@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fixed a bug where squirrel would not properly display some error messages.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 - Improved syntax highlighting for sql queries displayed in error messages.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
@@ -25,6 +28,7 @@
 - Added support for the `uuid` type, represented as a `Uuid` (from the `youid`
   package).
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 - Fixed a bug where `gleam run -m squirrel` would return a `0` exit code even in
   case of errors.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))

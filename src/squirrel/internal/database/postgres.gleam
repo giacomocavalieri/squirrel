@@ -549,13 +549,28 @@ fn error_fields_to_parse_error(
 
   // If we found both a `Message` and `Position` error messages then we can turn
   // those into a pointer that will be shown in the error message.
-  let pointer = case message, position {
-    Some(message), Some(position) ->
-      Some(Pointer(point_to: ByteIndex(position), message:))
-    _, _ -> None
+  let #(pointer, additional_error_message) = case message, position {
+    // In case the message is tagged with a position we want it to be a pointer
+    // and do not have any additional error message.
+    Some(message), Some(position) -> #(
+      Some(Pointer(point_to: ByteIndex(position), message:)),
+      None,
+    )
+
+    // If it doesn't have any position then we do not have a pointer but still
+    // report the error as an additional message.
+    Some(message), None -> #(None, Some(message))
+
+    _, _ -> #(None, None)
   }
 
-  cannot_parse_error(query, error_code, hint, pointer)
+  cannot_parse_error(
+    query,
+    error_code:,
+    hint:,
+    additional_error_message:,
+    pointer:,
+  )
 }
 
 fn resolve_parameters(
@@ -843,7 +858,7 @@ fn expect_data_row(
   case msg {
     pg.BeMessageDataRow(res) -> eval.return(res)
     pg.BeErrorResponse(fields) ->
-      case fields_to_premission_denied_error(query_file, fields) {
+      case fields_to_permission_denied_error(query_file, fields) {
         Ok(error) -> eval.throw(error)
         Error(_) -> panic as string.inspect(msg)
       }
@@ -851,7 +866,7 @@ fn expect_data_row(
   }
 }
 
-fn fields_to_premission_denied_error(
+fn fields_to_permission_denied_error(
   query_file: String,
   fields: Set(pg.ErrorOrNoticeField),
 ) -> Result(Error, Nil) {
@@ -1010,9 +1025,10 @@ fn unsupported_type_error(query: UntypedQuery, type_: String) -> Error {
 
 fn cannot_parse_error(
   query: UntypedQuery,
-  error_code: Option(String),
-  hint: Option(String),
-  pointer: Option(Pointer),
+  error_code error_code: Option(String),
+  hint hint: Option(String),
+  additional_error_message additional_error_message: Option(String),
+  pointer pointer: Option(Pointer),
 ) -> Error {
   let UntypedQuery(content:, file:, name:, starting_line:, comment: _) = query
   CannotParseQuery(
@@ -1022,6 +1038,7 @@ fn cannot_parse_error(
     error_code:,
     hint:,
     pointer:,
+    additional_error_message:,
     starting_line:,
   )
 }

@@ -135,6 +135,7 @@ pub type Error {
     starting_line: Int,
     error_code: Option(String),
     pointer: Option(Pointer),
+    additional_error_message: Option(String),
     hint: Option(String),
   )
 }
@@ -413,14 +414,22 @@ contain lowercase letters, numbers and underscores.",
       starting_line:,
       error_code:,
       hint:,
+      additional_error_message:,
       pointer:,
-    ) ->
-      printable_error(case error_code {
-        Some(code) -> "Invalid query [" <> code <> "]"
-        None -> "Invalid query"
-      })
-      |> add_code_paragraph(file:, content:, point: pointer, starting_line:)
-      |> maybe_hint(hint)
+    ) -> {
+      let error =
+        printable_error(case error_code {
+          Some(code) -> "Invalid query [" <> code <> "]"
+          None -> "Invalid query"
+        })
+        |> add_code_paragraph(file:, content:, point: pointer, starting_line:)
+        |> maybe_hint(hint)
+
+      case additional_error_message {
+        Some(message) -> add_paragraph(error, message)
+        None -> error
+      }
+    }
   }
 
   printable_error_to_doc(printable_error)
@@ -541,7 +550,7 @@ fn title_doc(title: String) -> Document {
 
 fn body_doc(body: List(Paragraph)) -> Document {
   list.map(body, paragraph_doc)
-  |> doc.join(with: doc.line)
+  |> doc.join(with: doc.lines(2))
   |> doc.group
 }
 

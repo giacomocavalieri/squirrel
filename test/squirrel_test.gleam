@@ -460,3 +460,15 @@ where
   |> should_codegen
   |> string.contains("import gleam/list")
 }
+
+// https://github.com/giacomocavalieri/squirrel/issues/19
+pub fn non_existing_constraint_error_message_test() {
+  "
+insert into squirrel values ($1, $2)
+on conflict on constraint wobble do nothing;
+"
+  |> should_error
+  |> birdie.snap(
+    title: "when a constraint doesn't exist there should be an error message",
+  )
+}
