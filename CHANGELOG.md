@@ -5,6 +5,9 @@
 - Fixed a bug where the SQL query displayed in an error would be dimmed out.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
+- Added more SQL keywords to syntax highlighting in error messages.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v1.6.1 - 2024-09-04
 
 - Fixed a bug where squirrel would not properly display some error messages.
