@@ -291,10 +291,18 @@ fn pretty_report(dirs: Dict(String, #(Int, List(Error)))) -> #(String, Int) {
   let report = case ok, errors {
     0, [_, ..] -> doc.to_string(errors_doc, term_width())
     0, [] ->
-      text_with_header(
-        "🐿️  ",
-        "I couldn't find any `*.sql` file to generate queries from",
-      )
+      [
+        text_with_header(
+          "🐿️  ",
+          "I couldn't find any `*.sql` file to generate queries from.",
+        ),
+        doc.lines(2),
+        flexible_string(
+          "Hint: I look for all `*.sql` files in any directory called `sql`
+under your project's `src` directory.",
+        ),
+      ]
+      |> doc.concat
       |> doc.to_string(term_width())
       |> ansi.yellow
 
@@ -304,7 +312,8 @@ fn pretty_report(dirs: Dict(String, #(Int, List(Error)))) -> #(String, Int) {
         "Generated "
           <> int.to_string(n)
           <> " "
-          <> pluralise(n, "query", "queries"),
+          <> pluralise(n, "query", "queries")
+          <> "!",
       )
       |> doc.to_string(term_width())
       |> ansi.green
@@ -318,7 +327,8 @@ fn pretty_report(dirs: Dict(String, #(Int, List(Error)))) -> #(String, Int) {
           "I could still generate "
             <> int.to_string(n)
             <> " "
-            <> pluralise(n, "query", "queries"),
+            <> pluralise(n, "query", "queries")
+            <> ".",
         ),
       ]
       |> doc.concat

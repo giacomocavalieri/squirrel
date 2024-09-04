@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## Unreleased
+
+- Added a small hint in case no query is found, suggesting the correct project
+  structure to follow.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v1.6.0 - 2024-09-03
 
 - Added support for the `date` type, represented as a triple `#(Int, Int, Int)`
