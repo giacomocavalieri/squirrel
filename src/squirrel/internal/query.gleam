@@ -132,6 +132,7 @@ type CodeGenState {
     imports: Dict(String, Set(String)),
     needs_uuid_decoder: Bool,
     needs_date_decoder: Bool,
+    needs_timestamp_decoder: Bool,
   )
 }
 
@@ -140,6 +141,7 @@ fn default_codegen_state() {
     imports: dict.new(),
     needs_uuid_decoder: False,
     needs_date_decoder: False,
+    needs_timestamp_decoder: False,
   )
   |> import_module("decode")
   |> import_module("gleam/pgo")
@@ -167,6 +169,10 @@ fn gleam_type_to_decoder(
     gleam.Date -> {
       let state = CodeGenState(..state, needs_date_decoder: True)
       #(state, doc.from_string("date_decoder()"))
+    }
+    gleam.Timestamp -> {
+      let state = CodeGenState(..state, needs_timestamp_decoder: True)
+      #(state, doc.from_string("timestamp_decoder()"))
     }
     gleam.Int -> #(state, doc.from_string("decode.int"))
     gleam.Float -> #(state, doc.from_string("decode.float"))
@@ -208,6 +214,7 @@ fn gleam_type_to_encoder(
       #(state, doc)
     }
     gleam.Date -> #(state, call_doc("pgo.date", [name]))
+    gleam.Timestamp -> #(state, call_doc("pgo.timestamp", [name]))
     gleam.Int -> #(state, call_doc("pgo.int", [name]))
     gleam.Float -> #(state, call_doc("pgo.float", [name]))
     gleam.Bool -> #(state, call_doc("pgo.bool", [name]))
@@ -235,6 +242,10 @@ fn gleam_type_to_field_type(
       doc.from_string("Uuid"),
     )
     gleam.Date -> #(state, doc.from_string("#(Int, Int, Int)"))
+    gleam.Timestamp -> #(
+      state,
+      doc.from_string("#(#(Int, Int, Int), #(Int, Int, Int))"),
+    )
     gleam.Int -> #(state, doc.from_string("Int"))
     gleam.Float -> #(state, doc.from_string("Float"))
     gleam.Bool -> #(state, doc.from_string("Bool"))
@@ -255,12 +266,18 @@ pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
   }
   let queries_docs = list.reverse(queries_docs)
 
-  let CodeGenState(imports:, needs_uuid_decoder:, needs_date_decoder:) = state
+  let CodeGenState(
+    imports:,
+    needs_uuid_decoder:,
+    needs_date_decoder:,
+    needs_timestamp_decoder:,
+  ) = state
 
   let utils =
     []
     |> prepend_if(needs_uuid_decoder, doc.from_string(uuid_decoder))
     |> prepend_if(needs_date_decoder, doc.from_string(date_decoder))
+    |> prepend_if(needs_timestamp_decoder, doc.from_string(timestamp_decoder))
 
   // We always want to output the imports and the code for the queries.
   // But in case we also need some helpers we add a final section to our file
@@ -467,6 +484,16 @@ fn date_decoder() {
   case pgo.decode_date(dynamic) {
     Ok(date) -> decode.into(date)
     Error(_) -> decode.fail(\"date\")
+  }
+}"
+
+const timestamp_decoder = "/// A decoder to decode `timestamp`s coming from a Postgres query.
+///
+fn timestamp_decoder() {
+  use dynamic <- decode.then(decode.dynamic)
+  case pgo.decode_timestamp(dynamic) {
+    Ok(timestamp) -> decode.into(timestamp)
+    Error(_) -> decode.fail(\"timestamp\")
   }
 }"
 

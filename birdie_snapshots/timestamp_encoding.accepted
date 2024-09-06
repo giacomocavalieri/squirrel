@@ -1,0 +1,34 @@
+---
+version: 1.2.1
+title: timestamp encoding
+---
+import decode
+import gleam/pgo
+
+/// A row you get from running the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type QueryRow {
+  QueryRow(res: Bool)
+}
+
+/// Runs the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This function was generated automatically using v-test of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn query(db, arg_1) {
+  let decoder =
+    decode.into({
+      use res <- decode.parameter
+      QueryRow(res: res)
+    })
+    |> decode.field(0, decode.bool)
+
+  "select true as res where $1 = 'Jan-2-1970 12:34:56'::timestamp"
+  |> pgo.execute(db, [pgo.timestamp(arg_1)], decode.from(decoder, _))
+}
