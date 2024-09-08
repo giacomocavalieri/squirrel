@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added support for the `timestamp` type, represented as tuples
+  `#(#(Int, Int, Int), #(Int Int Int))` with
+  `#(#(year, month, day), #(hour, minute, second))`.
+  ([Giovanni Paone](https://github.com/tdheff))
+
 - Fixed a bug where the SQL query displayed in an error would be dimmed out.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
