@@ -1,0 +1,47 @@
+---
+version: 1.2.1
+title: timestamp decoding
+---
+import decode
+import gleam/pgo
+
+/// A row you get from running the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type QueryRow {
+  QueryRow(res: #(#(Int, Int, Int), #(Int, Int, Int)))
+}
+
+/// Runs the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This function was generated automatically using v-test of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn query(db) {
+  let decoder =
+    decode.into({
+      use res <- decode.parameter
+      QueryRow(res: res)
+    })
+    |> decode.field(0, timestamp_decoder())
+
+  "select 'Jan-2-1970 12:34:56'::timestamp as res"
+  |> pgo.execute(db, [], decode.from(decoder, _))
+}
+
+
+// --- UTILS -------------------------------------------------------------------
+
+/// A decoder to decode `timestamp`s coming from a Postgres query.
+///
+fn timestamp_decoder() {
+  use dynamic <- decode.then(decode.dynamic)
+  case pgo.decode_timestamp(dynamic) {
+    Ok(timestamp) -> decode.into(timestamp)
+    Error(_) -> decode.fail("timestamp")
+  }
+}

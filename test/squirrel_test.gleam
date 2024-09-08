@@ -312,6 +312,18 @@ pub fn date_encoding_test() {
   |> birdie.snap(title: "date encoding")
 }
 
+pub fn timestamp_decoding_test() {
+  "select 'Jan-2-1970 12:34:56'::timestamp as res"
+  |> should_codegen
+  |> birdie.snap(title: "timestamp decoding")
+}
+
+pub fn timestamp_encoding_test() {
+  "select true as res where $1 = 'Jan-2-1970 12:34:56'::timestamp"
+  |> should_codegen
+  |> birdie.snap(title: "timestamp encoding")
+}
+
 // --- CODEGEN STRUCTURE TESTS -------------------------------------------------
 // This is a group of tests to ensure the generated code has some specific
 // structure (e.g. the names and comments are what we expect...)

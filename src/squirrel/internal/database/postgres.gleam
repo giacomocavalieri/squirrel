@@ -208,6 +208,7 @@ fn pg_to_gleam_type(type_: PgType) -> Result(gleam.Type, String) {
         "uuid" -> Ok(gleam.Uuid)
         "bytea" -> Ok(gleam.BitArray)
         "date" -> Ok(gleam.Date)
+        "timestamp" -> Ok(gleam.Timestamp)
         _ -> Error(name)
       }
   }
