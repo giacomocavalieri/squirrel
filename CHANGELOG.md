@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed a bug where an authentication error would result in a failure with a
+  confusing error message.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 - Added support for the `timestamp` type, represented as tuples
   `#(#(Int, Int, Int), #(Int Int Int))` with
   `#(#(year, month, day), #(hour, minute, second))`.

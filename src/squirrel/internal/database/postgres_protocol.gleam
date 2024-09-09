@@ -1370,7 +1370,16 @@ fn decode_fields_rec(binary, result) {
           case bit_array.to_string(head) {
             Ok(value) ->
               decode_fields_rec(tail, [#(field_type, value), ..result])
-            Error(Nil) -> dec_err("invalid field encoding", binary)
+            Error(Nil) ->
+              // Sometimes Postgres can reply with a string that is not utf8
+              // encoded, in that case we try our best to still get something
+              // out of it.
+              // If all fails, we still return an error.
+              case recover_string(head) {
+                Ok(value) ->
+                  decode_fields_rec(tail, [#(field_type, value), ..result])
+                Error(Nil) -> dec_err("invalid field encoding", binary)
+              }
           }
         }
         _ -> dec_err("invalid field separator", binary)
@@ -1379,6 +1388,9 @@ fn decode_fields_rec(binary, result) {
     _ -> dec_err("invalid field", binary)
   }
 }
+
+@external(erlang, "squirrel_ffi", "recover_string")
+fn recover_string(value: a) -> Result(String, Nil)
 
 type BinarySplitOption {
   Global
