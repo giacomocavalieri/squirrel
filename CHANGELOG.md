@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v1.7.0 - 2024-09-09
 
 - Fixed a bug where an authentication error would result in a failure with a
   confusing error message.
