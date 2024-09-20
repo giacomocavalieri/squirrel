@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## Unreleased
+
+- Fixed a bug where a query starting with a semicolon would result in a crash
+  instead of a proper syntax error.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v1.7.0 - 2024-09-09
 
 - Fixed a bug where an authentication error would result in a failure with a

@@ -488,3 +488,11 @@ on conflict on constraint wobble do nothing;
     title: "when a constraint doesn't exist there should be an error message",
   )
 }
+
+// https://github.com/giacomocavalieri/squirrel/issues/24
+pub fn query_starting_with_a_semicolon_produces_syntax_error_instead_of_crashing_test() {
+  should_error(";select 1")
+  |> birdie.snap(
+    title: "query starting with a semicolon produces syntax error instead of crashing",
+  )
+}
