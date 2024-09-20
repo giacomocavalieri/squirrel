@@ -63,7 +63,11 @@ create table if not exists jsons(
 // --- ASSERTION HELPERS -------------------------------------------------------
 
 fn should_error(query: String) -> String {
-  let assert Ok(#([], errors)) = type_queries([#("query", query)])
+  should_error_queries([#("query", query)])
+}
+
+fn should_error_queries(queries: List(#(String, String))) -> String {
+  let assert Ok(#([], errors)) = type_queries(queries)
 
   list.map(errors, error.to_doc)
   |> doc.join(with: doc.lines(2))
