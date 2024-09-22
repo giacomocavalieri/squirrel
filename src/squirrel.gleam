@@ -6,10 +6,10 @@ import gleam/dict.{type Dict}
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option
+import gleam/pgo.{Config}
 import gleam/result
 import gleam/string
-import gleam/uri.{Uri}
 import gleam_community/ansi
 import simplifile
 import squirrel/internal/database/postgres
@@ -140,46 +140,18 @@ fn connection_options_from_variables() -> postgres.ConnectionOptions {
 /// invalid format instead of silently producing a default one.
 ///
 fn parse_connection_url(raw: String) -> Result(postgres.ConnectionOptions, Nil) {
-  use Uri(scheme:, userinfo:, host:, port:, path:, query: _, fragment: _) <- result.try(
-    uri.parse(raw),
+  use Config(host:, port:, user:, password:, database:, ..) <- result.try(
+    pgo.url_config(raw),
   )
-
-  let is_valid_scheme = scheme == None || scheme == Some("postgres")
-  use <- bool.guard(when: !is_valid_scheme, return: Error(Nil))
-
-  let host = host |> option.unwrap(default_host)
-  let port = port |> option.unwrap(default_port)
-  let #(user, password) = parse_userinfo(userinfo)
-  use database <- result.try(parse_database(path))
 
   Ok(postgres.ConnectionOptions(
     host:,
     port:,
     user:,
-    password:,
+    password: password |> option.unwrap(default_password),
     database:,
     timeout: default_timeout,
   ))
-}
-
-fn parse_userinfo(userinfo: Option(String)) -> #(String, String) {
-  case userinfo {
-    None -> #(default_user, default_password)
-    Some(userinfo) ->
-      case string.split(userinfo, on: ":") {
-        [user, password] -> #(user, password)
-        [user] -> #(user, default_password)
-        _ -> #(default_user, default_password)
-      }
-  }
-}
-
-fn parse_database(path: String) -> Result(String, Nil) {
-  case uri.path_segments(path) {
-    [] -> Ok(default_database)
-    [database] -> Ok(database)
-    [_, _, ..] -> Error(Nil)
-  }
 }
 
 /// Finds all `from/**/sql` directories and lists the full paths of the `*.sql`
