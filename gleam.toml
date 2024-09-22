@@ -6,7 +6,7 @@ repository = { type = "github", user = "giacomocavalieri", repo = "squirrel" }
 gleam = ">= 1.4.0"
 
 [dependencies]
-gleam_stdlib = ">= 0.34.0 and < 2.0.0"
+gleam_stdlib = ">= 0.39.0 and < 2.0.0"
 simplifile = ">= 2.0.1 and < 3.0.0"
 eval = ">= 1.0.0 and < 2.0.0"
 gleam_json = ">= 1.0.0 and < 3.0.0"
