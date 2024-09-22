@@ -63,7 +63,11 @@ create table if not exists jsons(
 // --- ASSERTION HELPERS -------------------------------------------------------
 
 fn should_error(query: String) -> String {
-  let assert Ok(#([], errors)) = type_queries([#("query", query)])
+  should_error_queries([#("query", query)])
+}
+
+fn should_error_queries(queries: List(#(String, String))) -> String {
+  let assert Ok(#([], errors)) = type_queries(queries)
 
   list.map(errors, error.to_doc)
   |> doc.join(with: doc.lines(2))
@@ -482,5 +486,45 @@ on conflict on constraint wobble do nothing;
   |> should_error
   |> birdie.snap(
     title: "when a constraint doesn't exist there should be an error message",
+  )
+}
+
+// https://github.com/giacomocavalieri/squirrel/issues/24
+pub fn query_starting_with_a_semicolon_produces_syntax_error_instead_of_crashing_test() {
+  should_error(";select 1")
+  |> birdie.snap(
+    title: "query starting with a semicolon produces syntax error instead of crashing",
+  )
+}
+
+// https://github.com/giacomocavalieri/squirrel/issues/29
+pub fn there_is_only_one_empty_line_between_code_generated_for_different_queries_test() {
+  should_codegen_queries([
+    #("one", "select 1 as res"),
+    #("two", "select 2 as res"),
+  ])
+  |> birdie.snap(
+    title: "there is only one empty line between code generated for different queries",
+  )
+}
+
+// https://github.com/giacomocavalieri/squirrel/issues/28
+pub fn a_query_failing_does_not_change_the_other_query_error_test() {
+  should_error_queries([
+    #("wibble", "select wibble from wibble"),
+    #("wobble", "select wobble from wobble"),
+  ])
+  |> birdie.snap(
+    title: "a query failing does not change the other query's error",
+  )
+}
+
+pub fn a_query_failing_does_not_change_the_other_query_error_2_test() {
+  should_error_queries([
+    #("wibble", "; select 1 as res"),
+    #("wobble", "select wobble from wobble"),
+  ])
+  |> birdie.snap(
+    title: "a query failing does not change the other query's error 2",
   )
 }

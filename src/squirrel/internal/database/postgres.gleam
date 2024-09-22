@@ -43,7 +43,15 @@ import squirrel/internal/query.{
 }
 import squirrel/internal/scram
 
-const find_postgres_type_query = "
+fn find_postgres_type_query() -> UntypedQuery {
+  let assert Ok(name) = gleam.identifier("find_postgres_type_query")
+
+  query.UntypedQuery(
+    file: "",
+    starting_line: 1,
+    name:,
+    comment: [],
+    content: "
 select
   -- The name of the type or, if the type is an array, the name of its
   -- elements' type.
@@ -63,9 +71,19 @@ from
   left join pg_type as elem on type.typelem = elem.oid
 where
   type.oid = $1
-"
+    ",
+  )
+}
 
-const find_column_nullability_query = "
+fn find_column_nullability_query() -> UntypedQuery {
+  let assert Ok(name) = gleam.identifier("find_column_nullability_query")
+
+  query.UntypedQuery(
+    file: "",
+    starting_line: 1,
+    name:,
+    comment: [],
+    content: "
 select
   -- Whether the column has a not-null constraint.
   attnotnull
@@ -76,7 +94,16 @@ where
   attrelid = $1
   -- The index of the column we're looking for.
   and attnum = $2
-"
+    ",
+  )
+}
+
+fn explain_query(query: UntypedQuery) -> UntypedQuery {
+  query.UntypedQuery(
+    ..query,
+    content: "explain (format json, verbose) " <> query.content,
+  )
+}
 
 // --- TYPES -------------------------------------------------------------------
 
@@ -441,8 +468,7 @@ fn infer_types(query: UntypedQuery) -> Db(TypedQuery) {
   // - We ask the server to prepare the query.
   // - Postgres will reply with type information about the returned rows and the
   //   query's parameters.
-  let action = parameters_and_returns(query)
-  use #(parameters, returns) <- eval.try(action)
+  use #(parameters, returns) <- eval.try(parameters_and_returns(query))
   // - The parameters' types are just OIDs so we need to interrogate the
   //   database to learn the actual corresponding Gleam type.
   use parameters <- eval.try(resolve_parameters(query, parameters))
@@ -492,8 +518,18 @@ fn parameters_and_returns(query: UntypedQuery) -> Db(_) {
 
   use msg <- eval.try(receive())
   case msg {
-    pg.BeErrorResponse(errors) ->
-      eval.throw(error_fields_to_parse_error(query, errors))
+    pg.BeErrorResponse(errors) -> {
+      // In case we get an error response back from the server at this stage the
+      // server will also send a `ReadyForQuery` after it to signal it's ready
+      // to keep going with other queries.
+      // So we expect to see that.
+      use msg <- eval.try(receive())
+      case msg {
+        pg.BeReadyForQuery(_) ->
+          eval.throw(error_fields_to_parse_error(query, errors))
+        _ -> unexpected_message(cannot_describe, "BeReadyForQuery(_)", msg)
+      }
+    }
     pg.BeParseComplete -> {
       use msg <- eval.try(receive())
       use parameters <- eval.try(case msg {
@@ -596,11 +632,7 @@ fn find_gleam_type(query: UntypedQuery, oid: Int) -> Db(gleam.Type) {
   // The only parameter to this query is the oid of the type to lookup:
   // that's a 32bit integer (its oid needed to prepare the query is 23).
   let params = [pg.Parameter(<<oid:32>>)]
-  let run_query =
-    find_postgres_type_query
-    |> run_query(query.file, params, [23])
-
-  use res <- eval.try(run_query)
+  use res <- eval.try(run_query(find_postgres_type_query(), params, [23]))
 
   // We know the output must only contain two values: the name and a boolean to
   // check wether it is an array or not.
@@ -630,10 +662,13 @@ fn query_plan(query: UntypedQuery, parameters: Int) -> Db(Plan) {
   // all the possible holes in the user supplied query with null values;
   // otherwise, the server would complain that it has arguments that are not
   // bound.
-  let explain_query = "explain (format json, verbose) " <> query.content
   let params = list.repeat(pg.Null, parameters)
-  let run_query = run_query(explain_query, query.file, params, [])
-  use res <- eval.try(run_query)
+  let res =
+    explain_query(query)
+    |> run_query(params, [])
+    |> eval.map_error(adjust_parse_error_for_explain)
+
+  use res <- eval.try(res)
 
   // We know the output will only contain a single row that is the json string
   // containing the query plan.
@@ -760,8 +795,7 @@ fn column_nullability(table table: Int, column column: Int) -> Db(Nullability) {
   // - the oid of the table (a 32bit integer, oid is 23)
   // - the index of the column (a 32 bit integer, oid is 23)
   let params = [pg.Parameter(<<table:32>>), pg.Parameter(<<column:32>>)]
-  let run_query =
-    find_column_nullability_query |> run_query("", params, [23, 23])
+  let run_query = run_query(find_column_nullability_query(), params, [23, 23])
   use res <- eval.try(run_query)
 
   // We know the output will only have only one column, that is the boolean
@@ -791,8 +825,7 @@ fn column_nullability(table table: Int, column column: Int) -> Db(Nullability) {
 /// > specific hard coded queries that are guaranteed to return a single row.
 ///
 fn run_query(
-  query: String,
-  query_file: String,
+  query: UntypedQuery,
   parameters: List(pg.ParameterValue),
   parameters_object_ids: List(Int),
 ) -> Db(List(BitArray)) {
@@ -818,7 +851,7 @@ fn run_query(
   //   making new requests
   use _ <- eval.try(
     send_all([
-      pg.FeParse("", query, parameters_object_ids),
+      pg.FeParse("", query.content, parameters_object_ids),
       pg.FeBind(
         portal: "",
         statement_name: "",
@@ -834,11 +867,11 @@ fn run_query(
   )
 
   use msg <- eval.try(receive())
-  let assert pg.BeParseComplete = msg
+  use _ <- eval.try(expect_parse_complete(msg, query))
   use msg <- eval.try(receive())
   let assert pg.BeBindComplete = msg
   use msg <- eval.try(receive())
-  use res <- eval.try(expect_data_row(msg, query_file))
+  use res <- eval.try(expect_data_row(msg, query.file))
   use msg <- eval.try(receive())
   let assert pg.BeCommandComplete(_, _) = msg
   use msg <- eval.try(receive())
@@ -863,6 +896,37 @@ fn expect_data_row(
         Ok(error) -> eval.throw(error)
         Error(_) -> panic as string.inspect(msg)
       }
+    _ -> panic as string.inspect(msg)
+  }
+}
+
+fn expect_parse_complete(msg: pg.BackendMessage, query: UntypedQuery) -> Db(Nil) {
+  case msg {
+    pg.BeParseComplete -> eval.return(Nil)
+    pg.BeErrorResponse(fields) -> {
+      // In case we get an error response back from the server at this stage
+      // (we sent a query to run and it couldn't be parsed) the server will also
+      // send a `ReadyForQuery` after it to signal it's ready to keep going with
+      // other queries. So we expect to see that.
+      use msg <- eval.try(receive())
+      case msg {
+        pg.BeReadyForQuery(_) ->
+          eval.throw(error_fields_to_parse_error(query, fields))
+        _ ->
+          unexpected_message(
+            fn(expected, got) {
+              PgCannotDescribeQuery(
+                file: query.file,
+                query_name: gleam.identifier_to_string(query.name),
+                expected:,
+                got:,
+              )
+            },
+            "BeReadyForQuery(_)",
+            msg,
+          )
+      }
+    }
     _ -> panic as string.inspect(msg)
   }
 }
@@ -1059,6 +1123,63 @@ fn invalid_column_error(
     reason:,
     starting_line:,
   )
+}
+
+/// Some queries might be parsed correctly at first but result in a parse error
+/// later when we try to `explain` those. For example:
+///
+/// ```sql
+/// ; select 1;
+/// ```
+///
+/// Will parse fine at first but when we try to explain it we get a parse error
+/// since the query would be:
+///
+/// ```sql
+/// explain (format json, verbose) ; select 1;
+/// --                             ^ parse error here
+/// ```
+///
+/// So in case we get a parse error during the explain step we want to slightly
+/// change it: we drop the explain part from the query so it doesn't show up in
+/// the public facing error.
+///
+fn adjust_parse_error_for_explain(error: Error) -> Error {
+  case error {
+    CannotParseQuery(
+      file:,
+      name:,
+      content:,
+      starting_line:,
+      error_code:,
+      pointer:,
+      additional_error_message:,
+      hint:,
+    ) -> {
+      let pointer = case pointer {
+        Some(Pointer(ByteIndex(index), message)) ->
+          // We also need to update any pointer to make sure it's pointing to
+          // the right place since we've dropped the first 31 bytes of the
+          // query's content.
+          Some(Pointer(ByteIndex(index - 31), message))
+
+        _ -> pointer
+      }
+
+      CannotParseQuery(
+        file:,
+        name:,
+        content: string.drop_left(content, 31),
+        starting_line:,
+        error_code:,
+        pointer:,
+        additional_error_message:,
+        hint:,
+      )
+    }
+
+    _ -> error
+  }
 }
 
 // --- DECODERS ----------------------------------------------------------------

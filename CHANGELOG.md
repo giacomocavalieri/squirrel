@@ -5,6 +5,19 @@
 - Added support for `postgresql` URL scheme.
   ([Valentin Iancu])(https://github.com/valentindiancu)
 
+## v1.7.1 - 2024-09-22
+
+- Fixed a bug where a query failing to parse would cause code generation for
+  other queries to fail unexpectedly.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
+- Fixed a bug where a query starting with a semicolon would result in a crash
+  instead of a proper syntax error.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
+- Fixed a bug where the generated code would have needless empty lines.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v1.7.0 - 2024-09-09
 
 - Fixed a bug where an authentication error would result in a failure with a

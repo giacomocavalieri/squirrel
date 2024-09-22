@@ -283,8 +283,12 @@ pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
   // But in case we also need some helpers we add a final section to our file
   // with the hard coded helpers we need for the code to compile.
   let code =
-    [imports_doc(imports), ..queries_docs]
-    |> doc.join(with: doc.lines(2))
+    [
+      imports_doc(imports),
+      doc.lines(2),
+      doc.join(queries_docs, with: doc.lines(1)),
+    ]
+    |> doc.concat
 
   case utils {
     [] -> code
