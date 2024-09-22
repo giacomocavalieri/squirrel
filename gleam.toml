@@ -1,5 +1,5 @@
 name = "squirrel"
-version = "1.7.0"
+version = "1.7.1"
 description = "🐿️ Type safe SQL in Gleam"
 licences = ["Apache-2.0"]
 repository = { type = "github", user = "giacomocavalieri", repo = "squirrel" }

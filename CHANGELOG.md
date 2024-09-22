@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v1.7.1 - 2024-09-22
 
 - Fixed a bug where a query failing to parse would cause code generation for
   other queries to fail unexpectedly.
