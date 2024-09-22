@@ -518,8 +518,18 @@ fn parameters_and_returns(query: UntypedQuery) -> Db(_) {
 
   use msg <- eval.try(receive())
   case msg {
-    pg.BeErrorResponse(errors) ->
-      eval.throw(error_fields_to_parse_error(query, errors))
+    pg.BeErrorResponse(errors) -> {
+      // In case we get an error response back from the server at this stage the
+      // server will also send a `ReadyForQuery` after it to signal it's ready
+      // to keep going with other queries.
+      // So we expect to see that.
+      use msg <- eval.try(receive())
+      case msg {
+        pg.BeReadyForQuery(_) ->
+          eval.throw(error_fields_to_parse_error(query, errors))
+        _ -> unexpected_message(cannot_describe, "BeReadyForQuery(_)", msg)
+      }
+    }
     pg.BeParseComplete -> {
       use msg <- eval.try(receive())
       use parameters <- eval.try(case msg {
@@ -893,8 +903,30 @@ fn expect_data_row(
 fn expect_parse_complete(msg: pg.BackendMessage, query: UntypedQuery) -> Db(Nil) {
   case msg {
     pg.BeParseComplete -> eval.return(Nil)
-    pg.BeErrorResponse(fields) ->
-      eval.throw(error_fields_to_parse_error(query, fields))
+    pg.BeErrorResponse(fields) -> {
+      // In case we get an error response back from the server at this stage
+      // (we sent a query to run and it couldn't be parsed) the server will also
+      // send a `ReadyForQuery` after it to signal it's ready to keep going with
+      // other queries. So we expect to see that.
+      use msg <- eval.try(receive())
+      case msg {
+        pg.BeReadyForQuery(_) ->
+          eval.throw(error_fields_to_parse_error(query, fields))
+        _ ->
+          unexpected_message(
+            fn(expected, got) {
+              PgCannotDescribeQuery(
+                file: query.file,
+                query_name: gleam.identifier_to_string(query.name),
+                expected:,
+                got:,
+              )
+            },
+            "BeReadyForQuery(_)",
+            msg,
+          )
+      }
+    }
     _ -> panic as string.inspect(msg)
   }
 }

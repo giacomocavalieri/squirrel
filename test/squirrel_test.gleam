@@ -507,3 +507,24 @@ pub fn there_is_only_one_empty_line_between_code_generated_for_different_queries
     title: "there is only one empty line between code generated for different queries",
   )
 }
+
+// https://github.com/giacomocavalieri/squirrel/issues/28
+pub fn a_query_failing_does_not_change_the_other_query_error_test() {
+  should_error_queries([
+    #("wibble", "select wibble from wibble"),
+    #("wobble", "select wobble from wobble"),
+  ])
+  |> birdie.snap(
+    title: "a query failing does not change the other query's error",
+  )
+}
+
+pub fn a_query_failing_does_not_change_the_other_query_error_2_test() {
+  should_error_queries([
+    #("wibble", "; select 1 as res"),
+    #("wobble", "select wobble from wobble"),
+  ])
+  |> birdie.snap(
+    title: "a query failing does not change the other query's error 2",
+  )
+}

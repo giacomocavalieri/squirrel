@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed a bug where a query failing to parse would cause code generation for
+  other queries to fail unexpectedly.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 - Fixed a bug where a query starting with a semicolon would result in a crash
   instead of a proper syntax error.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
