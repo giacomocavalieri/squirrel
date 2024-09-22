@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## Unreleased
+
+- Added support for `postgresql` URL scheme.
+  ([Valentin Iancu])(https://github.com/valentindiancu)
+
 ## v1.7.0 - 2024-09-09
 
 - Fixed a bug where an authentication error would result in a failure with a
