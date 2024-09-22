@@ -496,3 +496,14 @@ pub fn query_starting_with_a_semicolon_produces_syntax_error_instead_of_crashing
     title: "query starting with a semicolon produces syntax error instead of crashing",
   )
 }
+
+// https://github.com/giacomocavalieri/squirrel/issues/29
+pub fn there_is_only_one_empty_line_between_code_generated_for_different_queries_test() {
+  should_codegen_queries([
+    #("one", "select 1 as res"),
+    #("two", "select 2 as res"),
+  ])
+  |> birdie.snap(
+    title: "there is only one empty line between code generated for different queries",
+  )
+}

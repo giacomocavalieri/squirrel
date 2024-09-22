@@ -6,6 +6,9 @@
   instead of a proper syntax error.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
+- Fixed a bug where the generated code would have needless empty lines.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v1.7.0 - 2024-09-09
 
 - Fixed a bug where an authentication error would result in a failure with a

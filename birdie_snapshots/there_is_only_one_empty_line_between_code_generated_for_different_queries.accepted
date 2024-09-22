@@ -1,0 +1,64 @@
+---
+version: 1.2.1
+title: there is only one empty line between code generated for different queries
+file: ./test/squirrel_test.gleam
+test_name: there_is_only_one_empty_line_between_code_generated_for_different_queries_test
+---
+import decode
+import gleam/pgo
+
+/// A row you get from running the `one` query
+/// defined in `one.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type OneRow {
+  OneRow(res: Int)
+}
+
+/// Runs the `one` query
+/// defined in `one.sql`.
+///
+/// > 🐿️ This function was generated automatically using v-test of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn one(db) {
+  let decoder =
+    decode.into({
+      use res <- decode.parameter
+      OneRow(res: res)
+    })
+    |> decode.field(0, decode.int)
+
+  "select 1 as res"
+  |> pgo.execute(db, [], decode.from(decoder, _))
+}
+
+/// A row you get from running the `two` query
+/// defined in `two.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type TwoRow {
+  TwoRow(res: Int)
+}
+
+/// Runs the `two` query
+/// defined in `two.sql`.
+///
+/// > 🐿️ This function was generated automatically using v-test of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn two(db) {
+  let decoder =
+    decode.into({
+      use res <- decode.parameter
+      TwoRow(res: res)
+    })
+    |> decode.field(0, decode.int)
+
+  "select 2 as res"
+  |> pgo.execute(db, [], decode.from(decoder, _))
+}
