@@ -11,6 +11,7 @@ import gleam/pgo.{Config}
 import gleam/result
 import gleam/string
 import gleam_community/ansi
+import glenvy/dotenv
 import simplifile
 import squirrel/internal/database/postgres
 import squirrel/internal/error.{
@@ -90,6 +91,8 @@ pub fn main() {
 /// some defaults if any of those are not set.
 ///
 fn connection_options() -> Result(postgres.ConnectionOptions, Error) {
+  let _ = dotenv.load()
+
   case envoy.get("DATABASE_URL") {
     Ok(url) ->
       parse_connection_url(url)
