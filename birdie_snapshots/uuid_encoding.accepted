@@ -1,10 +1,10 @@
 ---
-version: 1.2.0
+version: 1.2.1
 title: uuid encoding
 file: ./test/squirrel_test.gleam
 test_name: uuid_encoding_test
 ---
-import decode
+import decode/zero
 import gleam/pgo
 import youid/uuid
 
@@ -25,13 +25,11 @@ pub type QueryRow {
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub fn query(db, arg_1) {
-  let decoder =
-    decode.into({
-      use res <- decode.parameter
-      QueryRow(res: res)
-    })
-    |> decode.field(0, decode.bool)
+  let decoder = {
+    use res <- zero.field(0, zero.bool)
+    zero.success(QueryRow(res:))
+  }
 
   "select true as res where $1 = gen_random_uuid()"
-  |> pgo.execute(db, [pgo.text(uuid.to_string(arg_1))], decode.from(decoder, _))
+  |> pgo.execute(db, [pgo.text(uuid.to_string(arg_1))], zero.run(_, decoder))
 }

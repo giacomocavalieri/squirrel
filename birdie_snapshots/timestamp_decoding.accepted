@@ -1,8 +1,10 @@
 ---
 version: 1.2.1
 title: timestamp decoding
+file: ./test/squirrel_test.gleam
+test_name: timestamp_decoding_test
 ---
-import decode
+import decode/zero
 import gleam/pgo
 
 /// A row you get from running the `query` query
@@ -22,15 +24,13 @@ pub type QueryRow {
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub fn query(db) {
-  let decoder =
-    decode.into({
-      use res <- decode.parameter
-      QueryRow(res: res)
-    })
-    |> decode.field(0, timestamp_decoder())
+  let decoder = {
+    use res <- zero.field(0, timestamp_decoder())
+    zero.success(QueryRow(res:))
+  }
 
   "select 'Jan-2-1970 12:34:56'::timestamp as res"
-  |> pgo.execute(db, [], decode.from(decoder, _))
+  |> pgo.execute(db, [], zero.run(_, decoder))
 }
 
 
@@ -39,9 +39,9 @@ pub fn query(db) {
 /// A decoder to decode `timestamp`s coming from a Postgres query.
 ///
 fn timestamp_decoder() {
-  use dynamic <- decode.then(decode.dynamic)
+  use dynamic <- zero.then(zero.dynamic)
   case pgo.decode_timestamp(dynamic) {
-    Ok(timestamp) -> decode.into(timestamp)
-    Error(_) -> decode.fail("timestamp")
+    Ok(timestamp) -> zero.success(timestamp)
+    Error(_) -> zero.failure(#(#(0, 0, 0), #(0, 0, 0)), "timestamp")
   }
 }

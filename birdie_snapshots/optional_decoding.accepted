@@ -1,10 +1,10 @@
 ---
-version: 1.2.0
+version: 1.2.1
 title: optional decoding
 file: ./test/squirrel_test.gleam
 test_name: optional_decoding_test
 ---
-import decode
+import decode/zero
 import gleam/option.{type Option}
 import gleam/pgo
 
@@ -25,13 +25,11 @@ pub type QueryRow {
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub fn query(db) {
-  let decoder =
-    decode.into({
-      use acorns <- decode.parameter
-      QueryRow(acorns: acorns)
-    })
-    |> decode.field(0, decode.optional(decode.int))
+  let decoder = {
+    use acorns <- zero.field(0, zero.optional(zero.int))
+    zero.success(QueryRow(acorns:))
+  }
 
   "select acorns from squirrel"
-  |> pgo.execute(db, [], decode.from(decoder, _))
+  |> pgo.execute(db, [], zero.run(_, decoder))
 }

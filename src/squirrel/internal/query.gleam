@@ -143,7 +143,7 @@ fn default_codegen_state() {
     needs_date_decoder: False,
     needs_timestamp_decoder: False,
   )
-  |> import_module("decode")
+  |> import_module("decode/zero")
   |> import_module("gleam/pgo")
 }
 
@@ -160,11 +160,11 @@ fn gleam_type_to_decoder(
     }
     gleam.List(type_) -> {
       let #(state, inner_decoder) = gleam_type_to_decoder(state, type_)
-      #(state, call_doc("decode.list", [inner_decoder]))
+      #(state, call_doc("zero.list", [inner_decoder]))
     }
     gleam.Option(type_) -> {
       let #(state, inner_decoder) = gleam_type_to_decoder(state, type_)
-      #(state, call_doc("decode.optional", [inner_decoder]))
+      #(state, call_doc("zero.optional", [inner_decoder]))
     }
     gleam.Date -> {
       let state = CodeGenState(..state, needs_date_decoder: True)
@@ -174,12 +174,12 @@ fn gleam_type_to_decoder(
       let state = CodeGenState(..state, needs_timestamp_decoder: True)
       #(state, doc.from_string("timestamp_decoder()"))
     }
-    gleam.Int -> #(state, doc.from_string("decode.int"))
-    gleam.Float -> #(state, doc.from_string("decode.float"))
-    gleam.Bool -> #(state, doc.from_string("decode.bool"))
-    gleam.String -> #(state, doc.from_string("decode.string"))
-    gleam.BitArray -> #(state, doc.from_string("decode.bit_array"))
-    gleam.Json -> #(state, doc.from_string("decode.string"))
+    gleam.Int -> #(state, doc.from_string("zero.int"))
+    gleam.Float -> #(state, doc.from_string("zero.float"))
+    gleam.Bool -> #(state, doc.from_string("zero.bool"))
+    gleam.String -> #(state, doc.from_string("zero.string"))
+    gleam.BitArray -> #(state, doc.from_string("zero.bit_array"))
+    gleam.Json -> #(state, doc.from_string("zero.string"))
   }
 }
 
@@ -383,11 +383,11 @@ fn query_doc(
       doc.from_string(function_doc(version, query)),
       doc.line,
       fun_doc(gleam.identifier_to_string(name), ["db", ..inputs], [
-        var_doc("decoder", decoder),
+        let_var("decoder", decoder),
         pipe_call_doc("pgo.execute", string_doc(content), [
           doc.from_string("db"),
           list_doc(encoders),
-          doc.from_string("decode.from(decoder, _)"),
+          doc.from_string("zero.run(_, decoder)"),
         ]),
       ]),
     ]
@@ -473,37 +473,36 @@ fn record_doc(
 const uuid_decoder = "/// A decoder to decode `Uuid`s coming from a Postgres query.
 ///
 fn uuid_decoder() {
-  decode.then(decode.bit_array, fn(uuid) {
-    case uuid.from_bit_array(uuid) {
-      Ok(uuid) -> decode.into(uuid)
-      Error(_) -> decode.fail(\"uuid\")
-    }
-  })
+  use bit_array <- zero.then(zero.bit_array)
+  case uuid.from_bit_array(bit_array) {
+    Ok(uuid) -> zero.success(uuid)
+    Error(_) -> zero.failure(uuid.v7(), \"uuid\")
+  }
 }"
 
 const date_decoder = "/// A decoder to decode `date`s coming from a Postgres query.
 ///
 fn date_decoder() {
-  use dynamic <- decode.then(decode.dynamic)
+  use dynamic <- zero.then(zero.dynamic)
   case pgo.decode_date(dynamic) {
-    Ok(date) -> decode.into(date)
-    Error(_) -> decode.fail(\"date\")
+    Ok(date) -> zero.success(date)
+    Error(_) -> zero.failure(#(0, 0, 0), \"date\")
   }
 }"
 
 const timestamp_decoder = "/// A decoder to decode `timestamp`s coming from a Postgres query.
 ///
 fn timestamp_decoder() {
-  use dynamic <- decode.then(decode.dynamic)
+  use dynamic <- zero.then(zero.dynamic)
   case pgo.decode_timestamp(dynamic) {
-    Ok(timestamp) -> decode.into(timestamp)
-    Error(_) -> decode.fail(\"timestamp\")
+    Ok(timestamp) -> zero.success(timestamp)
+    Error(_) -> zero.failure(#(#(0, 0, 0), #(0, 0, 0)), \"timestamp\")
   }
 }"
 
 /// A decoder that discards its value and always returns `Nil` instead.
 ///
-const nil_decoder = "decode.map(decode.dynamic, fn(_) { Nil })"
+const nil_decoder = "zero.map(zero.dynamic, fn(_) { Nil })"
 
 /// A pretty printed decoder that decodes an n-item dynamic tuple using the
 /// `decode` package.
@@ -516,41 +515,31 @@ fn decoder_doc(
   let fallback = #(state, doc.from_string(nil_decoder))
   use <- bool.guard(when: returns == [], return: fallback)
 
-  let #(state, parameters, labelled_names, pipes) = {
-    let acc = #(state, [], [], [])
-    use acc, field, i <- list.index_fold(returns, acc)
-    let #(state, parameters, labelled_names, pipes) = acc
+  let #(state, parameters, labelled_names) = {
+    use acc, field, i <- list.index_fold(returns, #(state, [], []))
+    let #(state, parameters, labelled_names) = acc
 
     let label = gleam.identifier_to_string(field.label)
-    let param = doc.from_string("use " <> label <> " <- decode.parameter")
-    let parameters = [param, ..parameters]
-
-    let labelled_name = doc.from_string(label <> ": " <> label)
-    let labelled_names = [labelled_name, ..labelled_names]
+    let labelled_names = [doc.from_string(label <> ":"), ..labelled_names]
 
     let position = int.to_string(i) |> doc.from_string
     let #(state, decoder) = gleam_type_to_decoder(state, field.type_)
-    let pipe = call_doc("|> decode.field", [position, decoder])
-    let pipes = [pipe, ..pipes]
+    let param =
+      doc.from_string("use " <> label <> " <- ")
+      |> doc.append(call_doc("zero.field", [position, decoder]))
+    let parameters = [param, ..parameters]
 
-    #(state, parameters, labelled_names, pipes)
+    #(state, parameters, labelled_names)
   }
   let parameters = list.reverse(parameters)
-  let pipes = list.reverse(pipes)
   let labelled_names = list.reverse(labelled_names)
 
   let doc =
-    [
-      call_block("decode.into", [
-        doc.join(parameters, with: doc.line),
-        doc.line,
-        call_doc(constructor, labelled_names),
-      ]),
+    block([
+      doc.join(parameters, with: doc.line),
       doc.line,
-      doc.join(pipes, with: doc.line),
-    ]
-    |> doc.concat()
-    |> doc.group
+      call_doc("zero.success", [call_doc(constructor, labelled_names)]),
+    ])
 
   #(state, doc)
 }
@@ -575,14 +564,6 @@ fn call_doc(function: String, args: List(Document)) -> Document {
   |> doc.group
 }
 
-/// A pretty printed function call where the only argument is a single block.
-///
-fn call_block(function: String, body: List(Document)) -> Document {
-  [doc.from_string(function <> "("), block(body), doc.from_string(")")]
-  |> doc.concat
-  |> doc.group
-}
-
 /// A pretty printed Gleam block.
 ///
 fn block(body: List(Document)) -> Document {
@@ -595,7 +576,6 @@ fn block(body: List(Document)) -> Document {
     doc.from_string("}"),
   ]
   |> doc.concat
-  |> doc.force_break
 }
 
 /// A pretty printed public function definition.
@@ -629,14 +609,8 @@ fn fn_doc(args: List(String), body: Document) -> Document {
 
 /// A pretty printed let assignment.
 ///
-fn var_doc(name: String, body: Document) -> Document {
-  [
-    doc.from_string("let " <> name <> " ="),
-    [doc.space, body]
-      |> doc.concat
-      |> doc.group
-      |> doc.nest(by: indent),
-  ]
+fn let_var(name: String, body: Document) -> Document {
+  [doc.from_string("let " <> name <> " ="), doc.space, body]
   |> doc.concat
 }
 

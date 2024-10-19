@@ -1,10 +1,10 @@
 ---
-version: 1.2.0
+version: 1.2.1
 title: left join columns are optional
 file: ./test/squirrel_test.gleam
 test_name: left_join_columns_are_optional_test
 ---
-import decode
+import decode/zero
 import gleam/option.{type Option}
 import gleam/pgo
 
@@ -25,14 +25,11 @@ pub type QueryRow {
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub fn query(db) {
-  let decoder =
-    decode.into({
-      use not_optional <- decode.parameter
-      use optional <- decode.parameter
-      QueryRow(not_optional: not_optional, optional: optional)
-    })
-    |> decode.field(0, decode.string)
-    |> decode.field(1, decode.optional(decode.string))
+  let decoder = {
+    use not_optional <- zero.field(0, zero.string)
+    use optional <- zero.field(1, zero.optional(zero.string))
+    zero.success(QueryRow(not_optional:, optional:))
+  }
 
   "
 select
@@ -42,5 +39,5 @@ from
   squirrel s1
   left join squirrel s2 using(name)
 "
-  |> pgo.execute(db, [], decode.from(decoder, _))
+  |> pgo.execute(db, [], zero.run(_, decoder))
 }
