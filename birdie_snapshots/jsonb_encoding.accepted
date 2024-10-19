@@ -1,10 +1,10 @@
 ---
-version: 1.2.0
+version: 1.2.1
 title: jsonb encoding
 file: ./test/squirrel_test.gleam
 test_name: jsonb_encoding_test
 ---
-import decode
+import decode/zero
 import gleam/json
 import gleam/pgo
 
@@ -15,8 +15,8 @@ import gleam/pgo
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub fn query(db, arg_1) {
-  let decoder = decode.map(decode.dynamic, fn(_) { Nil })
+  let decoder = zero.map(zero.dynamic, fn(_) { Nil })
 
   "insert into jsons(jsonb) values($1)"
-  |> pgo.execute(db, [pgo.text(json.to_string(arg_1))], decode.from(decoder, _))
+  |> pgo.execute(db, [pgo.text(json.to_string(arg_1))], zero.run(_, decoder))
 }

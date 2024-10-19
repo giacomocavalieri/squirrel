@@ -1,10 +1,10 @@
 ---
-version: 1.2.0
+version: 1.2.1
 title: array encoding
 file: ./test/squirrel_test.gleam
 test_name: array_encoding_test
 ---
-import decode
+import decode/zero
 import gleam/list
 import gleam/pgo
 
@@ -25,17 +25,15 @@ pub type QueryRow {
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub fn query(db, arg_1) {
-  let decoder =
-    decode.into({
-      use res <- decode.parameter
-      QueryRow(res: res)
-    })
-    |> decode.field(0, decode.bool)
+  let decoder = {
+    use res <- zero.field(0, zero.bool)
+    zero.success(QueryRow(res:))
+  }
 
   "select true as res where $1 = array[1, 2, 3]"
   |> pgo.execute(
     db,
     [pgo.array(list.map(arg_1, fn(value) { pgo.int(value) }))],
-    decode.from(decoder, _),
+    zero.run(_, decoder),
   )
 }

@@ -1,10 +1,10 @@
 ---
-version: 1.2.0
+version: 1.2.1
 title: generated type fields are labelled with their name in the select list
 file: ./test/squirrel_test.gleam
 test_name: generated_type_fields_are_labelled_with_their_name_in_the_select_list_test
 ---
-import decode
+import decode/zero
 import gleam/option.{type Option}
 import gleam/pgo
 
@@ -25,14 +25,11 @@ pub type QueryRow {
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub fn query(db) {
-  let decoder =
-    decode.into({
-      use acorns <- decode.parameter
-      use squirrel_name <- decode.parameter
-      QueryRow(acorns: acorns, squirrel_name: squirrel_name)
-    })
-    |> decode.field(0, decode.optional(decode.int))
-    |> decode.field(1, decode.string)
+  let decoder = {
+    use acorns <- zero.field(0, zero.optional(zero.int))
+    use squirrel_name <- zero.field(1, zero.string)
+    zero.success(QueryRow(acorns:, squirrel_name:))
+  }
 
   "
 select
@@ -41,5 +38,5 @@ select
 from
   squirrel
 "
-  |> pgo.execute(db, [], decode.from(decoder, _))
+  |> pgo.execute(db, [], zero.run(_, decoder))
 }

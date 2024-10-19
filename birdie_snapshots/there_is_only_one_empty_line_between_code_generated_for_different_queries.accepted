@@ -4,7 +4,7 @@ title: there is only one empty line between code generated for different queries
 file: ./test/squirrel_test.gleam
 test_name: there_is_only_one_empty_line_between_code_generated_for_different_queries_test
 ---
-import decode
+import decode/zero
 import gleam/pgo
 
 /// A row you get from running the `one` query
@@ -24,15 +24,13 @@ pub type OneRow {
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub fn one(db) {
-  let decoder =
-    decode.into({
-      use res <- decode.parameter
-      OneRow(res: res)
-    })
-    |> decode.field(0, decode.int)
+  let decoder = {
+    use res <- zero.field(0, zero.int)
+    zero.success(OneRow(res:))
+  }
 
   "select 1 as res"
-  |> pgo.execute(db, [], decode.from(decoder, _))
+  |> pgo.execute(db, [], zero.run(_, decoder))
 }
 
 /// A row you get from running the `two` query
@@ -52,13 +50,11 @@ pub type TwoRow {
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub fn two(db) {
-  let decoder =
-    decode.into({
-      use res <- decode.parameter
-      TwoRow(res: res)
-    })
-    |> decode.field(0, decode.int)
+  let decoder = {
+    use res <- zero.field(0, zero.int)
+    zero.success(TwoRow(res:))
+  }
 
   "select 2 as res"
-  |> pgo.execute(db, [], decode.from(decoder, _))
+  |> pgo.execute(db, [], zero.run(_, decoder))
 }

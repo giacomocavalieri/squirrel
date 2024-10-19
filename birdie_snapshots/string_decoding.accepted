@@ -1,10 +1,10 @@
 ---
-version: 1.2.0
+version: 1.2.1
 title: string decoding
 file: ./test/squirrel_test.gleam
 test_name: string_decoding_test
 ---
-import decode
+import decode/zero
 import gleam/pgo
 
 /// A row you get from running the `query` query
@@ -24,13 +24,11 @@ pub type QueryRow {
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub fn query(db) {
-  let decoder =
-    decode.into({
-      use res <- decode.parameter
-      QueryRow(res: res)
-    })
-    |> decode.field(0, decode.string)
+  let decoder = {
+    use res <- zero.field(0, zero.string)
+    zero.success(QueryRow(res:))
+  }
 
   "select 'wibble' as res"
-  |> pgo.execute(db, [], decode.from(decoder, _))
+  |> pgo.execute(db, [], zero.run(_, decoder))
 }

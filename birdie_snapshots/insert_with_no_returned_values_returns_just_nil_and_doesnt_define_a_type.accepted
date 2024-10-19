@@ -1,10 +1,10 @@
 ---
-version: 1.2.0
+version: 1.2.1
 title: insert with no returned values returns just nil and doesnt define a type
 file: ./test/squirrel_test.gleam
 test_name: insert_with_no_returned_values_returns_just_nil_and_doesnt_define_a_type_test
 ---
-import decode
+import decode/zero
 import gleam/pgo
 
 /// Runs the `query` query
@@ -14,8 +14,8 @@ import gleam/pgo
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub fn query(db) {
-  let decoder = decode.map(decode.dynamic, fn(_) { Nil })
+  let decoder = zero.map(zero.dynamic, fn(_) { Nil })
 
   "insert into squirrel values ('sandy', 1000)"
-  |> pgo.execute(db, [], decode.from(decoder, _))
+  |> pgo.execute(db, [], zero.run(_, decoder))
 }

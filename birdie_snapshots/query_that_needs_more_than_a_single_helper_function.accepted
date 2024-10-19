@@ -1,10 +1,10 @@
 ---
-version: 1.2.0
+version: 1.2.1
 title: query that needs more than a single helper function
 file: ./test/squirrel_test.gleam
 test_name: query_that_needs_more_than_a_single_helper_function_test
 ---
-import decode
+import decode/zero
 import gleam/pgo
 import youid/uuid.{type Uuid}
 
@@ -25,17 +25,14 @@ pub type QueryRow {
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub fn query(db) {
-  let decoder =
-    decode.into({
-      use gen_random_uuid <- decode.parameter
-      use date <- decode.parameter
-      QueryRow(gen_random_uuid: gen_random_uuid, date: date)
-    })
-    |> decode.field(0, uuid_decoder())
-    |> decode.field(1, date_decoder())
+  let decoder = {
+    use gen_random_uuid <- zero.field(0, uuid_decoder())
+    use date <- zero.field(1, date_decoder())
+    zero.success(QueryRow(gen_random_uuid:, date:))
+  }
 
   "select gen_random_uuid(), 'Jan-2-1970'::date"
-  |> pgo.execute(db, [], decode.from(decoder, _))
+  |> pgo.execute(db, [], zero.run(_, decoder))
 }
 
 
@@ -44,20 +41,19 @@ pub fn query(db) {
 /// A decoder to decode `date`s coming from a Postgres query.
 ///
 fn date_decoder() {
-  use dynamic <- decode.then(decode.dynamic)
+  use dynamic <- zero.then(zero.dynamic)
   case pgo.decode_date(dynamic) {
-    Ok(date) -> decode.into(date)
-    Error(_) -> decode.fail("date")
+    Ok(date) -> zero.success(date)
+    Error(_) -> zero.failure(#(0, 0, 0), "date")
   }
 }
 
 /// A decoder to decode `Uuid`s coming from a Postgres query.
 ///
 fn uuid_decoder() {
-  decode.then(decode.bit_array, fn(uuid) {
-    case uuid.from_bit_array(uuid) {
-      Ok(uuid) -> decode.into(uuid)
-      Error(_) -> decode.fail("uuid")
-    }
-  })
+  use bit_array <- zero.then(zero.bit_array)
+  case uuid.from_bit_array(bit_array) {
+    Ok(uuid) -> zero.success(uuid)
+    Error(_) -> zero.failure(uuid.v7(), "uuid")
+  }
 }

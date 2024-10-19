@@ -1,10 +1,10 @@
 ---
-version: 1.2.0
+version: 1.2.1
 title: uuid decoding
 file: ./test/squirrel_test.gleam
 test_name: uuid_decoding_test
 ---
-import decode
+import decode/zero
 import gleam/pgo
 import youid/uuid.{type Uuid}
 
@@ -25,15 +25,13 @@ pub type QueryRow {
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub fn query(db) {
-  let decoder =
-    decode.into({
-      use res <- decode.parameter
-      QueryRow(res: res)
-    })
-    |> decode.field(0, uuid_decoder())
+  let decoder = {
+    use res <- zero.field(0, uuid_decoder())
+    zero.success(QueryRow(res:))
+  }
 
   "select gen_random_uuid() as res"
-  |> pgo.execute(db, [], decode.from(decoder, _))
+  |> pgo.execute(db, [], zero.run(_, decoder))
 }
 
 
@@ -42,10 +40,9 @@ pub fn query(db) {
 /// A decoder to decode `Uuid`s coming from a Postgres query.
 ///
 fn uuid_decoder() {
-  decode.then(decode.bit_array, fn(uuid) {
-    case uuid.from_bit_array(uuid) {
-      Ok(uuid) -> decode.into(uuid)
-      Error(_) -> decode.fail("uuid")
-    }
-  })
+  use bit_array <- zero.then(zero.bit_array)
+  case uuid.from_bit_array(bit_array) {
+    Ok(uuid) -> zero.success(uuid)
+    Error(_) -> zero.failure(uuid.v7(), "uuid")
+  }
 }
