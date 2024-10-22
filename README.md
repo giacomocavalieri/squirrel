@@ -12,7 +12,7 @@ this:
 
 ```gleam
 import gleam/pgo
-import decode
+import decode/zero
 
 pub type FindSquirrelRow {
   FindSquirrelRow(name: String, owned_acorns: Int)
@@ -21,19 +21,22 @@ pub type FindSquirrelRow {
 /// Find a squirrel and its owned acorns given its name.
 ///
 pub fn find_squirrel(db: pgo.Connection, name: String) {
-  let squirrel_row_decoder =
-    decode.into({
-      use name <- decode.parameter
-      use owned_acorns <- decode.parameter
-      FindSquirrelRow(name: name, owned_acorns: owned_acorns)
-    })
-    |> decode.field(0, decode.string)
-    |> decode.field(1, decode.int)
+  let squirrel_row_decoder = {
+    use name <- zero.field(0, zero.string)
+    use owned_acorns <- zero.field(1, zero.int)
+    zero.success(FindSquirrelRow(name:, owned_acorns:))
+  }
 
-  "select name, owned_acorns
-   from   squirrel
-   where  name = $1"
-  |> pgo.execute(db, [pgo.text(name)], squirrel_row_decoder)
+  "
+  select
+     name,
+     owned_acorns
+   from
+     squirrel
+   where
+     name = $1
+  "
+  |> pgo.execute(db, [pgo.text(name)], zero.run(_, squirrel_row_decoder))
 }
 ```
 
@@ -179,18 +182,18 @@ This is needed in two places:
 
 The types that are currently supported are:
 
-| postgres type                                          | encoded as                                                                                      | decoded as                                                                                         |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `bool`                                                 | `Bool`                                                                                          | `Bool`                                                                                             |
-| `text`, `char`, `bchar`, `varchar`                     | `String`                                                                                        | `String`                                                                                           |
-| `float4`, `float8`, `numeric`                          | `Float`                                                                                         | `Float`                                                                                            |
-| `int2`, `int4`, `int8`                                 | `Int`                                                                                           | `Int`                                                                                              |
-| `json`, `jsonb`                                        | [`Json`](https://hexdocs.pm/gleam_json/gleam/json.html#Json)                                    | `String`                                                                                           |
-| `uuid`                                                 | [`Uuid`](https://hexdocs.pm/youid/youid/uuid.html#Uuid)                                         | [`Uuid`](https://hexdocs.pm/youid/youid/uuid.html#Uuid)                                            |
-| `bytea`                                                | `BitArray`                                                                                      | `BitArray`                                                                                         |
-| `date`                                                 | `#(Int, Int, Int)` with `#(year, month, day)`                                                   | `#(Int, Int, Int)` with `#(year, month, day)`                                                      |
-| `timestamp`                                            | `#(#(Int, Int, Int), (#(Int, Int, Int))` with `#(#(year, month, day), #(hour, minute, second))` | `#(#(Int, Int, Int), (#(Int, Int, Int))` with `#(#(year, month, day), #(hour, minute, second))`    |
-| `<type>[]` (where `<type>` is any supported type)      | `List(<type>)`                                                                                  | `List(<type>)`                                                                                     |
+| postgres type                                     | encoded as                                                                                      | decoded as                                                                                      |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `bool`                                            | `Bool`                                                                                          | `Bool`                                                                                          |
+| `text`, `char`, `bchar`, `varchar`                | `String`                                                                                        | `String`                                                                                        |
+| `float4`, `float8`, `numeric`                     | `Float`                                                                                         | `Float`                                                                                         |
+| `int2`, `int4`, `int8`                            | `Int`                                                                                           | `Int`                                                                                           |
+| `json`, `jsonb`                                   | [`Json`](https://hexdocs.pm/gleam_json/gleam/json.html#Json)                                    | `String`                                                                                        |
+| `uuid`                                            | [`Uuid`](https://hexdocs.pm/youid/youid/uuid.html#Uuid)                                         | [`Uuid`](https://hexdocs.pm/youid/youid/uuid.html#Uuid)                                         |
+| `bytea`                                           | `BitArray`                                                                                      | `BitArray`                                                                                      |
+| `date`                                            | `#(Int, Int, Int)` with `#(year, month, day)`                                                   | `#(Int, Int, Int)` with `#(year, month, day)`                                                   |
+| `timestamp`                                       | `#(#(Int, Int, Int), (#(Int, Int, Int))` with `#(#(year, month, day), #(hour, minute, second))` | `#(#(Int, Int, Int), (#(Int, Int, Int))` with `#(#(year, month, day), #(hour, minute, second))` |
+| `<type>[]` (where `<type>` is any supported type) | `List(<type>)`                                                                                  | `List(<type>)`                                                                                  |
 
 ## FAQ
 
