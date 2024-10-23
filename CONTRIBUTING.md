@@ -31,7 +31,7 @@ go through:
     case to the `squirrel/internal/query.gleam_type_to_field_type` function.
     This is used when the type is in the values returned by the query to
     write down the type of the corresponding field
-- And don't forget to add some tests :)
+- And don't forget to add some tests and integration tests :)
 
 ## Writing tests
 
@@ -47,6 +47,16 @@ tests:
 - Use a long descriptive title for the snapshots: a title should describe what
   one expects to see in the produced snapshot to guide the review process
 
+## Integration tests
+
+Squirrel also has some integration tests to check that the generated code
+actually compiles and produces the expected results.
+
+- To add a new integration test you can add a new item to the
+  `integration_tests` list in `test/integration_test.gleam`
+- To run the tests you can run the `./integration_test` script in this project.
+  Read below to set up all the required bits for tests to work
+
 ## Running the tests
 
 Most of the tests are snapshot tests that directly call the `postgres.main`
@@ -55,8 +65,9 @@ connect to a Postgres server at `localhost`'s port `5432`.
 
 - In CI this is taken care of automatically
 - Locally you have two options:
-  - Use Docker Compose: the project comes with a `docker-compose.yaml` file that sets up
-    the instance, so you can run `docker compose up` to start it and run your tests
-  - Manually set up a Postgres server: you'll have to make sure you have a server running
-    with a user called `squirrel_test` that must be able to read and write to a database
-    called `squirrel_test`
+  - Use Docker Compose: the project comes with a `docker-compose.yaml` file that
+    sets up the instance, so you can run `docker compose up` to start it and run
+    your tests
+  - Manually set up a Postgres server: you'll have to make sure you have a
+    server running with a user called `squirrel_test` that must be able to read
+    and write to a database called `squirrel_test`

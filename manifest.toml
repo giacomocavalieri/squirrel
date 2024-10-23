@@ -28,6 +28,7 @@ packages = [
   { name = "pg_types", version = "0.4.0", build_tools = ["rebar3"], requirements = [], otp_app = "pg_types", source = "hex", outer_checksum = "B02EFA785CAECECF9702C681C80A9CA12A39F9161A846CE17B01FB20AEEED7EB" },
   { name = "pgo", version = "0.14.0", build_tools = ["rebar3"], requirements = ["backoff", "opentelemetry_api", "pg_types"], otp_app = "pgo", source = "hex", outer_checksum = "71016C22599936E042DC0012EE4589D24C71427D266292F775EBF201D97DF9C9" },
   { name = "rank", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "rank", source = "hex", outer_checksum = "5660E361F0E49CBB714CC57CC4C89C63415D8986F05B2DA0C719D5642FAD91C9" },
+  { name = "shellout", version = "1.6.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "shellout", source = "hex", outer_checksum = "E2FCD18957F0E9F67E1F497FC9FF57393392F8A9BAEAEA4779541DE7A68DD7E0" },
   { name = "simplifile", version = "2.2.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "0DFABEF7DC7A9E2FF4BB27B108034E60C81BEBFCB7AB816B9E7E18ED4503ACD8" },
   { name = "temporary", version = "1.0.0", build_tools = ["gleam"], requirements = ["envoy", "exception", "filepath", "gleam_crypto", "gleam_stdlib", "simplifile"], otp_app = "temporary", source = "hex", outer_checksum = "51C0FEF4D72CE7CA507BD188B21C1F00695B3D5B09D7DFE38240BFD3A8E1E9B3" },
   { name = "term_size", version = "1.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "term_size", source = "hex", outer_checksum = "D00BD2BC8FB3EBB7E6AE076F3F1FF2AC9D5ED1805F004D0896C784D06C6645F1" },
@@ -47,13 +48,15 @@ filepath = { version = ">= 1.0.0 and < 2.0.0" }
 glam = { version = ">= 2.0.1 and < 3.0.0" }
 gleam_community_ansi = { version = ">= 1.4.0 and < 2.0.0" }
 gleam_crypto = { version = ">= 1.3.0 and < 2.0.0" }
+gleam_erlang = { version = ">= 0.27.0 and < 1.0.0" }
 gleam_json = { version = ">= 1.0.0 and < 3.0.0" }
-gleam_pgo = { version = ">= 0.13.0 and < 1.0.0" }
+gleam_pgo = { version = ">= 0.14.0 and < 1.0.0" }
 gleam_stdlib = { version = ">= 0.39.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 justin = { version = ">= 1.0.1 and < 2.0.0" }
 mug = { version = ">= 1.1.0 and < 2.0.0" }
 pgo = { version = ">= 0.14.0 and < 1.0.0" }
+shellout = { version = ">= 1.6.0 and < 2.0.0" }
 simplifile = { version = ">= 2.0.1 and < 3.0.0" }
 temporary = { version = ">= 1.0.0 and < 2.0.0" }
 term_size = { version = ">= 1.0.1 and < 2.0.0" }
