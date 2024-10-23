@@ -38,6 +38,9 @@ jobs:
       matrix:
         erlang: ["26", "27"]
 
+    env:
+      DATABASE_URL: postgres://squirrel_test:postgres_password@localhost:5432/squirrel_test
+
     # Setup a postgres service to run the tests.
     services:
       postgres:

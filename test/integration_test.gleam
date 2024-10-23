@@ -1,4 +1,5 @@
 import argv
+import envoy
 import filepath
 import gleam/bool
 import gleam/erlang
@@ -155,10 +156,11 @@ fn create_database_table(table_name: String, postgres_type: String) -> Nil {
       col " <> postgres_type <> " not null
     )"
 
+  let assert Ok(database_url) = envoy.get("DATABASE_URL")
   let assert Ok(_) =
     shellout.command(
       run: "psql",
-      with: ["-Usquirrel_test", "-dsquirrel_test", "-c" <> drop],
+      with: [database_url, "-c" <> drop],
       in: ".",
       opt: [],
     )
@@ -166,7 +168,7 @@ fn create_database_table(table_name: String, postgres_type: String) -> Nil {
   let assert Ok(_) =
     shellout.command(
       run: "psql",
-      with: ["-Usquirrel_test", "-dsquirrel_test", "-c" <> create],
+      with: [database_url, "-c" <> create],
       in: ".",
       opt: [],
     )
