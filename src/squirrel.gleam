@@ -6,10 +6,10 @@ import gleam/dict.{type Dict}
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/option
-import gleam/pgo.{Config}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
+import gleam/uri.{Uri}
 import gleam_community/ansi
 import simplifile
 import squirrel/internal/database/postgres
@@ -140,18 +140,48 @@ fn connection_options_from_variables() -> postgres.ConnectionOptions {
 /// invalid format instead of silently producing a default one.
 ///
 fn parse_connection_url(raw: String) -> Result(postgres.ConnectionOptions, Nil) {
-  use Config(host:, port:, user:, password:, database:, ..) <- result.try(
-    pgo.url_config(raw),
-  )
+  use uri <- result.try(uri.parse(raw))
+  let Uri(scheme:, userinfo:, host:, port:, path:, ..) = uri
+  use _ <- result.try(check_scheme(scheme))
+  let #(user, password) = parse_user_and_password_from_userinfo(userinfo)
+  let database = parse_database_from_path(path)
 
   Ok(postgres.ConnectionOptions(
-    host:,
-    port:,
-    user:,
+    host: host |> option.unwrap(default_host),
+    port: port |> option.unwrap(default_port),
+    user: user |> option.unwrap(default_user),
     password: password |> option.unwrap(default_password),
-    database:,
+    database: database |> option.unwrap(default_database),
     timeout: default_timeout,
   ))
+}
+
+fn check_scheme(scheme: Option(String)) -> Result(Nil, Nil) {
+  case scheme {
+    Some("postgres") | Some("postgresql") | None -> Ok(Nil)
+    Some(_) -> Error(Nil)
+  }
+}
+
+fn parse_user_and_password_from_userinfo(
+  userinfo: Option(String),
+) -> #(Option(String), Option(String)) {
+  case userinfo {
+    None -> #(None, None)
+    Some(userinfo) ->
+      case string.split(userinfo, on: ":") {
+        [user] -> #(Some(user), None)
+        [user, password, ..] -> #(Some(user), Some(password))
+        _ -> #(None, None)
+      }
+  }
+}
+
+fn parse_database_from_path(path: String) -> Option(String) {
+  case string.split(path, "/") {
+    ["", database, ..] -> Some(database)
+    _ -> None
+  }
 }
 
 /// Finds all `from/**/sql` directories and lists the full paths of the `*.sql`
