@@ -3,7 +3,9 @@
 ## Unreleased
 
 - Added support for `postgresql` URL scheme.
-  ([Valentin Iancu])(https://github.com/valentindiancu)
+  ([Valentin Iancu](https://github.com/valentindiancu))
+- Switched to `decode`'s new `zero` API for generated decoders.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
 ## v1.7.1 - 2024-09-22
 
