@@ -1,2 +1,8 @@
 #!/bin/bash
-DATABASE_URL=postgres://squirrel_test@localhost/squirrel_test gleam test -- integration
+
+if [[ -z "${GITHUB_ACTIONS}" ]]; then
+    DATABASE_URL=postgres://squirrel_test@localhost/squirrel_test gleam test -- integration
+else
+    # The database url is set automatically in CI
+    gleam test -- integration
+fi
