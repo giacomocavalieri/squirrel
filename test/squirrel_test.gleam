@@ -27,16 +27,18 @@ const database = "squirrel_test"
 
 const port = 5432
 
+pub fn test_config() -> pgo.Config {
+  pgo.Config(
+    ..pgo.default_config(),
+    port: port,
+    user: user,
+    host: host,
+    database: database,
+  )
+}
+
 fn setup_database() {
-  let config =
-    pgo.Config(
-      ..pgo.default_config(),
-      port: port,
-      user: user,
-      host: host,
-      database: database,
-    )
-  let db = pgo.connect(config)
+  let db = pgo.connect(test_config())
 
   let assert Ok(_) =
     "

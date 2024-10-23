@@ -64,6 +64,5 @@ jobs:
         with:
           gleam_version: 1.4.1
           erlang_version: ${{ matrix.erlang }}
-      - uses: TanklesXL/gleam_actions/.github/actions/test@main
-        with:
-          target: "erlang"
+      - name: "integration test"
+        run: ./integration_test

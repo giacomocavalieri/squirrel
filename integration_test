@@ -1,0 +1,2 @@
+#!/bin/bash
+DATABASE_URL=postgres://squirrel_test@localhost/squirrel_test gleam test -- integration
