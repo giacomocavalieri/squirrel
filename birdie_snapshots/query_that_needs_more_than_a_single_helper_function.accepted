@@ -1,5 +1,5 @@
 ---
-version: 1.2.1
+version: 1.2.3
 title: query that needs more than a single helper function
 file: ./test/squirrel_test.gleam
 test_name: query_that_needs_more_than_a_single_helper_function_test
@@ -36,7 +36,7 @@ pub fn query(db) {
 }
 
 
-// --- UTILS -------------------------------------------------------------------
+// --- Encoding/decoding utils -------------------------------------------------
 
 /// A decoder to decode `date`s coming from a Postgres query.
 ///

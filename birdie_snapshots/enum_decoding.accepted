@@ -1,8 +1,8 @@
 ---
 version: 1.2.3
-title: timestamp decoding
+title: enum decoding
 file: ./test/squirrel_test.gleam
-test_name: timestamp_decoding_test
+test_name: enum_decoding_test
 ---
 import decode/zero
 import gleam/pgo
@@ -14,7 +14,7 @@ import gleam/pgo
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub type QueryRow {
-  QueryRow(res: #(#(Int, Int, Int), #(Int, Int, Int)))
+  QueryRow(squirrel_colour: SquirrelColour)
 }
 
 /// Runs the `query` query
@@ -25,23 +25,29 @@ pub type QueryRow {
 ///
 pub fn query(db) {
   let decoder = {
-    use res <- zero.field(0, timestamp_decoder())
-    zero.success(QueryRow(res:))
+    use squirrel_colour <- zero.field(0, squirrel_colour_decoder())
+    zero.success(QueryRow(squirrel_colour:))
   }
 
-  "select 'Jan-2-1970 12:34:56'::timestamp as res"
+  "select 'red'::squirrel_colour"
   |> pgo.execute(db, [], zero.run(_, decoder))
 }
 
 
-// --- Encoding/decoding utils -------------------------------------------------
+// --- enums -------------------------------------------------------------------
 
-/// A decoder to decode `timestamp`s coming from a Postgres query.
-///
-fn timestamp_decoder() {
-  use dynamic <- zero.then(zero.dynamic)
-  case pgo.decode_timestamp(dynamic) {
-    Ok(timestamp) -> zero.success(timestamp)
-    Error(_) -> zero.failure(#(#(0, 0, 0), #(0, 0, 0)), "timestamp")
+pub type SquirrelColour{
+  LightBrown
+  Grey
+  Red
+}
+
+fn squirrel_colour_decoder() {
+  use variant <- zero.then(zero.string)
+  case variant {
+    "light brown" -> zero.success(LightBrown)
+    "grey" -> zero.success(Grey)
+    "red" -> zero.success(Red)
+    _ -> zero.failure(LightBrown, "SquirrelColour")
   }
 }
