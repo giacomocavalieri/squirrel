@@ -1,0 +1,21 @@
+---
+version: 1.2.3
+title: enum with invalid name
+file: ./test/squirrel_test.gleam
+test_name: enum_with_invalid_name_test
+---
+[31m[1mError: [22mQuery with invalid enum[39m
+
+    [2m╭─ query.sql[22m
+    [2m│[22m
+[2m  1 │ [22m[36mselect[39m [33m'value'[39m::"[32m1[39m invalid enum" [36mas[39m res
+    [2m┆[22m
+
+One of the values in this query is the `1 invalid enum` enum, but I cannot turn
+it into a Gleam type definition because its name cannot be turned into a valid
+type name.
+
+Hint: A valid enum name must start with a letter and can only contain letters,
+underscores and numbers. I will take care automatically of converting any
+snake_case name to PascalCase so that it can be used as the name of a Gleam
+type!

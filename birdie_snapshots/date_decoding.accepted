@@ -1,5 +1,5 @@
 ---
-version: 1.2.1
+version: 1.2.3
 title: date decoding
 file: ./test/squirrel_test.gleam
 test_name: date_decoding_test
@@ -34,7 +34,7 @@ pub fn query(db) {
 }
 
 
-// --- UTILS -------------------------------------------------------------------
+// --- Encoding/decoding utils -------------------------------------------------
 
 /// A decoder to decode `date`s coming from a Postgres query.
 ///

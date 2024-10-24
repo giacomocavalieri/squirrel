@@ -59,6 +59,46 @@ create table if not exists jsons(
 "
     |> pgo.execute(db, [], dynamic.dynamic)
 
+  let assert Ok(_) =
+    "
+do $$ begin
+  if not exists (select * from pg_type where typname = 'squirrel_colour') then
+    create type squirrel_colour as enum ('red', 'grey', 'light brown');
+  end if;
+end $$;
+  "
+    |> pgo.execute(db, [], dynamic.dynamic)
+
+  let assert Ok(_) =
+    "
+  do $$ begin
+    if not exists (select * from pg_type where typname = '1 invalid enum') then
+      create type \"1 invalid enum\" as enum ('value');
+    end if;
+  end $$;
+    "
+    |> pgo.execute(db, [], dynamic.dynamic)
+
+  let assert Ok(_) =
+    "
+    do $$ begin
+      if not exists (select * from pg_type where typname = 'invalid_variant') then
+        create type invalid_variant as enum ('1 invalid value');
+      end if;
+    end $$;
+      "
+    |> pgo.execute(db, [], dynamic.dynamic)
+
+  let assert Ok(_) =
+    "
+      do $$ begin
+        if not exists (select * from pg_type where typname = 'no_variants') then
+          create type no_variants as enum ();
+        end if;
+      end $$;
+        "
+    |> pgo.execute(db, [], dynamic.dynamic)
+
   pgo.disconnect(db)
 }
 
@@ -330,6 +370,18 @@ pub fn timestamp_encoding_test() {
   |> birdie.snap(title: "timestamp encoding")
 }
 
+pub fn enum_decoding_test() {
+  "select 'red'::squirrel_colour"
+  |> should_codegen
+  |> birdie.snap(title: "enum decoding")
+}
+
+pub fn enum_encoding_test() {
+  "select 1 as res where $1 = 'red'::squirrel_colour"
+  |> should_codegen
+  |> birdie.snap(title: "enum encoding")
+}
+
 // --- CODEGEN STRUCTURE TESTS -------------------------------------------------
 // This is a group of tests to ensure the generated code has some specific
 // structure (e.g. the names and comments are what we expect...)
@@ -461,6 +513,18 @@ from
 "
   |> should_error
   |> birdie.snap(title: "query with column that doesn't exist")
+}
+
+pub fn enum_with_invalid_name_test() {
+  "select 'value'::\"1 invalid enum\" as res"
+  |> should_error
+  |> birdie.snap(title: "enum with invalid name")
+}
+
+pub fn enum_with_invalid_variant_test() {
+  "select '1 invalid value'::invalid_variant as res"
+  |> should_error
+  |> birdie.snap(title: "enum with invalid variant")
 }
 
 // --- REGRESSIONS -------------------------------------------------------------

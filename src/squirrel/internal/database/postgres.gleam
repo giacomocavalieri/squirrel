@@ -27,14 +27,14 @@ import gleam/set.{type Set}
 import gleam/string
 import squirrel/internal/database/postgres_protocol as pg
 import squirrel/internal/error.{
-  type Error, type Pointer, type ValueIdentifierError, ByteIndex,
+  type EnumError, type Error, type Pointer, type ValueIdentifierError, ByteIndex,
   CannotParseQuery, PgCannotDecodeReceivedMessage, PgCannotDescribeQuery,
   PgCannotEstablishTcpConnection, PgCannotReceiveMessage, PgCannotSendMessage,
   PgInvalidPassword, PgInvalidSha256ServerProof, PgInvalidUserDatabase,
   PgPermissionDenied, PgUnexpectedAuthMethodMessage,
   PgUnexpectedCleartextAuthMessage, PgUnexpectedSha256AuthMessage,
   PgUnsupportedAuthentication, Pointer, QueryHasInvalidColumn,
-  QueryHasUnsupportedType,
+  QueryHasInvalidEnum, QueryHasUnsupportedType,
 }
 import squirrel/internal/eval_extra
 import squirrel/internal/gleam
@@ -44,7 +44,7 @@ import squirrel/internal/query.{
 import squirrel/internal/scram
 
 fn find_postgres_type_query() -> UntypedQuery {
-  let assert Ok(name) = gleam.identifier("find_postgres_type_query")
+  let assert Ok(name) = gleam.value_identifier("find_postgres_type_query")
 
   query.UntypedQuery(
     file: "",
@@ -66,18 +66,46 @@ select
   case
     when elem.typname is null then false
     else true
- 	end as is_array
+ 	end as is_array,
+
+  -- The type of the type/array item.
+  -- It will be 'e' if the thing is an enum.
+  case
+    when elem.typname is null then type.typtype
+    else elem.typtype
+  end as kind
 from
   pg_type as type
   left join pg_type as elem on type.typelem = elem.oid
 where
   type.oid = $1
-    ",
+",
+  )
+}
+
+fn find_enum_variants_query() -> UntypedQuery {
+  let assert Ok(name) = gleam.value_identifier("find_enum_variants_query")
+
+  query.UntypedQuery(
+    file: "",
+    starting_line: 1,
+    name:,
+    comment: [],
+    content: "
+select
+	enumlabel
+from
+	pg_enum
+where
+	enumtypid = $1
+order by
+	enumsortorder asc
+",
   )
 }
 
 fn find_column_nullability_query() -> UntypedQuery {
-  let assert Ok(name) = gleam.identifier("find_column_nullability_query")
+  let assert Ok(name) = gleam.value_identifier("find_column_nullability_query")
 
   query.UntypedQuery(
     file: "",
@@ -95,7 +123,7 @@ where
   attrelid = $1
   -- The index of the column we're looking for.
   and attnum = $2
-    ",
+",
   )
 }
 
@@ -121,6 +149,19 @@ type PgType {
   /// An array type like `int[]`, `text[]`, ...
   ///
   PArray(inner: PgType)
+
+  /// An enum, for example:
+  ///
+  /// ```sql
+  /// create type squirrel_colour as enum(
+  ///   'red',
+  ///   'grey',
+  ///   'light brown'
+  /// )
+  /// ```
+  ///
+  ///
+  PEnum(name: String, variants: List(String))
 
   /// A type that could also be `NULL`, this is particularly common for columns
   /// that do not have a `not null` constraint; or for those coming from partial
@@ -214,17 +255,18 @@ pub type ConnectionOptions {
 /// This function turns a Postgres type into a Gleam one, returning an error
 /// with the type name if it is not currently supported.
 ///
-fn pg_to_gleam_type(type_: PgType) -> Result(gleam.Type, String) {
+fn pg_to_gleam_type(
+  query: UntypedQuery,
+  type_: PgType,
+) -> Result(gleam.Type, Error) {
   case type_ {
     PArray(inner:) ->
-      pg_to_gleam_type(inner)
+      pg_to_gleam_type(query, inner)
       |> result.map(gleam.List)
-      |> result.map_error(fn(inner) { inner <> "[]" })
 
     POption(inner:) ->
-      pg_to_gleam_type(inner)
+      pg_to_gleam_type(query, inner)
       |> result.map(gleam.Option)
-      |> result.map_error(fn(inner) { inner <> "?" })
 
     PBase(name:) ->
       case name {
@@ -237,8 +279,12 @@ fn pg_to_gleam_type(type_: PgType) -> Result(gleam.Type, String) {
         "bytea" -> Ok(gleam.BitArray)
         "date" -> Ok(gleam.Date)
         "timestamp" -> Ok(gleam.Timestamp)
-        _ -> Error(name)
+        _ -> Error(unsupported_type_error(query, name))
       }
+
+    PEnum(name:, variants:) ->
+      gleam.try_make_enum(name, variants)
+      |> result.map_error(invalid_enum_error(query, name, _))
   }
 }
 
@@ -511,7 +557,7 @@ fn parameters_and_returns(query: UntypedQuery) -> Db(_) {
   let cannot_describe = fn(expected, got) {
     PgCannotDescribeQuery(
       file: query.file,
-      query_name: gleam.identifier_to_string(query.name),
+      query_name: gleam.value_identifier_to_string(query.name),
       expected:,
       got:,
     )
@@ -639,20 +685,41 @@ fn find_gleam_type(query: UntypedQuery, oid: Int) -> Db(gleam.Type) {
   // check wether it is an array or not.
   // It's safe to assert because this query is hard coded in our code and the
   // output shape cannot change without us changing that query.
-  let assert [name, is_array] = res
+  let assert [[name, is_array, kind]] = res
+  let assert Ok(name) = bit_array.to_string(name)
+  let assert Ok(kind) = bit_array.to_string(kind)
+
+  use type_ <- eval.try(case kind {
+    "e" -> resolve_enum_type(name, oid)
+    _ -> eval.return(PBase(name))
+  })
 
   // We then decode the bitarrays we got as a result:
   // - `name` is just a string
   // - `is_array` is a pg boolean
-  let assert Ok(name) = bit_array.to_string(name)
+  //
   let type_ = case bit_array_to_bool(is_array) {
-    True -> PArray(PBase(name))
-    False -> PBase(name)
+    True -> PArray(type_)
+    False -> type_
   }
 
-  pg_to_gleam_type(type_)
-  |> result.map_error(unsupported_type_error(query, _))
+  pg_to_gleam_type(query, type_)
   |> eval.from_result
+}
+
+fn resolve_enum_type(name: String, oid: Int) -> Db(PgType) {
+  let params = [pg.Parameter(<<oid:32>>)]
+  use rows <- eval.try(run_query(find_enum_variants_query(), params, [23]))
+  let variants =
+    list.map(rows, fn(row) {
+      // We get multiple rows from running the query, each is a single string
+      // that is a variant name.
+      let assert [variant] = row
+      let assert Ok(variant) = bit_array.to_string(variant)
+      variant
+    })
+
+  eval.return(PEnum(name:, variants:))
 }
 
 /// Returns the query plan for a given query.
@@ -673,7 +740,7 @@ fn query_plan(query: UntypedQuery, parameters: Int) -> Db(Plan) {
 
   // We know the output will only contain a single row that is the json string
   // containing the query plan.
-  let assert [plan] = res
+  let assert [[plan]] = res
   let assert Ok([plan, ..]) = json.decode_bits(plan, json_plans_decoder)
   eval.return(plan)
 }
@@ -774,7 +841,7 @@ fn resolve_returns(
       True -> string.drop_right(name, 1)
       False -> name
     }
-    |> gleam.identifier
+    |> gleam.value_identifier
     |> result.map_error(invalid_column_error(query, name, _))
 
   use name <- eval.try(eval.from_result(try_convert_name))
@@ -801,7 +868,7 @@ fn column_nullability(table table: Int, column column: Int) -> Db(Nullability) {
 
   // We know the output will only have only one column, that is the boolean
   // telling us if the column has a not-null constraint.
-  let assert [has_non_null_constraint] = res
+  let assert [[has_non_null_constraint]] = res
   case bit_array_to_bool(has_non_null_constraint) {
     True -> eval.return(NotNullable)
     False -> eval.return(Nullable)
@@ -829,7 +896,7 @@ fn run_query(
   query: UntypedQuery,
   parameters: List(pg.ParameterValue),
   parameters_object_ids: List(Int),
-) -> Db(List(BitArray)) {
+) -> Db(List(List(BitArray))) {
   // The message exchange to run a query works as follow:
   // - `Parse` we ask the server to parse the query, we do not give it a name
   // - `Bind` we bind the query to the unnamed portal so that it is ready to
@@ -871,10 +938,7 @@ fn run_query(
   use _ <- eval.try(expect_parse_complete(msg, query))
   use msg <- eval.try(receive())
   let assert pg.BeBindComplete = msg
-  use msg <- eval.try(receive())
-  use res <- eval.try(expect_data_row(msg, query.file))
-  use msg <- eval.try(receive())
-  let assert pg.BeCommandComplete(_, _) = msg
+  use res <- eval.try(accumulate_data_rows_until_command_complete(query.file))
   use msg <- eval.try(receive())
   let assert pg.BeCloseComplete = msg
   use msg <- eval.try(receive())
@@ -884,14 +948,23 @@ fn run_query(
   eval.return(res)
 }
 
-/// Receives a message and expects it to be a data row message.
+/// Receives and consumes `DataRow` messages until a `CommandComplete` message
+/// is received. All the data transmitted through the data rows is then
+/// returned.
 ///
-fn expect_data_row(
-  msg: pg.BackendMessage,
+fn accumulate_data_rows_until_command_complete(query_file: String) {
+  do_accumulate_data_rows_until_command_complete(query_file, [])
+}
+
+fn do_accumulate_data_rows_until_command_complete(
   query_file: String,
-) -> Db(List(BitArray)) {
+  acc: List(List(BitArray)),
+) -> _ {
+  use msg <- eval.try(receive())
   case msg {
-    pg.BeMessageDataRow(res) -> eval.return(res)
+    pg.BeCommandComplete(_, _) -> eval.return(list.reverse(acc))
+    pg.BeMessageDataRow(data) ->
+      do_accumulate_data_rows_until_command_complete(query_file, [data, ..acc])
     pg.BeErrorResponse(fields) ->
       case fields_to_permission_denied_error(query_file, fields) {
         Ok(error) -> eval.throw(error)
@@ -918,7 +991,7 @@ fn expect_parse_complete(msg: pg.BackendMessage, query: UntypedQuery) -> Db(Nil)
             fn(expected, got) {
               PgCannotDescribeQuery(
                 file: query.file,
-                query_name: gleam.identifier_to_string(query.name),
+                query_name: gleam.value_identifier_to_string(query.name),
                 expected:,
                 got:,
               )
@@ -1082,11 +1155,16 @@ fn unsupported_type_error(query: UntypedQuery, type_: String) -> Error {
   let UntypedQuery(content:, file:, name:, starting_line:, comment: _) = query
   QueryHasUnsupportedType(
     file:,
-    name: gleam.identifier_to_string(name),
+    name: gleam.value_identifier_to_string(name),
     content:,
     type_:,
     starting_line:,
   )
+}
+
+fn invalid_enum_error(query: UntypedQuery, enum_name: String, reason: EnumError) {
+  let UntypedQuery(content:, file:, name: _, starting_line:, comment: _) = query
+  QueryHasInvalidEnum(file:, content:, starting_line:, enum_name:, reason:)
 }
 
 fn cannot_parse_error(
@@ -1100,7 +1178,7 @@ fn cannot_parse_error(
   CannotParseQuery(
     content:,
     file:,
-    name: gleam.identifier_to_string(name),
+    name: gleam.value_identifier_to_string(name),
     error_code:,
     hint:,
     pointer:,
@@ -1118,7 +1196,7 @@ fn invalid_column_error(
   QueryHasInvalidColumn(
     file:,
     column_name:,
-    suggested_name: gleam.similar_identifier_string(column_name)
+    suggested_name: gleam.similar_value_identifier_string(column_name)
       |> option.from_result,
     content:,
     reason:,
