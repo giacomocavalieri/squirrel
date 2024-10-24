@@ -12,7 +12,9 @@ import simplifile
 import squirrel/internal/error.{
   type Error, CannotReadFile, QueryFileHasInvalidName,
 }
-import squirrel/internal/gleam
+import squirrel/internal/gleam.{
+  type EnumVariant, type TypeIdentifier, EnumVariant,
+}
 
 /// A query that still needs to go through the type checking process.
 ///
@@ -90,11 +92,11 @@ pub fn from_file(file: String) -> Result(UntypedQuery, Error) {
     filepath.base_name(file)
     |> filepath.strip_extension
   let name =
-    gleam.identifier(file_name)
+    gleam.value_identifier(file_name)
     |> result.map_error(QueryFileHasInvalidName(
       file:,
       reason: _,
-      suggested_name: gleam.similar_identifier_string(file_name)
+      suggested_name: gleam.similar_value_identifier_string(file_name)
         |> option.from_result,
     ))
 
@@ -133,7 +135,18 @@ type CodeGenState {
     needs_uuid_decoder: Bool,
     needs_date_decoder: Bool,
     needs_timestamp_decoder: Bool,
+    // All the enums used in the module, this maps from name of the enum to a
+    // list of its variants and what kind of helpers need to be generated for
+    // the enum encoding/decoding.
+    enums: Dict(TypeIdentifier, #(EnumRequiredHelpers, List(EnumVariant))),
   )
+}
+
+type EnumRequiredHelpers {
+  NeedsEncoderAndDecoder
+  NeedsDecoder
+  NeedsEncoder
+  NoHelpers
 }
 
 fn default_codegen_state() {
@@ -142,6 +155,7 @@ fn default_codegen_state() {
     needs_uuid_decoder: False,
     needs_date_decoder: False,
     needs_timestamp_decoder: False,
+    enums: dict.new(),
   )
   |> import_module("decode/zero")
   |> import_module("gleam/pgo")
@@ -180,7 +194,17 @@ fn gleam_type_to_decoder(
     gleam.String -> #(state, doc.from_string("zero.string"))
     gleam.BitArray -> #(state, doc.from_string("zero.bit_array"))
     gleam.Json -> #(state, doc.from_string("zero.string"))
+    gleam.Enum(name: enum_name, variants:) -> #(
+      state |> enum_needs_decoder(enum_name, variants),
+      doc.from_string(enum_decoder_name(enum_name) <> "()"),
+    )
   }
+}
+
+fn enum_decoder_name(enum_name: TypeIdentifier) -> String {
+  gleam.type_identifier_to_value_identifier(enum_name)
+  |> gleam.value_identifier_to_string
+  |> string.append("_decoder")
 }
 
 fn gleam_type_to_encoder(
@@ -220,7 +244,17 @@ fn gleam_type_to_encoder(
     gleam.Bool -> #(state, call_doc("pgo.bool", [name]))
     gleam.String -> #(state, call_doc("pgo.text", [name]))
     gleam.BitArray -> #(state, call_doc("pgo.bytea", [name]))
+    gleam.Enum(name: enum_name, variants:) -> #(
+      state |> enum_needs_encoder(enum_name, variants),
+      call_doc(enum_encoder_name(enum_name), [name]),
+    )
   }
+}
+
+fn enum_encoder_name(enum_name: TypeIdentifier) -> String {
+  gleam.type_identifier_to_value_identifier(enum_name)
+  |> gleam.value_identifier_to_string
+  |> string.append("_encoder")
 }
 
 fn gleam_type_to_field_type(
@@ -252,6 +286,10 @@ fn gleam_type_to_field_type(
     gleam.String -> #(state, doc.from_string("String"))
     gleam.Json -> #(state, doc.from_string("String"))
     gleam.BitArray -> #(state, doc.from_string("BitArray"))
+    gleam.Enum(name:, variants:) -> #(
+      state |> register_enum_type(name, variants),
+      gleam.type_identifier_to_string(name) |> doc.from_string,
+    )
   }
 }
 
@@ -271,6 +309,7 @@ pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
     needs_uuid_decoder:,
     needs_date_decoder:,
     needs_timestamp_decoder:,
+    enums:,
   ) = state
 
   let utils =
@@ -290,13 +329,26 @@ pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
     ]
     |> doc.concat
 
+  let code = case dict.is_empty(enums) {
+    True -> code
+    False ->
+      [
+        code,
+        doc.lines(2),
+        separator_comment("enums"),
+        doc.lines(2),
+        enums_doc(enums),
+      ]
+      |> doc.concat
+  }
+
   case utils {
     [] -> code
     [_, ..] -> {
       [
         code,
         doc.lines(2),
-        doc.from_string(string.pad_right("// --- UTILS ", to: 80, with: "-")),
+        separator_comment("Encoding/decoding utils"),
         doc.lines(2),
         doc.join(utils, with: doc.lines(2)),
         doc.line,
@@ -305,6 +357,11 @@ pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
     }
   }
   |> doc.to_string(80)
+}
+
+fn separator_comment(value: String) -> Document {
+  string.pad_right("// --- " <> value <> " ", to: 80, with: "-")
+  |> doc.from_string
 }
 
 fn imports_doc(imports: Dict(String, Set(String))) -> Document {
@@ -357,7 +414,11 @@ fn query_doc(
     starting_line: _,
   ) = query
 
-  let constructor_name = gleam.identifier_to_type_name(name) <> "Row"
+  let constructor_name =
+    gleam.value_identifier_to_type_identifier(name)
+    |> gleam.type_identifier_to_string
+    |> string.append("Row")
+
   let record_result = record_doc(state, version, constructor_name, query)
   let #(state, record) = case record_result {
     Ok(#(state, record)) -> #(state, doc.append(record, doc.lines(2)))
@@ -382,7 +443,7 @@ fn query_doc(
       record,
       doc.from_string(function_doc(version, query)),
       doc.line,
-      fun_doc(gleam.identifier_to_string(name), ["db", ..inputs], [
+      fun_doc(gleam.value_identifier_to_string(name), ["db", ..inputs], [
         let_var("decoder", decoder),
         pipe_call_doc("pgo.execute", string_doc(content), [
           doc.from_string("db"),
@@ -398,7 +459,7 @@ fn query_doc(
 
 fn function_doc(version: String, query: TypedQuery) -> String {
   let TypedQuery(comment:, name:, file:, ..) = query
-  let function_name = gleam.identifier_to_string(name)
+  let function_name = gleam.value_identifier_to_string(name)
 
   let base = case comment {
     [] -> "/// Runs the `" <> function_name <> "` query
@@ -431,7 +492,7 @@ fn record_doc(
   let TypedQuery(name:, returns:, file:, ..) = query
   use <- bool.guard(when: returns == [], return: Error(Nil))
 
-  let function_name = gleam.identifier_to_string(name)
+  let function_name = gleam.value_identifier_to_string(name)
   let record_doc =
     "/// A row you get from running the `" <> function_name <> "` query
 /// defined in `" <> file <> "`.
@@ -442,7 +503,8 @@ fn record_doc(
 
   let #(state, fields) = {
     use #(state, fields), field <- list.fold(returns, from: #(state, []))
-    let label = doc.from_string(gleam.identifier_to_string(field.label) <> ": ")
+    let label =
+      doc.from_string(gleam.value_identifier_to_string(field.label) <> ": ")
     let #(state, field_type) = gleam_type_to_field_type(state, field.type_)
     let field = [label, field_type] |> doc.concat |> doc.group
 
@@ -468,6 +530,131 @@ fn record_doc(
     |> doc.concat
 
   Ok(#(state, result))
+}
+
+/// Returns the document for the definition and encoding/decoding of all enums
+/// in the dictionary.
+///
+fn enums_doc(
+  enums: Dict(TypeIdentifier, #(EnumRequiredHelpers, List(EnumVariant))),
+) -> Document {
+  use doc, name, #(required_helpers, variants) <- dict.fold(enums, doc.empty)
+  doc.append(doc, enum_doc(name, required_helpers, variants))
+}
+
+/// Returns the document with the enum definition and any additional helper that
+/// might be needed to encode and decode it.
+///
+fn enum_doc(
+  enum_name: TypeIdentifier,
+  required_helpers: EnumRequiredHelpers,
+  variants: List(EnumVariant),
+) -> Document {
+  case required_helpers {
+    NeedsDecoder -> [
+      enum_type_definition_doc(enum_name, variants),
+      enum_decoder_doc(enum_name, variants),
+    ]
+    NeedsEncoder -> [
+      enum_type_definition_doc(enum_name, variants),
+      enum_encoder_doc(enum_name, variants),
+    ]
+    NeedsEncoderAndDecoder -> [
+      enum_type_definition_doc(enum_name, variants),
+      enum_decoder_doc(enum_name, variants),
+      enum_encoder_doc(enum_name, variants),
+    ]
+    NoHelpers -> [enum_type_definition_doc(enum_name, variants)]
+  }
+  |> doc.join(with: doc.lines(2))
+}
+
+fn enum_type_definition_doc(
+  enum_name: TypeIdentifier,
+  variants: List(EnumVariant),
+) -> Document {
+  let string_enum_name = gleam.type_identifier_to_string(enum_name)
+  let variants =
+    list.map(variants, fn(variant) {
+      gleam.type_identifier_to_string(variant.name)
+      |> doc.from_string
+    })
+
+  [
+    doc.from_string("pub type " <> string_enum_name),
+    variants |> list.intersperse(doc.line) |> block,
+  ]
+  |> doc.concat
+}
+
+fn enum_encoder_doc(
+  name: TypeIdentifier,
+  variants: List(EnumVariant),
+) -> Document {
+  let case_lines = {
+    use variant <- list.map(variants)
+    [
+      doc.from_string(gleam.type_identifier_to_string(variant.name)),
+      doc.from_string(" -> "),
+      string_doc(variant.string_representation),
+    ]
+    |> doc.concat
+  }
+
+  let body = [
+    doc.from_string("case variant "),
+    case_lines |> list.intersperse(doc.line) |> block,
+    doc.line,
+    doc.from_string("|> pgo.text"),
+  ]
+
+  doc.from_string("fn " <> enum_encoder_name(name) <> "(variant) ")
+  |> doc.append(block(body))
+}
+
+fn enum_decoder_doc(
+  name: TypeIdentifier,
+  variants: List(EnumVariant),
+) -> Document {
+  let success_case_lines = {
+    use variant <- list.map(variants)
+    doc.concat([
+      string_doc(variant.string_representation),
+      doc.from_string(" -> "),
+      call_doc("zero.success", [
+        gleam.type_identifier_to_string(variant.name)
+        |> doc.from_string,
+      ]),
+    ])
+  }
+
+  let failure_case_line = case variants {
+    [] -> doc.from_string("_ -> panic as \"enum with no variants!\"")
+    [variant, ..] ->
+      [
+        doc.from_string("_ -> "),
+        call_doc("zero.failure", [
+          doc.from_string(gleam.type_identifier_to_string(variant.name)),
+          string_doc(gleam.type_identifier_to_string(name)),
+        ]),
+      ]
+      |> doc.concat
+  }
+
+  let body =
+    [
+      doc.from_string("use variant <- zero.then(zero.string)"),
+      doc.line,
+      doc.from_string("case variant "),
+      success_case_lines
+        |> list.append([failure_case_line])
+        |> list.intersperse(doc.line)
+        |> block,
+    ]
+    |> doc.concat
+
+  doc.from_string("fn " <> enum_decoder_name(name) <> "() ")
+  |> doc.append(block([body]))
 }
 
 const uuid_decoder = "/// A decoder to decode `Uuid`s coming from a Postgres query.
@@ -519,7 +706,7 @@ fn decoder_doc(
     use acc, field, i <- list.index_fold(returns, #(state, [], []))
     let #(state, parameters, labelled_names) = acc
 
-    let label = gleam.identifier_to_string(field.label)
+    let label = gleam.value_identifier_to_string(field.label)
     let labelled_names = [doc.from_string(label <> ":"), ..labelled_names]
 
     let position = int.to_string(i) |> doc.from_string
@@ -681,6 +868,57 @@ fn import_qualified(
     })
 
   CodeGenState(..state, imports:)
+}
+
+fn register_enum_type(
+  state: CodeGenState,
+  name: TypeIdentifier,
+  variants: List(EnumVariant),
+) -> CodeGenState {
+  let enums = case dict.has_key(state.enums, name) {
+    True -> state.enums
+    False -> dict.insert(state.enums, name, #(NoHelpers, variants))
+  }
+
+  CodeGenState(..state, enums:)
+}
+
+fn enum_needs_encoder(
+  state: CodeGenState,
+  name: TypeIdentifier,
+  variants: List(EnumVariant),
+) -> CodeGenState {
+  let enums =
+    dict.upsert(state.enums, name, fn(value) {
+      case value {
+        Some(#(NoHelpers, variants)) -> #(NeedsEncoder, variants)
+        Some(#(NeedsDecoder, variants)) -> #(NeedsEncoderAndDecoder, variants)
+        Some(#(NeedsEncoder, _) as value)
+        | Some(#(NeedsEncoderAndDecoder, _) as value) -> value
+        None -> #(NeedsEncoder, variants)
+      }
+    })
+
+  CodeGenState(..state, enums:)
+}
+
+fn enum_needs_decoder(
+  state: CodeGenState,
+  name: TypeIdentifier,
+  variants: List(EnumVariant),
+) -> CodeGenState {
+  let enums =
+    dict.upsert(state.enums, name, fn(value) {
+      case value {
+        Some(#(NoHelpers, variants)) -> #(NeedsDecoder, variants)
+        Some(#(NeedsEncoder, variants)) -> #(NeedsEncoderAndDecoder, variants)
+        Some(#(NeedsDecoder, _) as value)
+        | Some(#(NeedsEncoderAndDecoder, _) as value) -> value
+        None -> #(NeedsDecoder, variants)
+      }
+    })
+
+  CodeGenState(..state, enums:)
 }
 
 // --- MISC UTILS --------------------------------------------------------------

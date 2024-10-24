@@ -1,12 +1,11 @@
 ---
 version: 1.2.3
-title: uuid decoding
+title: enum encoding
 file: ./test/squirrel_test.gleam
-test_name: uuid_decoding_test
+test_name: enum_encoding_test
 ---
 import decode/zero
 import gleam/pgo
-import youid/uuid.{type Uuid}
 
 /// A row you get from running the `query` query
 /// defined in `query.sql`.
@@ -15,7 +14,7 @@ import youid/uuid.{type Uuid}
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub type QueryRow {
-  QueryRow(res: Uuid)
+  QueryRow(res: Int)
 }
 
 /// Runs the `query` query
@@ -24,25 +23,30 @@ pub type QueryRow {
 /// > 🐿️ This function was generated automatically using v-test of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn query(db) {
+pub fn query(db, arg_1) {
   let decoder = {
-    use res <- zero.field(0, uuid_decoder())
+    use res <- zero.field(0, zero.int)
     zero.success(QueryRow(res:))
   }
 
-  "select gen_random_uuid() as res"
-  |> pgo.execute(db, [], zero.run(_, decoder))
+  "select 1 as res where $1 = 'red'::squirrel_colour"
+  |> pgo.execute(db, [squirrel_colour_encoder(arg_1)], zero.run(_, decoder))
 }
 
 
-// --- Encoding/decoding utils -------------------------------------------------
+// --- enums -------------------------------------------------------------------
 
-/// A decoder to decode `Uuid`s coming from a Postgres query.
-///
-fn uuid_decoder() {
-  use bit_array <- zero.then(zero.bit_array)
-  case uuid.from_bit_array(bit_array) {
-    Ok(uuid) -> zero.success(uuid)
-    Error(_) -> zero.failure(uuid.v7(), "uuid")
+pub type SquirrelColour{
+  LightBrown
+  Grey
+  Red
+}
+
+fn squirrel_colour_encoder(variant) {
+  case variant {
+    LightBrown -> "light brown"
+    Grey -> "grey"
+    Red -> "red"
   }
+  |> pgo.text
 }

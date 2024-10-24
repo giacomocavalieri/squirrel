@@ -126,6 +126,17 @@ pub type Error {
     type_: String,
   )
 
+  /// When a query param/return type is an enum that cannot be automatically
+  /// converted into a Gleam type definition.
+  ///
+  QueryHasInvalidEnum(
+    file: String,
+    content: String,
+    starting_line: Int,
+    enum_name: String,
+    reason: EnumError,
+  )
+
   /// If the query contains an error and cannot be parsed by the DBMS.
   ///
   CannotParseQuery(
@@ -141,9 +152,18 @@ pub type Error {
 }
 
 pub type ValueIdentifierError {
-  DoesntStartWithLowercaseLetter
-  ContainsInvalidGrapheme(at: Int, grapheme: String)
-  IsEmpty
+  ValueContainsInvalidGrapheme(at: Int, grapheme: String)
+  ValueIsEmpty
+}
+
+pub type TypeIdentifierError {
+  TypeContainsInvalidGrapheme(at: Int, grapheme: String)
+  TypeIsEmpty
+}
+
+pub type EnumError {
+  InvalidEnumName(name: String)
+  InvalidEnumVariants(fields: List(String))
 }
 
 /// Used to literally point to a particular piece of a string and attach a
@@ -365,7 +385,7 @@ contain lowercase letters, numbers and underscores." <> case suggested_name {
       starting_line:,
     ) ->
       case reason {
-        IsEmpty ->
+        ValueIsEmpty ->
           printable_error("Column with empty name")
           |> add_code_paragraph(file:, content:, point: None, starting_line:)
           |> add_paragraph(
@@ -396,6 +416,40 @@ all columns should have a valid Gleam name as name.",
 contain lowercase letters, numbers and underscores.",
           )
       }
+
+    QueryHasInvalidEnum(file:, content:, starting_line:, enum_name:, reason:) ->
+      printable_error("Query with invalid enum")
+      |> add_code_paragraph(file:, content:, point: None, starting_line:)
+      |> add_paragraph(
+        "One of the values in this query is the "
+        <> style_inline_code(enum_name)
+        <> " enum, but I cannot turn it into a Gleam type definition because "
+        <> case reason {
+          InvalidEnumName(_) ->
+            "its name cannot be turned into a valid type name."
+          InvalidEnumVariants(fields) -> {
+            let pretty_fields =
+              list.map(fields, style_inline_code)
+              |> string.join(with: ", ")
+
+            "some of its possible values ("
+            <> pretty_fields
+            <> ") cannot be turned into valid type variants."
+          }
+        },
+      )
+      |> hint(case reason {
+        InvalidEnumVariants(_) ->
+          "A valid enum variant must start with a letter and can only contain
+letters, underscores and numbers. I will take care of automatically converting
+any snake_case variant to PascalCase so that it can be used as a variant of a
+Gleam type!"
+        InvalidEnumName(_) ->
+          "A valid enum name must start with a letter and can only contain
+letters, underscores and numbers. I will take care automatically of converting
+any snake_case name to PascalCase so that it can be used as the name of a
+Gleam type!"
+      })
 
     QueryHasUnsupportedType(file:, name: _, content:, type_:, starting_line:) ->
       printable_error("Unsupported type")

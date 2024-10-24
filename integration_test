@@ -1,8 +1,14 @@
 #!/bin/bash
 
+# The project integration tests will run `squirrel` like a normal user would so
+# we need to provide the correct `DATABASE_URL` env variable to connect to the
+# test database.
+
 if [[ -z "${GITHUB_ACTIONS}" ]]; then
+    # If we're not running in CI then we connect to a local db.
     DATABASE_URL=postgres://squirrel_test@localhost/squirrel_test gleam test -- integration
 else
-    # The database url is set automatically in CI
+    # If we're running in CI then the `DATABASE_URL` env variable is already set
+    # to the correct url string to connect to the postgres service.
     gleam test -- integration
 fi
