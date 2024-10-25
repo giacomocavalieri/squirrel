@@ -325,7 +325,7 @@ pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
     [
       imports_doc(imports),
       doc.lines(2),
-      doc.join(queries_docs, with: doc.lines(1)),
+      doc.join(queries_docs, with: doc.lines(2)),
     ]
     |> doc.concat
 
@@ -335,14 +335,14 @@ pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
       [
         code,
         doc.lines(2),
-        separator_comment("enums"),
+        separator_comment("Enums"),
         doc.lines(2),
         enums_doc(enums),
       ]
       |> doc.concat
   }
 
-  case utils {
+  let code = case utils {
     [] -> code
     [_, ..] -> {
       [
@@ -351,11 +351,13 @@ pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
         separator_comment("Encoding/decoding utils"),
         doc.lines(2),
         doc.join(utils, with: doc.lines(2)),
-        doc.line,
       ]
       |> doc.concat
     }
   }
+
+  code
+  |> doc.append(doc.line)
   |> doc.to_string(80)
 }
 
@@ -581,7 +583,7 @@ fn enum_type_definition_doc(
     })
 
   [
-    doc.from_string("pub type " <> string_enum_name),
+    doc.from_string("pub type " <> string_enum_name <> " "),
     variants |> list.intersperse(doc.line) |> block,
   ]
   |> doc.concat
@@ -774,7 +776,6 @@ fn fun_doc(name: String, args: List(String), body: List(Document)) -> Document {
     doc.from_string("pub fn " <> name),
     comma_list("(", args, ") "),
     block([body |> doc.join(with: doc.lines(2))]),
-    doc.line,
   ]
   |> doc.concat
   |> doc.group
