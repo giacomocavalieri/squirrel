@@ -533,6 +533,12 @@ pub fn enum_with_invalid_variant_test() {
   |> birdie.snap(title: "enum with invalid variant")
 }
 
+pub fn enum_with_no_variants_is_rejected_test() {
+  "select $1::no_variants as res"
+  |> should_error
+  |> birdie.snap(title: "enum with no variants is rejected")
+}
+
 // --- REGRESSIONS -------------------------------------------------------------
 // Bugs reported from GitHub issues so I make sure those will no longer pop up.
 //

@@ -8,6 +8,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/set.{type Set}
 import gleam/string
+import non_empty_list.{type NonEmptyList}
 import simplifile
 import squirrel/internal/error.{
   type Error, CannotReadFile, QueryFileHasInvalidName,
@@ -138,7 +139,10 @@ type CodeGenState {
     // All the enums used in the module, this maps from name of the enum to a
     // list of its variants and what kind of helpers need to be generated for
     // the enum encoding/decoding.
-    enums: Dict(TypeIdentifier, #(EnumRequiredHelpers, List(EnumVariant))),
+    enums: Dict(
+      TypeIdentifier,
+      #(EnumRequiredHelpers, NonEmptyList(EnumVariant)),
+    ),
   )
 }
 
@@ -538,7 +542,7 @@ fn record_doc(
 /// in the dictionary.
 ///
 fn enums_doc(
-  enums: Dict(TypeIdentifier, #(EnumRequiredHelpers, List(EnumVariant))),
+  enums: Dict(TypeIdentifier, #(EnumRequiredHelpers, NonEmptyList(EnumVariant))),
 ) -> Document {
   use doc, name, #(required_helpers, variants) <- dict.fold(enums, doc.empty)
   doc.append(doc, enum_doc(name, required_helpers, variants))
@@ -550,7 +554,7 @@ fn enums_doc(
 fn enum_doc(
   enum_name: TypeIdentifier,
   required_helpers: EnumRequiredHelpers,
-  variants: List(EnumVariant),
+  variants: NonEmptyList(EnumVariant),
 ) -> Document {
   case required_helpers {
     NeedsDecoder -> [
@@ -573,28 +577,31 @@ fn enum_doc(
 
 fn enum_type_definition_doc(
   enum_name: TypeIdentifier,
-  variants: List(EnumVariant),
+  variants: NonEmptyList(EnumVariant),
 ) -> Document {
   let string_enum_name = gleam.type_identifier_to_string(enum_name)
   let variants =
-    list.map(variants, fn(variant) {
+    non_empty_list.map(variants, fn(variant) {
       gleam.type_identifier_to_string(variant.name)
       |> doc.from_string
     })
 
   [
     doc.from_string("pub type " <> string_enum_name <> " "),
-    variants |> list.intersperse(doc.line) |> block,
+    variants
+      |> non_empty_list.to_list
+      |> list.intersperse(doc.line)
+      |> block,
   ]
   |> doc.concat
 }
 
 fn enum_encoder_doc(
   name: TypeIdentifier,
-  variants: List(EnumVariant),
+  variants: NonEmptyList(EnumVariant),
 ) -> Document {
   let case_lines = {
-    use variant <- list.map(variants)
+    use variant <- non_empty_list.map(variants)
     [
       doc.from_string(gleam.type_identifier_to_string(variant.name)),
       doc.from_string(" -> "),
@@ -605,7 +612,7 @@ fn enum_encoder_doc(
 
   let body = [
     doc.from_string("case variant "),
-    case_lines |> list.intersperse(doc.line) |> block,
+    case_lines |> non_empty_list.to_list |> list.intersperse(doc.line) |> block,
     doc.line,
     doc.from_string("|> pgo.text"),
   ]
@@ -616,10 +623,10 @@ fn enum_encoder_doc(
 
 fn enum_decoder_doc(
   name: TypeIdentifier,
-  variants: List(EnumVariant),
+  variants: NonEmptyList(EnumVariant),
 ) -> Document {
   let success_case_lines = {
-    use variant <- list.map(variants)
+    use variant <- non_empty_list.map(variants)
     doc.concat([
       string_doc(variant.string_representation),
       doc.from_string(" -> "),
@@ -630,18 +637,15 @@ fn enum_decoder_doc(
     ])
   }
 
-  let failure_case_line = case variants {
-    [] -> doc.from_string("_ -> panic as \"enum with no variants!\"")
-    [variant, ..] ->
-      [
-        doc.from_string("_ -> "),
-        call_doc("zero.failure", [
-          doc.from_string(gleam.type_identifier_to_string(variant.name)),
-          string_doc(gleam.type_identifier_to_string(name)),
-        ]),
-      ]
-      |> doc.concat
-  }
+  let failure_case_line =
+    [
+      doc.from_string("_ -> "),
+      call_doc("zero.failure", [
+        doc.from_string(gleam.type_identifier_to_string(variants.first.name)),
+        string_doc(gleam.type_identifier_to_string(name)),
+      ]),
+    ]
+    |> doc.concat
 
   let body =
     [
@@ -649,6 +653,7 @@ fn enum_decoder_doc(
       doc.line,
       doc.from_string("case variant "),
       success_case_lines
+        |> non_empty_list.to_list
         |> list.append([failure_case_line])
         |> list.intersperse(doc.line)
         |> block,
@@ -874,7 +879,7 @@ fn import_qualified(
 fn register_enum_type(
   state: CodeGenState,
   name: TypeIdentifier,
-  variants: List(EnumVariant),
+  variants: NonEmptyList(EnumVariant),
 ) -> CodeGenState {
   let enums = case dict.has_key(state.enums, name) {
     True -> state.enums
@@ -887,7 +892,7 @@ fn register_enum_type(
 fn enum_needs_encoder(
   state: CodeGenState,
   name: TypeIdentifier,
-  variants: List(EnumVariant),
+  variants: NonEmptyList(EnumVariant),
 ) -> CodeGenState {
   let enums =
     dict.upsert(state.enums, name, fn(value) {
@@ -906,7 +911,7 @@ fn enum_needs_encoder(
 fn enum_needs_decoder(
   state: CodeGenState,
   name: TypeIdentifier,
-  variants: List(EnumVariant),
+  variants: NonEmptyList(EnumVariant),
 ) -> CodeGenState {
   let enums =
     dict.upsert(state.enums, name, fn(value) {

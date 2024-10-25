@@ -2,10 +2,12 @@ import gleam/list
 import gleam/result
 import gleam/string
 import justin
+import non_empty_list.{type NonEmptyList}
 import squirrel/internal/error.{
   type EnumError, type TypeIdentifierError, type ValueIdentifierError,
-  InvalidEnumName, InvalidEnumVariants, TypeContainsInvalidGrapheme, TypeIsEmpty,
-  ValueContainsInvalidGrapheme, ValueIsEmpty,
+  EnumWithNoVariants, InvalidEnumName, InvalidEnumVariants,
+  TypeContainsInvalidGrapheme, TypeIsEmpty, ValueContainsInvalidGrapheme,
+  ValueIsEmpty,
 }
 
 /// A Gleam type.
@@ -35,7 +37,7 @@ pub type Type {
   /// }
   /// ```
   ///
-  Enum(name: TypeIdentifier, variants: List(EnumVariant))
+  Enum(name: TypeIdentifier, variants: NonEmptyList(EnumVariant))
 }
 
 pub type EnumVariant {
@@ -386,7 +388,11 @@ pub fn try_make_enum(
   case errors {
     // If any of the variants is invalid we fail reporting the error, otherwise
     // we can finally build the enum!
-    [] -> Ok(Enum(name:, variants:))
+    [] ->
+      case non_empty_list.from_list(variants) {
+        Ok(variants) -> Ok(Enum(name:, variants:))
+        Error(_) -> Error(EnumWithNoVariants)
+      }
     _ -> Error(InvalidEnumVariants(errors))
   }
 }

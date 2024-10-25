@@ -162,6 +162,7 @@ pub type TypeIdentifierError {
 }
 
 pub type EnumError {
+  EnumWithNoVariants
   InvalidEnumName(name: String)
   InvalidEnumVariants(fields: List(String))
 }
@@ -425,6 +426,7 @@ contain lowercase letters, numbers and underscores.",
         <> style_inline_code(enum_name)
         <> " enum, but I cannot turn it into a Gleam type definition because "
         <> case reason {
+          EnumWithNoVariants -> "it has no variants"
           InvalidEnumName(_) ->
             "its name cannot be turned into a valid type name."
           InvalidEnumVariants(fields) -> {
@@ -438,17 +440,22 @@ contain lowercase letters, numbers and underscores.",
           }
         },
       )
-      |> hint(case reason {
+      |> maybe_hint(case reason {
         InvalidEnumVariants(_) ->
-          "A valid enum variant must start with a letter and can only contain
+          Some(
+            "A valid enum variant must start with a letter and can only contain
 letters, underscores and numbers. I will take care of automatically converting
 any snake_case variant to PascalCase so that it can be used as a variant of a
-Gleam type!"
+Gleam type!",
+          )
         InvalidEnumName(_) ->
-          "A valid enum name must start with a letter and can only contain
+          Some(
+            "A valid enum name must start with a letter and can only contain
 letters, underscores and numbers. I will take care automatically of converting
 any snake_case name to PascalCase so that it can be used as the name of a
-Gleam type!"
+Gleam type!",
+          )
+        EnumWithNoVariants -> None
       })
 
     QueryHasUnsupportedType(file:, name: _, content:, type_:, starting_line:) ->
