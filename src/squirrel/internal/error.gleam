@@ -426,7 +426,7 @@ contain lowercase letters, numbers and underscores.",
         <> style_inline_code(enum_name)
         <> " enum, but I cannot turn it into a Gleam type definition because "
         <> case reason {
-          EnumWithNoVariants -> "it has no variants"
+          EnumWithNoVariants -> "it has no variants."
           InvalidEnumName(_) ->
             "its name cannot be turned into a valid type name."
           InvalidEnumVariants(fields) -> {
