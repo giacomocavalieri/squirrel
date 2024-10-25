@@ -35,6 +35,11 @@ pub fn query(db, arg_1) {
 
 // --- Enums -------------------------------------------------------------------
 
+/// Corresponds to the Postgres `squirrel_colour` enum.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
 pub type SquirrelColour {
   LightBrown
   Grey

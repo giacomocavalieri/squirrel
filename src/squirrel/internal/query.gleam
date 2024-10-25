@@ -139,10 +139,24 @@ type CodeGenState {
     // All the enums used in the module, this maps from name of the enum to a
     // list of its variants and what kind of helpers need to be generated for
     // the enum encoding/decoding.
-    enums: Dict(
-      TypeIdentifier,
-      #(EnumRequiredHelpers, NonEmptyList(EnumVariant)),
-    ),
+    enums: Dict(TypeIdentifier, EnumCodeGenData),
+  )
+}
+
+/// Data needed to perform codegen for an enum.
+///
+type EnumCodeGenData {
+  EnumCodeGenData(
+    /// Needed to know what kind of functions to generate for the specific case.
+    ///
+    required_helpers: EnumRequiredHelpers,
+    /// The original name used to define the enum in postgres to generate a
+    /// useful comment.
+    ///
+    original_name: String,
+    /// The variants of the enum.
+    ///
+    variants: NonEmptyList(EnumVariant),
   )
 }
 
@@ -198,8 +212,8 @@ fn gleam_type_to_decoder(
     gleam.String -> #(state, doc.from_string("zero.string"))
     gleam.BitArray -> #(state, doc.from_string("zero.bit_array"))
     gleam.Json -> #(state, doc.from_string("zero.string"))
-    gleam.Enum(name: enum_name, variants:) -> #(
-      state |> enum_needs_decoder(enum_name, variants),
+    gleam.Enum(original_name:, name: enum_name, variants:) -> #(
+      state |> enum_needs_decoder(original_name, enum_name, variants),
       doc.from_string(enum_decoder_name(enum_name) <> "()"),
     )
   }
@@ -248,8 +262,8 @@ fn gleam_type_to_encoder(
     gleam.Bool -> #(state, call_doc("pgo.bool", [name]))
     gleam.String -> #(state, call_doc("pgo.text", [name]))
     gleam.BitArray -> #(state, call_doc("pgo.bytea", [name]))
-    gleam.Enum(name: enum_name, variants:) -> #(
-      state |> enum_needs_encoder(enum_name, variants),
+    gleam.Enum(original_name:, name: enum_name, variants:) -> #(
+      state |> enum_needs_encoder(original_name, enum_name, variants),
       call_doc(enum_encoder_name(enum_name), [name]),
     )
   }
@@ -290,8 +304,8 @@ fn gleam_type_to_field_type(
     gleam.String -> #(state, doc.from_string("String"))
     gleam.Json -> #(state, doc.from_string("String"))
     gleam.BitArray -> #(state, doc.from_string("BitArray"))
-    gleam.Enum(name:, variants:) -> #(
-      state |> register_enum_type(name, variants),
+    gleam.Enum(original_name:, name:, variants:) -> #(
+      state |> register_enum_type(original_name, name, variants),
       gleam.type_identifier_to_string(name) |> doc.from_string,
     )
   }
@@ -341,7 +355,7 @@ pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
         doc.lines(2),
         separator_comment("Enums"),
         doc.lines(2),
-        enums_doc(enums),
+        enums_doc(version, enums),
       ]
       |> doc.concat
   }
@@ -542,41 +556,48 @@ fn record_doc(
 /// in the dictionary.
 ///
 fn enums_doc(
-  enums: Dict(TypeIdentifier, #(EnumRequiredHelpers, NonEmptyList(EnumVariant))),
+  version: String,
+  enums: Dict(TypeIdentifier, EnumCodeGenData),
 ) -> Document {
-  use doc, name, #(required_helpers, variants) <- dict.fold(enums, doc.empty)
-  doc.append(doc, enum_doc(name, required_helpers, variants))
+  use doc, name, enum_data <- dict.fold(enums, doc.empty)
+  doc.append(doc, enum_doc(version, name, enum_data))
 }
 
 /// Returns the document with the enum definition and any additional helper that
 /// might be needed to encode and decode it.
 ///
 fn enum_doc(
+  version: String,
   enum_name: TypeIdentifier,
-  required_helpers: EnumRequiredHelpers,
-  variants: NonEmptyList(EnumVariant),
+  enum_data: EnumCodeGenData,
 ) -> Document {
+  let EnumCodeGenData(original_name:, required_helpers:, variants:) = enum_data
+
   case required_helpers {
     NeedsDecoder -> [
-      enum_type_definition_doc(enum_name, variants),
+      enum_type_definition_doc(version, enum_name, original_name, variants),
       enum_decoder_doc(enum_name, variants),
     ]
     NeedsEncoder -> [
-      enum_type_definition_doc(enum_name, variants),
+      enum_type_definition_doc(version, enum_name, original_name, variants),
       enum_encoder_doc(enum_name, variants),
     ]
     NeedsEncoderAndDecoder -> [
-      enum_type_definition_doc(enum_name, variants),
+      enum_type_definition_doc(version, enum_name, original_name, variants),
       enum_decoder_doc(enum_name, variants),
       enum_encoder_doc(enum_name, variants),
     ]
-    NoHelpers -> [enum_type_definition_doc(enum_name, variants)]
+    NoHelpers -> [
+      enum_type_definition_doc(version, enum_name, original_name, variants),
+    ]
   }
   |> doc.join(with: doc.lines(2))
 }
 
 fn enum_type_definition_doc(
+  version: String,
   enum_name: TypeIdentifier,
+  original_name: String,
   variants: NonEmptyList(EnumVariant),
 ) -> Document {
   let string_enum_name = gleam.type_identifier_to_string(enum_name)
@@ -586,7 +607,16 @@ fn enum_type_definition_doc(
       |> doc.from_string
     })
 
+  let enum_doc =
+    "/// Corresponds to the Postgres `" <> original_name <> "` enum.
+///
+/// > 🐿️ This type definition was generated automatically using " <> version <> " of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///"
+
   [
+    doc.from_string(enum_doc),
+    doc.line,
     doc.from_string("pub type " <> string_enum_name <> " "),
     variants
       |> non_empty_list.to_list
@@ -878,12 +908,18 @@ fn import_qualified(
 
 fn register_enum_type(
   state: CodeGenState,
+  original_name: String,
   name: TypeIdentifier,
   variants: NonEmptyList(EnumVariant),
 ) -> CodeGenState {
   let enums = case dict.has_key(state.enums, name) {
     True -> state.enums
-    False -> dict.insert(state.enums, name, #(NoHelpers, variants))
+    False ->
+      dict.insert(
+        state.enums,
+        name,
+        EnumCodeGenData(NoHelpers, variants:, original_name:),
+      )
   }
 
   CodeGenState(..state, enums:)
@@ -891,17 +927,28 @@ fn register_enum_type(
 
 fn enum_needs_encoder(
   state: CodeGenState,
+  original_name: String,
   name: TypeIdentifier,
   variants: NonEmptyList(EnumVariant),
 ) -> CodeGenState {
   let enums =
     dict.upsert(state.enums, name, fn(value) {
       case value {
-        Some(#(NoHelpers, variants)) -> #(NeedsEncoder, variants)
-        Some(#(NeedsDecoder, variants)) -> #(NeedsEncoderAndDecoder, variants)
-        Some(#(NeedsEncoder, _) as value)
-        | Some(#(NeedsEncoderAndDecoder, _) as value) -> value
-        None -> #(NeedsEncoder, variants)
+        Some(EnumCodeGenData(NoHelpers, ..) as data) ->
+          EnumCodeGenData(..data, required_helpers: NeedsEncoder)
+
+        Some(EnumCodeGenData(NeedsDecoder, ..) as data) ->
+          EnumCodeGenData(..data, required_helpers: NeedsEncoderAndDecoder)
+
+        Some(EnumCodeGenData(NeedsEncoder, _, _) as data)
+        | Some(EnumCodeGenData(NeedsEncoderAndDecoder, _, _) as data) -> data
+
+        None ->
+          EnumCodeGenData(
+            required_helpers: NeedsEncoder,
+            variants:,
+            original_name:,
+          )
       }
     })
 
@@ -910,17 +957,28 @@ fn enum_needs_encoder(
 
 fn enum_needs_decoder(
   state: CodeGenState,
+  original_name: String,
   name: TypeIdentifier,
   variants: NonEmptyList(EnumVariant),
 ) -> CodeGenState {
   let enums =
     dict.upsert(state.enums, name, fn(value) {
       case value {
-        Some(#(NoHelpers, variants)) -> #(NeedsDecoder, variants)
-        Some(#(NeedsEncoder, variants)) -> #(NeedsEncoderAndDecoder, variants)
-        Some(#(NeedsDecoder, _) as value)
-        | Some(#(NeedsEncoderAndDecoder, _) as value) -> value
-        None -> #(NeedsDecoder, variants)
+        Some(EnumCodeGenData(NoHelpers, ..) as data) ->
+          EnumCodeGenData(..data, required_helpers: NeedsDecoder)
+
+        Some(EnumCodeGenData(NeedsEncoder, _, _) as data) ->
+          EnumCodeGenData(..data, required_helpers: NeedsEncoderAndDecoder)
+
+        Some(EnumCodeGenData(NeedsDecoder, ..) as data)
+        | Some(EnumCodeGenData(NeedsEncoderAndDecoder, _, _) as data) -> data
+
+        None ->
+          EnumCodeGenData(
+            required_helpers: NeedsDecoder,
+            variants:,
+            original_name:,
+          )
       }
     })
 

@@ -37,7 +37,11 @@ pub type Type {
   /// }
   /// ```
   ///
-  Enum(name: TypeIdentifier, variants: NonEmptyList(EnumVariant))
+  Enum(
+    original_name: String,
+    name: TypeIdentifier,
+    variants: NonEmptyList(EnumVariant),
+  )
 }
 
 pub type EnumVariant {
@@ -363,15 +367,15 @@ pub fn similar_value_identifier_string(string: String) -> Result(String, Nil) {
 /// before failing!
 ///
 pub fn try_make_enum(
-  name: String,
+  raw_name: String,
   variants: List(String),
 ) -> Result(Type, EnumError) {
   use name <- result.try(
     // We first try converting the name to pascal case since SQL's standard is
     // to use snake_case for types and we don't want to fail for that.
-    justin.pascal_case(name)
+    justin.pascal_case(raw_name)
     |> type_identifier
-    |> result.replace_error(InvalidEnumName(name)),
+    |> result.replace_error(InvalidEnumName(raw_name)),
   )
 
   let #(variants, errors) =
@@ -390,7 +394,7 @@ pub fn try_make_enum(
     // we can finally build the enum!
     [] ->
       case non_empty_list.from_list(variants) {
-        Ok(variants) -> Ok(Enum(name:, variants:))
+        Ok(variants) -> Ok(Enum(original_name: raw_name, name:, variants:))
         Error(_) -> Error(EnumWithNoVariants)
       }
     _ -> Error(InvalidEnumVariants(errors))
