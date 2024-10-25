@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v1.8.0 - 2024-10-25
 
 - Added support for `postgresql` URL scheme.
   ([Valentin Iancu](https://github.com/valentindiancu))
