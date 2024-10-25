@@ -194,6 +194,43 @@ The types that are currently supported are:
 | `date`                                            | `#(Int, Int, Int)` with `#(year, month, day)`                                                   | `#(Int, Int, Int)` with `#(year, month, day)`                                                   |
 | `timestamp`                                       | `#(#(Int, Int, Int), (#(Int, Int, Int))` with `#(#(year, month, day), #(hour, minute, second))` | `#(#(Int, Int, Int), (#(Int, Int, Int))` with `#(#(year, month, day), #(hour, minute, second))` |
 | `<type>[]` (where `<type>` is any supported type) | `List(<type>)`                                                                                  | `List(<type>)`                                                                                  |
+| user-defined enum                                 | [Gleam custom type](https://tour.gleam.run/data-types/custom-types/)                            | [Gleam custom type](https://tour.gleam.run/data-types/custom-types/)                            |
+
+### Enums
+
+If your queries deal with user-defined enums Squirrel will automatically turn
+each one of those into a corresponding Gleam type to make sure your code is type
+safe.
+
+For example, consider the following enum:
+
+```sql
+create type squirrel_colour as enum (
+  'light_brown',
+  'grey',
+  'red'
+);
+```
+
+Squirrel turns that into a Gleam type that looks like this:
+
+```gleam
+pub type SquirrelColour {
+  LightBrown
+  Grey
+  Red
+}
+```
+
+> Squirrel will convert all the enum name and enum variants into PascalCase to
+> make sure the generated Gleam code is valid.
+> Notice how this transformation might result in having a name that is still not
+> valid Gleam code; for example if you had an enum variant `'1_first'` that
+> would become `1First` which is not valid Gleam!
+>
+> Squirrel won't try and trim invalid characters from the names and instead will
+> fail letting you know you should change those names into something that can be
+> turned into valid Gleam code.
 
 ## FAQ
 
