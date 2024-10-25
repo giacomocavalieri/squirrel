@@ -140,7 +140,6 @@ fn run_integration_tests(
   )
 
   scaffold_gleam_project(dir)
-  setup_database()
   let code = {
     use code, TestType(postgres_type, values) <- list.fold(values, "")
     let table_name = safe_name(postgres_type) <> "_table"
@@ -153,29 +152,6 @@ fn run_integration_tests(
 
   let _ = erlang.get_line(">")
   test_project(dir)
-}
-
-/// For the integration tests to work we need to make sure an enum is there.
-/// So if it is missing we create it before running the tests.
-///
-fn setup_database() {
-  let enum_creation_query =
-    "do $$ begin
-       if not exists (select * from pg_type where typname = 'no_variants') then
-         create type no_variants as enum ();
-       end if;
-     end $$;"
-
-  let assert Ok(database_url) = envoy.get("DATABASE_URL")
-  let assert Ok(_) =
-    shellout.command(
-      run: "psql",
-      with: [database_url, "-c", enum_creation_query],
-      in: ".",
-      opt: [],
-    )
-
-  Nil
 }
 
 fn create_database_table(table_name: String, postgres_type: String) -> Nil {
