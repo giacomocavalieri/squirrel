@@ -4,7 +4,30 @@
 
 - Added support for `postgresql` URL scheme.
   ([Valentin Iancu](https://github.com/valentindiancu))
+
 - Switched to `decode`'s new `zero` API for generated decoders.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
+- Added support for user-defined enums. An enum like this one:
+
+  ```sql
+  create type squirrel_colour as enum (
+    'light_brown',
+    'grey',
+    'red'
+  )
+  ```
+
+  Is automatically turned into the equivalent Gleam type:
+
+  ```gleam
+  pub type SquirrelColour {
+    LightBrown
+    Grey
+    Red
+  }
+  ```
+
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
 ## v1.7.1 - 2024-09-22
