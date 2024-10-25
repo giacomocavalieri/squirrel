@@ -60,7 +60,6 @@ pub fn other(db) {
   |> pgo.execute(db, [], zero.run(_, decoder))
 }
 
-
 // --- Encoding/decoding utils -------------------------------------------------
 
 /// A decoder to decode `Uuid`s coming from a Postgres query.

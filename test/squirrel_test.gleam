@@ -462,6 +462,12 @@ pub fn query_that_needs_more_than_a_single_helper_function_test() {
   |> birdie.snap(title: "query that needs more than a single helper function")
 }
 
+pub fn query_that_needs_utils_and_enums_has_two_sections_test() {
+  "select 'red'::squirrel_colour, 'Jan-2-1970'::date"
+  |> should_codegen
+  |> birdie.snap(title: "query that needs utils and enums has two sections")
+}
+
 // --- ERRROR TESTS ------------------------------------------------------------
 // This is a group of tests to ensure that the errors look good when something
 // goes wrong.

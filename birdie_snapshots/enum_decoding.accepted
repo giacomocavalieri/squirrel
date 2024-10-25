@@ -33,10 +33,9 @@ pub fn query(db) {
   |> pgo.execute(db, [], zero.run(_, decoder))
 }
 
+// --- Enums -------------------------------------------------------------------
 
-// --- enums -------------------------------------------------------------------
-
-pub type SquirrelColour{
+pub type SquirrelColour {
   LightBrown
   Grey
   Red
