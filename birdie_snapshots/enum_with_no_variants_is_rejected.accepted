@@ -12,4 +12,4 @@ test_name: enum_with_no_variants_is_rejected_test
     [2m┆[22m
 
 One of the values in this query is the `no_variants` enum, but I cannot turn it
-into a Gleam type definition because it has no variants
+into a Gleam type definition because it has no variants.
