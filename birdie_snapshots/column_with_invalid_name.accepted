@@ -1,5 +1,5 @@
 ---
-version: 1.2.1
+version: 1.2.3
 title: column with invalid name
 file: ./test/squirrel_test.gleam
 test_name: column_with_invalid_name_test

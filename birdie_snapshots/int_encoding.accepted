@@ -1,5 +1,5 @@
 ---
-version: 1.2.1
+version: 1.2.3
 title: int encoding
 file: ./test/squirrel_test.gleam
 test_name: int_encoding_test

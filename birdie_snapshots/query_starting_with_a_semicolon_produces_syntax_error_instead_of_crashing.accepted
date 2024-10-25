@@ -1,5 +1,5 @@
 ---
-version: 1.2.1
+version: 1.2.3
 title: query starting with a semicolon produces syntax error instead of crashing
 file: ./test/squirrel_test.gleam
 test_name: query_starting_with_a_semicolon_produces_syntax_error_instead_of_crashing_test

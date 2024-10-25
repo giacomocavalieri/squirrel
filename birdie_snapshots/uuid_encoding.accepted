@@ -1,5 +1,5 @@
 ---
-version: 1.2.1
+version: 1.2.3
 title: uuid encoding
 file: ./test/squirrel_test.gleam
 test_name: uuid_encoding_test
