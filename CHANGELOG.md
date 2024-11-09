@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v1.8.1 - 2024-11-08
 
 - Squirrel now errors if a query returns multiple columns with the same name
   instead of generating invalid Gleam code. For example:
