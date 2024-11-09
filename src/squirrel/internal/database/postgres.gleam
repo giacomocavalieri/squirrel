@@ -533,7 +533,7 @@ fn infer_types(query: UntypedQuery) -> Db(TypedQuery) {
 
   query
   |> query.add_types(parameters, returns)
-  |> eval.return
+  |> eval.from_result
 }
 
 fn parameters_and_returns(query: UntypedQuery) -> Db(_) {

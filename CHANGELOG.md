@@ -1,5 +1,35 @@
 # CHANGELOG
 
+## Unreleased
+
+- Squirrel now errors if a query returns multiple columns with the same name
+  instead of generating invalid Gleam code. For example:
+
+  ```sql
+  select
+    1 as duplicate,
+    2 as duplicate,
+    3 as not_duplicate
+  ```
+
+  Results in the following error:
+
+  ```txt
+  Error: Duplicate names
+
+      ╭─ query.sql
+      │
+    1 │ select
+    2 │   1 as duplicate,
+    3 │   2 as duplicate,
+    4 │   3 as not_duplicate
+      ┆
+
+  This query returns multiple values sharing the same name: `duplicate`.
+  ```
+
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v1.8.0 - 2024-10-25
 
 - Added support for `postgresql` URL scheme.

@@ -12,10 +12,12 @@ import non_empty_list.{type NonEmptyList}
 import simplifile
 import squirrel/internal/error.{
   type Error, CannotReadFile, QueryFileHasInvalidName,
+  QueryReturnsMultipleValuesWithTheSameName,
 }
 import squirrel/internal/gleam.{
   type EnumVariant, type TypeIdentifier, EnumVariant,
 }
+import tote/bag
 
 /// A query that still needs to go through the type checking process.
 ///
@@ -60,17 +62,42 @@ pub fn add_types(
   to query: UntypedQuery,
   params params: List(gleam.Type),
   returns returns: List(gleam.Field),
-) -> TypedQuery {
+) -> Result(TypedQuery, Error) {
   let UntypedQuery(file:, name:, comment:, content:, starting_line:) = query
-  TypedQuery(
-    file:,
-    name:,
-    comment:,
-    content:,
-    starting_line:,
-    params:,
-    returns:,
-  )
+
+  case duplicate_names(returns) {
+    [] ->
+      Ok(TypedQuery(
+        file:,
+        name:,
+        comment:,
+        content:,
+        starting_line:,
+        params:,
+        returns:,
+      ))
+
+    names ->
+      Error(QueryReturnsMultipleValuesWithTheSameName(
+        file:,
+        content:,
+        starting_line:,
+        names:,
+      ))
+  }
+}
+
+fn duplicate_names(fields: List(gleam.Field)) -> List(String) {
+  let names = {
+    use bag, gleam.Field(label:, ..) <- list.fold(fields, from: bag.new())
+    bag.insert(bag, 1, of: gleam.value_identifier_to_string(label))
+  }
+
+  use duplicate_names, field, copies <- bag.fold(names, from: [])
+  case copies {
+    1 -> duplicate_names
+    _ -> [field, ..duplicate_names]
+  }
 }
 
 // --- PARSING -----------------------------------------------------------------

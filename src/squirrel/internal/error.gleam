@@ -149,6 +149,23 @@ pub type Error {
     additional_error_message: Option(String),
     hint: Option(String),
   )
+
+  /// If the query returns multiple values with the same name. This is an error
+  /// as the generated Gleam type would have duplicate fields. For example:
+  ///
+  /// ```sql
+  /// select
+  ///   1 as wibble,
+  ///   2 as wibble
+  /// --     ^^^^^^ they have the same name!
+  /// ```
+  ///
+  QueryReturnsMultipleValuesWithTheSameName(
+    file: String,
+    content: String,
+    starting_line: Int,
+    names: List(String),
+  )
 }
 
 pub type ValueIdentifierError {
@@ -470,7 +487,7 @@ Gleam type!",
 
     CannotParseQuery(
       file:,
-      name: _name,
+      name: _,
       content:,
       starting_line:,
       error_code:,
@@ -490,6 +507,31 @@ Gleam type!",
         Some(message) -> add_paragraph(error, message)
         None -> error
       }
+    }
+
+    QueryReturnsMultipleValuesWithTheSameName(
+      file:,
+      content:,
+      starting_line:,
+      names:,
+    ) -> {
+      let pretty_names =
+        list.map(names, style_inline_code) |> string.join(with: ", ")
+
+      let name = case names {
+        [] | [_, _, ..] -> "names"
+        [_] -> "name"
+      }
+
+      printable_error("Duplicate names")
+      |> add_code_paragraph(file:, content:, point: None, starting_line:)
+      |> add_paragraph(
+        "This query returns multiple values sharing the same "
+        <> name
+        <> ": "
+        <> pretty_names
+        <> ".",
+      )
     }
   }
 

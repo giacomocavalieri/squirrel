@@ -539,6 +539,26 @@ pub fn enum_with_no_variants_is_rejected_test() {
   |> birdie.snap(title: "enum with no variants is rejected")
 }
 
+pub fn query_returning_columns_with_same_name_test() {
+  "select
+    1 as duplicate,
+    2 as duplicate,
+    3 as not_duplicate"
+  |> should_error
+  |> birdie.snap(title: "query returning columns with same name")
+}
+
+pub fn query_returning_columns_with_same_names_test() {
+  "select
+    1 as duplicate_1,
+    2 as duplicate_2,
+    3 as not_duplicate,
+    4 as duplicate_1,
+    5 as duplicate_2"
+  |> should_error
+  |> birdie.snap(title: "query returning columns with same names")
+}
+
 // --- REGRESSIONS -------------------------------------------------------------
 // Bugs reported from GitHub issues so I make sure those will no longer pop up.
 //
