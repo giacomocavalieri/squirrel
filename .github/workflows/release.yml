@@ -47,7 +47,7 @@ jobs:
       - uses: TanklesXL/gleam_actions/.github/actions/install_gleam@main
         with:
           erlang_version: 27
-          gleam_version: 1.4.1
+          gleam_version: 1.5.1
       - uses: TanklesXL/gleam_actions/.github/actions/hex_publish@main
         with:
           hex_user: ${{ secrets.HEXPM_USER }}
