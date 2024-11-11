@@ -11,7 +11,7 @@ If you need to talk with a database in Gleam you'll have to write something like
 this:
 
 ```gleam
-import gleam/pgo
+import pog
 import decode/zero
 
 pub type FindSquirrelRow {
@@ -20,7 +20,7 @@ pub type FindSquirrelRow {
 
 /// Find a squirrel and its owned acorns given its name.
 ///
-pub fn find_squirrel(db: pgo.Connection, name: String) {
+pub fn find_squirrel(db: pog.Connection, name: String) {
   let squirrel_row_decoder = {
     use name <- zero.field(0, zero.string)
     use owned_acorns <- zero.field(1, zero.int)
@@ -36,7 +36,10 @@ pub fn find_squirrel(db: pgo.Connection, name: String) {
    where
      name = $1
   "
-  |> pgo.execute(db, [pgo.text(name)], zero.run(_, squirrel_row_decoder))
+  |> pog.query
+  |> pog.parameter(pog.text(name))
+  |> pog.returning(zero.run(_, squirrel_row_decoder))
+  |> pog.execute(db)
 }
 ```
 
@@ -76,13 +79,13 @@ And run `gleam run -m squirrel`. Just like magic you'll now have a type-safe
 function `find_squirrel` you can use just as you'd expect:
 
 ```gleam
-import gleam/pgo
+import pog
 import squirrels/sql
 
 pub fn main() {
-  let db = todo as "the pgo connection"
+  let db = todo as "the pog connection"
   // And it just works as you'd expect:
-  let assert Ok(pgo.Returned(_rows_count, rows)) = sql.find_squirrel("sandy")
+  let assert Ok(pog.Returned(_rows_count, rows)) = sql.find_squirrel("sandy")
   let assert [FindSquirrelRow(name: "sandy", owned_acorns: 11_111)] = rows
 }
 ```
@@ -107,11 +110,6 @@ First you'll need to add Squirrel to your project as a dev dependency:
 
 ```sh
 gleam add squirrel --dev
-
-# Remember to add these packages if you haven't yet, they are needed by the
-# generated code to run and decode the read rows!
-gleam add gleam_pgo
-gleam add decode
 ```
 
 Then you can ask it to generate code running the `squirrel` module:
@@ -136,11 +134,11 @@ work:
 >
 > ```txt
 > ├── src
-> │   ├── squirrels
+> │   ├── squirrels
 > │   │   └── sql
 > │   │       ├── find_squirrel.sql
 > │   │       └── list_squirrels.sql
-> │   └── squirrels.gleam
+> │   └── squirrels.gleam
 > └── test
 >     └── squirrels_test.gleam
 > ```
