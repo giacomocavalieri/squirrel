@@ -5,7 +5,7 @@ file: ./test/squirrel_test.gleam
 test_name: query_that_needs_more_than_a_single_helper_function_test
 ---
 import decode/zero
-import gleam/pgo
+import pog
 import youid/uuid.{type Uuid}
 
 /// A row you get from running the `query` query
@@ -15,7 +15,7 @@ import youid/uuid.{type Uuid}
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub type QueryRow {
-  QueryRow(gen_random_uuid: Uuid, date: #(Int, Int, Int))
+  QueryRow(gen_random_uuid: Uuid, date: pog.Date)
 }
 
 /// Runs the `query` query
@@ -31,8 +31,11 @@ pub fn query(db) {
     zero.success(QueryRow(gen_random_uuid:, date:))
   }
 
-  "select gen_random_uuid(), 'Jan-2-1970'::date"
-  |> pgo.execute(db, [], zero.run(_, decoder))
+  let query = "select gen_random_uuid(), 'Jan-2-1970'::date"
+
+  pog.query(query)
+  |> pog.returning(zero.run(_, decoder))
+  |> pog.execute(db)
 }
 
 // --- Encoding/decoding utils -------------------------------------------------
@@ -41,9 +44,9 @@ pub fn query(db) {
 ///
 fn date_decoder() {
   use dynamic <- zero.then(zero.dynamic)
-  case pgo.decode_date(dynamic) {
+  case pog.decode_date(dynamic) {
     Ok(date) -> zero.success(date)
-    Error(_) -> zero.failure(#(0, 0, 0), "date")
+    Error(_) -> zero.failure(pog.Date(0, 0, 0), "date")
   }
 }
 

@@ -5,7 +5,7 @@ file: ./test/squirrel_test.gleam
 test_name: int_decoding_test
 ---
 import decode/zero
-import gleam/pgo
+import pog
 
 /// A row you get from running the `query` query
 /// defined in `query.sql`.
@@ -29,6 +29,9 @@ pub fn query(db) {
     zero.success(QueryRow(res:))
   }
 
-  "select 11 as res"
-  |> pgo.execute(db, [], zero.run(_, decoder))
+  let query = "select 11 as res"
+
+  pog.query(query)
+  |> pog.returning(zero.run(_, decoder))
+  |> pog.execute(db)
 }

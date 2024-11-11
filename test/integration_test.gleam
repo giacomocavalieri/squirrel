@@ -36,7 +36,7 @@ type TestValue {
     /// from a squirrel generated query:
     ///
     /// ```gleam
-    /// let assert Ok(pgo.Returned(_, [result])) sql.select_one(db)
+    /// let assert Ok(pog.Returned(_, [result])) sql.select_one(db)
     /// let assert <output> = result.col
     /// //         ^^^^^^^^ This will be replaced with the output string
     /// ```
@@ -55,19 +55,24 @@ const integration_tests = [
   TestType("bpchar", [TestValue("\"j\"")]),
   TestType("varchar(3)", [TestValue("\"jak\"")]),
   // Integers
-  TestType("int2", [TestValue("1")]), TestType("int4", [TestValue("1")]),
+  TestType("int2", [TestValue("1")]),
+  TestType("int4", [TestValue("1")]),
   TestType("int8", [TestValue("1")]),
   // Floats
-  TestType("float4", [TestValue("1.0")]), TestType("float8", [TestValue("1.0")]),
+  TestType("float4", [TestValue("1.0")]),
+  TestType("float8", [TestValue("1.0")]),
   TestType("numeric", [TestValue("1.0")]),
   // Uuid
   TestType("uuid", [TestValue("uuid.v7()")]),
   // Bytea
   TestType("bytea", [TestValue("<<1, 2, 3>>")]),
   // Date
-  TestType("date", [TestValue("#(1998, 10, 11)")]),
+  TestType("date", [TestValue("pog.Date(1998, 10, 11)")]),
   // Timestamp
-  TestType("timestamp", [TestValue("#(#(1998, 10, 11), #(22, 10, 00))")]),
+  TestType(
+    "timestamp",
+    [TestValue("pog.Timestamp(pog.Date(1998, 10, 11), pog.Time(22, 10, 0, 0))")],
+  ),
   // Array
   TestType("int[]", [TestValue("[1, 2, 3]")]),
   // Custom enums
@@ -244,8 +249,8 @@ fn create_query_files_and_assertions(
 
     "
 <heading>
-let assert Ok(pgo.Returned(1, [])) = sql.<insert>(db, input)
-let assert Ok(pgo.Returned(1, [res])) = sql.<select_all>(db)
+let assert Ok(pog.Returned(1, [])) = sql.<insert>(db, input)
+let assert Ok(pog.Returned(1, [res])) = sql.<select_all>(db)
 case expected_output == res.col {
   True -> Nil
   False -> {
@@ -253,7 +258,7 @@ case expected_output == res.col {
     panic as \" test for <postgres_type> type failed\"
   }
 }
-let assert Ok(pgo.Returned(1, [])) = sql.<delete>(db)
+let assert Ok(pog.Returned(1, [])) = sql.<delete>(db)
 "
     |> string.replace(each: "<postgres_type>", with: postgres_type)
     |> string.replace(each: "<heading>", with: heading)
@@ -272,21 +277,21 @@ fn write_main(assertions: String, to dir: String) -> Nil {
   let main = "
 import gleam/io
 import gleam/string
-import gleam/pgo
+import pog
 import gleam/json
 import youid/uuid
 import sql
 
 pub fn main() {
 let config =
-  pgo.Config(
-    ..pgo.default_config(),
+  pog.Config(
+    ..pog.default_config(),
     port: 5432,
     user: \"squirrel_test\",
     host: \"localhost\",
     database: \"squirrel_test\",
   )
-let db = pgo.connect(config)
+let db = pog.connect(config)
 
 " <> assertions <> "
 }"

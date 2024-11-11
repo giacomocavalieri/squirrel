@@ -203,7 +203,7 @@ fn default_codegen_state() {
     enums: dict.new(),
   )
   |> import_module("decode/zero")
-  |> import_module("gleam/pgo")
+  |> import_module("pog")
 }
 
 fn gleam_type_to_decoder(
@@ -263,32 +263,32 @@ fn gleam_type_to_encoder(
       let state = state |> import_module("gleam/list")
       let #(state, inner_encoder) = gleam_type_to_encoder(state, type_, "value")
       let map_fn = fn_doc(["value"], inner_encoder)
-      let doc = call_doc("pgo.array", [call_doc("list.map", [name, map_fn])])
+      let doc = call_doc("pog.array", [call_doc("list.map", [name, map_fn])])
       #(state, doc)
     }
     gleam.Option(type_) -> {
       let #(state, inner_encoder) = gleam_type_to_encoder(state, type_, "value")
       let doc =
-        call_doc("pgo.nullable", [fn_doc(["value"], inner_encoder), name])
+        call_doc("pog.nullable", [fn_doc(["value"], inner_encoder), name])
       #(state, doc)
     }
     gleam.Uuid -> {
       let state = state |> import_module("youid/uuid")
-      let doc = call_doc("pgo.text", [call_doc("uuid.to_string", [name])])
+      let doc = call_doc("pog.text", [call_doc("uuid.to_string", [name])])
       #(state, doc)
     }
     gleam.Json -> {
       let state = state |> import_module("gleam/json")
-      let doc = call_doc("pgo.text", [call_doc("json.to_string", [name])])
+      let doc = call_doc("pog.text", [call_doc("json.to_string", [name])])
       #(state, doc)
     }
-    gleam.Date -> #(state, call_doc("pgo.date", [name]))
-    gleam.Timestamp -> #(state, call_doc("pgo.timestamp", [name]))
-    gleam.Int -> #(state, call_doc("pgo.int", [name]))
-    gleam.Float -> #(state, call_doc("pgo.float", [name]))
-    gleam.Bool -> #(state, call_doc("pgo.bool", [name]))
-    gleam.String -> #(state, call_doc("pgo.text", [name]))
-    gleam.BitArray -> #(state, call_doc("pgo.bytea", [name]))
+    gleam.Date -> #(state, call_doc("pog.date", [name]))
+    gleam.Timestamp -> #(state, call_doc("pog.timestamp", [name]))
+    gleam.Int -> #(state, call_doc("pog.int", [name]))
+    gleam.Float -> #(state, call_doc("pog.float", [name]))
+    gleam.Bool -> #(state, call_doc("pog.bool", [name]))
+    gleam.String -> #(state, call_doc("pog.text", [name]))
+    gleam.BitArray -> #(state, call_doc("pog.bytea", [name]))
     gleam.Enum(original_name:, name: enum_name, variants:) -> #(
       state |> enum_needs_encoder(original_name, enum_name, variants),
       call_doc(enum_encoder_name(enum_name), [name]),
@@ -320,11 +320,8 @@ fn gleam_type_to_field_type(
       state |> import_qualified("youid/uuid", "type Uuid"),
       doc.from_string("Uuid"),
     )
-    gleam.Date -> #(state, doc.from_string("#(Int, Int, Int)"))
-    gleam.Timestamp -> #(
-      state,
-      doc.from_string("#(#(Int, Int, Int), #(Int, Int, Int))"),
-    )
+    gleam.Date -> #(state, doc.from_string("pog.Date"))
+    gleam.Timestamp -> #(state, doc.from_string("pog.Timestamp"))
     gleam.Int -> #(state, doc.from_string("Int"))
     gleam.Float -> #(state, doc.from_string("Float"))
     gleam.Bool -> #(state, doc.from_string("Bool"))
@@ -485,6 +482,9 @@ fn query_doc(
   let encoders = list.reverse(encoders)
 
   let #(state, decoder) = decoder_doc(state, constructor_name, returns)
+  let zero_decoder =
+    call_doc("zero.run", [doc.from_string("_"), doc.from_string("decoder")])
+
   let code =
     [
       record,
@@ -492,16 +492,21 @@ fn query_doc(
       doc.line,
       fun_doc(gleam.value_identifier_to_string(name), ["db", ..inputs], [
         let_var("decoder", decoder),
-        pipe_call_doc("pgo.execute", string_doc(content), [
-          doc.from_string("db"),
-          list_doc(encoders),
-          doc.from_string("zero.run(_, decoder)"),
-        ]),
+        let_var("query", string_doc(content)),
+        call_doc("pog.query", [doc.from_string("query")])
+          |> pipe_all_encoders(encoders)
+          |> pipe_call_doc("pog.returning", _, [zero_decoder])
+          |> pipe_call_doc("pog.execute", _, [doc.from_string("db")]),
       ]),
     ]
     |> doc.concat
 
   #(state, code)
+}
+
+fn pipe_all_encoders(doc: Document, decoders: List(Document)) -> Document {
+  use doc, decoder <- list.fold(over: decoders, from: doc)
+  doc |> pipe_call_doc("pog.parameter", _, [decoder])
 }
 
 fn function_doc(version: String, query: TypedQuery) -> String {
@@ -671,7 +676,7 @@ fn enum_encoder_doc(
     doc.from_string("case variant "),
     case_lines |> non_empty_list.to_list |> list.intersperse(doc.line) |> block,
     doc.line,
-    doc.from_string("|> pgo.text"),
+    doc.from_string("|> pog.text"),
   ]
 
   doc.from_string("fn " <> enum_encoder_name(name) <> "(variant) ")
@@ -735,9 +740,9 @@ const date_decoder = "/// A decoder to decode `date`s coming from a Postgres que
 ///
 fn date_decoder() {
   use dynamic <- zero.then(zero.dynamic)
-  case pgo.decode_date(dynamic) {
+  case pog.decode_date(dynamic) {
     Ok(date) -> zero.success(date)
-    Error(_) -> zero.failure(#(0, 0, 0), \"date\")
+    Error(_) -> zero.failure(pog.Date(0, 0, 0), \"date\")
   }
 }"
 
@@ -745,9 +750,13 @@ const timestamp_decoder = "/// A decoder to decode `timestamp`s coming from a Po
 ///
 fn timestamp_decoder() {
   use dynamic <- zero.then(zero.dynamic)
-  case pgo.decode_timestamp(dynamic) {
+  case pog.decode_timestamp(dynamic) {
     Ok(timestamp) -> zero.success(timestamp)
-    Error(_) -> zero.failure(#(#(0, 0, 0), #(0, 0, 0)), \"timestamp\")
+    Error(_) -> {
+      let date = pog.Date(0, 0, 0)
+      let time = pog.Time(0, 0, 0, 0)
+      zero.failure(pog.Timestamp(date:, time:), \"timestamp\")
+    }
   }
 }"
 
@@ -878,12 +887,6 @@ fn string_doc(content: String) -> Document {
 
   [doc.from_string("\""), escaped_string, doc.from_string("\"")]
   |> doc.concat
-}
-
-/// A pretty printed Gleam list.
-///
-fn list_doc(elems: List(Document)) -> Document {
-  comma_list("[", elems, "]")
 }
 
 /// A comma separated list of items with some given open and closed delimiters.

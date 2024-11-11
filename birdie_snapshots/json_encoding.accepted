@@ -6,7 +6,7 @@ test_name: json_encoding_test
 ---
 import decode/zero
 import gleam/json
-import gleam/pgo
+import pog
 
 /// Runs the `query` query
 /// defined in `query.sql`.
@@ -17,6 +17,10 @@ import gleam/pgo
 pub fn query(db, arg_1) {
   let decoder = zero.map(zero.dynamic, fn(_) { Nil })
 
-  "insert into jsons(json) values ($1)"
-  |> pgo.execute(db, [pgo.text(json.to_string(arg_1))], zero.run(_, decoder))
+  let query = "insert into jsons(json) values ($1)"
+
+  pog.query(query)
+  |> pog.parameter(pog.text(json.to_string(arg_1)))
+  |> pog.returning(zero.run(_, decoder))
+  |> pog.execute(db)
 }

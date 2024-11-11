@@ -1,11 +1,10 @@
 import birdie
 import filepath
 import glam/doc
-import gleam/dynamic
 import gleam/list
-import gleam/pgo
 import gleam/string
 import gleeunit
+import pog
 import simplifile
 import squirrel/internal/database/postgres
 import squirrel/internal/error.{type Error}
@@ -27,18 +26,16 @@ const database = "squirrel_test"
 
 const port = 5432
 
-pub fn test_config() -> pgo.Config {
-  pgo.Config(
-    ..pgo.default_config(),
-    port: port,
-    user: user,
-    host: host,
-    database: database,
-  )
+pub fn test_config() -> pog.Config {
+  pog.default_config()
+  |> pog.port(port)
+  |> pog.user(user)
+  |> pog.host(host)
+  |> pog.database(database)
 }
 
 fn setup_database() {
-  let db = pgo.connect(test_config())
+  let db = pog.connect(test_config())
 
   let assert Ok(_) =
     "
@@ -47,7 +44,8 @@ create table if not exists squirrel(
   acorns int
 );
 "
-    |> pgo.execute(db, [], dynamic.dynamic)
+    |> pog.query
+    |> pog.execute(db)
 
   let assert Ok(_) =
     "
@@ -57,7 +55,8 @@ create table if not exists jsons(
   jsonb jsonb
 )
 "
-    |> pgo.execute(db, [], dynamic.dynamic)
+    |> pog.query
+    |> pog.execute(db)
 
   let assert Ok(_) =
     "
@@ -67,7 +66,8 @@ do $$ begin
   end if;
 end $$;
   "
-    |> pgo.execute(db, [], dynamic.dynamic)
+    |> pog.query
+    |> pog.execute(db)
 
   let assert Ok(_) =
     "
@@ -77,7 +77,8 @@ end $$;
     end if;
   end $$;
     "
-    |> pgo.execute(db, [], dynamic.dynamic)
+    |> pog.query
+    |> pog.execute(db)
 
   let assert Ok(_) =
     "
@@ -87,7 +88,8 @@ end $$;
       end if;
     end $$;
       "
-    |> pgo.execute(db, [], dynamic.dynamic)
+    |> pog.query
+    |> pog.execute(db)
 
   let assert Ok(_) =
     "
@@ -97,9 +99,10 @@ end $$;
         end if;
       end $$;
         "
-    |> pgo.execute(db, [], dynamic.dynamic)
+    |> pog.query
+    |> pog.execute(db)
 
-  pgo.disconnect(db)
+  pog.disconnect(db)
 }
 
 // --- ASSERTION HELPERS -------------------------------------------------------
