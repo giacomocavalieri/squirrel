@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v2.0.0 - 2024-11-11
 
 - The generated code now uses the [`pog`](https://hexdocs.pm/pog/index.html)
   package instead of `gleam_pgo`.
