@@ -6,7 +6,7 @@ test_name: generated_type_fields_are_labelled_with_their_name_in_the_select_list
 ---
 import decode/zero
 import gleam/option.{type Option}
-import gleam/pgo
+import pog
 
 /// A row you get from running the `query` query
 /// defined in `query.sql`.
@@ -31,12 +31,15 @@ pub fn query(db) {
     zero.success(QueryRow(acorns:, squirrel_name:))
   }
 
-  "
+  let query = "
 select
   acorns,
   name as squirrel_name
 from
   squirrel
 "
-  |> pgo.execute(db, [], zero.run(_, decoder))
+
+  pog.query(query)
+  |> pog.returning(zero.run(_, decoder))
+  |> pog.execute(db)
 }

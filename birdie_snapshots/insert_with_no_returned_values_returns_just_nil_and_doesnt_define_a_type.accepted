@@ -5,7 +5,7 @@ file: ./test/squirrel_test.gleam
 test_name: insert_with_no_returned_values_returns_just_nil_and_doesnt_define_a_type_test
 ---
 import decode/zero
-import gleam/pgo
+import pog
 
 /// Runs the `query` query
 /// defined in `query.sql`.
@@ -16,6 +16,9 @@ import gleam/pgo
 pub fn query(db) {
   let decoder = zero.map(zero.dynamic, fn(_) { Nil })
 
-  "insert into squirrel values ('sandy', 1000)"
-  |> pgo.execute(db, [], zero.run(_, decoder))
+  let query = "insert into squirrel values ('sandy', 1000)"
+
+  pog.query(query)
+  |> pog.returning(zero.run(_, decoder))
+  |> pog.execute(db)
 }

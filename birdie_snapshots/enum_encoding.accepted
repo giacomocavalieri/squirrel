@@ -5,7 +5,7 @@ file: ./test/squirrel_test.gleam
 test_name: enum_encoding_test
 ---
 import decode/zero
-import gleam/pgo
+import pog
 
 /// A row you get from running the `query` query
 /// defined in `query.sql`.
@@ -29,8 +29,12 @@ pub fn query(db, arg_1) {
     zero.success(QueryRow(res:))
   }
 
-  "select 1 as res where $1 = 'red'::squirrel_colour"
-  |> pgo.execute(db, [squirrel_colour_encoder(arg_1)], zero.run(_, decoder))
+  let query = "select 1 as res where $1 = 'red'::squirrel_colour"
+
+  pog.query(query)
+  |> pog.parameter(squirrel_colour_encoder(arg_1))
+  |> pog.returning(zero.run(_, decoder))
+  |> pog.execute(db)
 }
 
 // --- Enums -------------------------------------------------------------------
@@ -52,5 +56,5 @@ fn squirrel_colour_encoder(variant) {
     Grey -> "grey"
     Red -> "red"
   }
-  |> pgo.text
+  |> pog.text
 }

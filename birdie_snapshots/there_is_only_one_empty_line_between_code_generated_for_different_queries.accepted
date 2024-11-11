@@ -5,7 +5,7 @@ file: ./test/squirrel_test.gleam
 test_name: there_is_only_one_empty_line_between_code_generated_for_different_queries_test
 ---
 import decode/zero
-import gleam/pgo
+import pog
 
 /// A row you get from running the `one` query
 /// defined in `one.sql`.
@@ -29,8 +29,11 @@ pub fn one(db) {
     zero.success(OneRow(res:))
   }
 
-  "select 1 as res"
-  |> pgo.execute(db, [], zero.run(_, decoder))
+  let query = "select 1 as res"
+
+  pog.query(query)
+  |> pog.returning(zero.run(_, decoder))
+  |> pog.execute(db)
 }
 
 /// A row you get from running the `two` query
@@ -55,6 +58,9 @@ pub fn two(db) {
     zero.success(TwoRow(res:))
   }
 
-  "select 2 as res"
-  |> pgo.execute(db, [], zero.run(_, decoder))
+  let query = "select 2 as res"
+
+  pog.query(query)
+  |> pog.returning(zero.run(_, decoder))
+  |> pog.execute(db)
 }
