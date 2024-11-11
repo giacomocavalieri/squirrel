@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## Unreleased
+
+- The generated code now uses the [`pog`](https://hexdocs.pm/pog/index.html)
+  package instead of `gleam_pgo`.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v1.8.1 - 2024-11-08
 
 - Squirrel now errors if a query returns multiple columns with the same name

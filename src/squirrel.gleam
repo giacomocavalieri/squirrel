@@ -54,7 +54,7 @@ const squirrel_version = "v1.8.1"
 /// > - `PGPASSWORD`: `""`
 ///
 /// > ⚠️ The generated code relies on the
-/// > [`gleam_pgo`](https://hexdocs.pm/gleam_pgo/) and
+/// > [`pog`](https://hexdocs.pm/pog/) and
 /// > [`decode`](https://hexdocs.pm/decode/) packages to work, so make sure to
 /// > add those as dependencies to your project.
 ///
