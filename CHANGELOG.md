@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v2.0.1 - 2024-11-18
 
 - Fixed a bug where certain queries would generate code with the wrong optional
   types.
