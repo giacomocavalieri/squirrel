@@ -838,7 +838,7 @@ fn resolve_returns(
     // If the name ends with a `?` or `!` we don't want that to be included in
     // the gleam name or it would be invalid!
     case ends_with_exclamation_mark || ends_with_question_mark {
-      True -> string.drop_right(name, 1)
+      True -> string.drop_end(name, 1)
       False -> name
     }
     |> gleam.value_identifier
@@ -1248,7 +1248,7 @@ fn adjust_parse_error_for_explain(error: Error) -> Error {
       CannotParseQuery(
         file:,
         name:,
-        content: string.drop_left(content, 31),
+        content: string.drop_start(content, 31),
         starting_line:,
         error_code:,
         pointer:,
