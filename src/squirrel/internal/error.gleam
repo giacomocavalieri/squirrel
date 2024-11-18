@@ -1,5 +1,6 @@
 import glam/doc.{type Document}
 import gleam/int
+import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/regex
@@ -166,6 +167,14 @@ pub type Error {
     starting_line: Int,
     names: List(String),
   )
+
+  /// If the postgres server sends in a query explanantion in a format that I
+  /// cannot parse.
+  ///
+  /// This should never happen, and if it does it means I grossly forgot about
+  /// a possible value I shouldn't so I have to ask to open an issue.
+  ///
+  CannotParsePlanForQuery(file: String, reason: json.DecodeError)
 }
 
 pub type ValueIdentifierError {
@@ -533,6 +542,14 @@ Gleam type!",
         <> ".",
       )
     }
+
+    CannotParsePlanForQuery(file:, reason:) ->
+      printable_error("Cannot decode query plan")
+      |> add_paragraph(
+        "I ran into an unexpected error while trying to figure out how to
+generate code for query " <> style_file(file) <> ".",
+      )
+      |> report_bug(string.inspect(reason))
   }
 
   printable_error_to_doc(printable_error)
