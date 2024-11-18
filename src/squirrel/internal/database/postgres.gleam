@@ -13,11 +13,11 @@
 //// > that is a bug! Please do reach out, I'd love to hear your feedback.
 ////
 
+import decode/zero
 import eval
 import gleam/bit_array
 import gleam/bool
 import gleam/dict.{type Dict}
-import gleam/dynamic.{type DecodeErrors, type Dynamic} as d
 import gleam/int
 import gleam/json
 import gleam/list
@@ -210,24 +210,14 @@ type Nullability {
 /// A query plan produced by Postgres when we ask it to `explain` a query.
 ///
 type Plan {
-  Plan(
-    join_type: Option(JoinType),
-    parent_relation: Option(ParentRelation),
-    output: Option(List(String)),
-    plans: Option(List(Plan)),
-  )
+  Plan(join_type: Option(JoinType), output: List(String), plans: List(Plan))
 }
 
 type JoinType {
-  Full
-  Left
-  Right
-  Other
-}
-
-type ParentRelation {
-  Inner
-  NotInner
+  FullJoin
+  LeftJoin
+  RightJoin
+  InnerJoin
 }
 
 /// This is the type of a database-related action.
@@ -741,19 +731,19 @@ fn query_plan(query: UntypedQuery, parameters: Int) -> Db(Plan) {
   // We know the output will only contain a single row that is the json string
   // containing the query plan.
   let assert [[plan]] = res
-  let assert Ok([plan, ..]) = json.decode_bits(plan, json_plans_decoder)
-  eval.return(plan)
+  case json.decode_bits(plan, zero.run(_, json_plans_decoder())) {
+    Ok([plan, ..]) -> eval.return(plan)
+    Ok([]) -> panic as "unreachable: no query plan"
+    Error(reason) ->
+      eval.throw(error.CannotParsePlanForQuery(file: query.file, reason:))
+  }
 }
 
 /// Given a query plan, returns a set with the indices of the output columns
 /// that can contain null values.
 ///
 fn nullables_from_plan(plan: Plan) -> Set(Int) {
-  let outputs = case plan.output {
-    Some(outputs) -> list.index_fold(outputs, dict.new(), dict.insert)
-    None -> dict.new()
-  }
-
+  let outputs = list.index_fold(plan.output, dict.new(), dict.insert)
   do_nullables_from_plan(plan, outputs, set.new())
 }
 
@@ -763,27 +753,57 @@ fn do_nullables_from_plan(
   query_outputs: Dict(String, Int),
   nullables: Set(Int),
 ) -> Set(Int) {
-  let nullables = case plan.output, plan.join_type, plan.parent_relation {
-    // - All the outputs of a full join must be marked as nullable
-    // - All the outputs of an inner half join must be marked as nullable
-    Some(outputs), Some(Full), _ | Some(outputs), _, Some(Inner) -> {
-      use nullables, output <- list.fold(outputs, from: nullables)
-      case dict.get(query_outputs, output) {
-        Ok(i) -> set.insert(nullables, i)
-        Error(_) -> nullables
-      }
-    }
-    _, _, _ -> nullables
-  }
+  case plan.join_type, plan.plans {
+    // If this is a full join then all its outputs could be optional!!
+    Some(FullJoin), _ ->
+      plan_outputs_indices(plan, query_outputs)
+      |> set.union(nullables)
 
-  case plan.plans, plan.join_type {
-    // If this is an inner half join we keep inspecting the children to mark
-    // their outputs as nullable.
-    Some(plans), Some(Left) | Some(plans), Some(Right) -> {
-      use nullables, plan <- list.fold(plans, from: nullables)
+    // If this is a right join then we must mark the outputs of its left part as
+    // nullable!
+    Some(RightJoin), [left, right] -> {
+      let nullables =
+        plan_outputs_indices(left, query_outputs)
+        |> set.union(nullables)
+
+      do_nullables_from_plan(right, query_outputs, nullables)
+    }
+
+    // If this is a left join then we must mark the outputs of its right part as
+    // nullable!
+    Some(LeftJoin), [left, right] -> {
+      let nullables =
+        plan_outputs_indices(right, query_outputs)
+        |> set.union(nullables)
+
+      do_nullables_from_plan(left, query_outputs, nullables)
+    }
+
+    // This should never happen in theory (a join with 0, 1, or more than two
+    // childs), so we just inspect their plans as a safe bet.
+    Some(RightJoin), plans | Some(LeftJoin), plans | None, plans -> {
+      use nullables, plan <- list.fold(plans, nullables)
       do_nullables_from_plan(plan, query_outputs, nullables)
     }
-    _, _ -> nullables
+
+    // If this is an inner join then it's outputs are not necessarily nullable,
+    // we inspect the children's plans to see if they do have some nullable
+    // columns.
+    Some(InnerJoin), plans -> {
+      use nullables, plan <- list.fold(plans, nullables)
+      do_nullables_from_plan(plan, query_outputs, nullables)
+    }
+  }
+}
+
+fn plan_outputs_indices(
+  plan: Plan,
+  query_outputs: Dict(String, Int),
+) -> Set(Int) {
+  use nullables, output <- list.fold(plan.output, from: set.new())
+  case dict.get(query_outputs, output) {
+    Ok(i) -> set.insert(nullables, i)
+    Error(_) -> nullables
   }
 }
 
@@ -1263,37 +1283,25 @@ fn adjust_parse_error_for_explain(error: Error) -> Error {
 
 // --- DECODERS ----------------------------------------------------------------
 
-fn json_plans_decoder(data: Dynamic) -> Result(List(Plan), DecodeErrors) {
-  d.list(d.field("Plan", plan_decoder))(data)
+fn json_plans_decoder() {
+  zero.list(zero.at(["Plan"], plan_decoder()))
 }
 
-fn plan_decoder(data: Dynamic) -> Result(Plan, DecodeErrors) {
-  d.decode4(
-    Plan,
-    d.optional_field("Join Type", join_type_decoder),
-    d.optional_field("Parent Relationship", parent_relation_decoder),
-    d.optional_field("Output", d.list(d.string)),
-    d.optional_field("Plans", d.list(plan_decoder)),
-  )(data)
+fn plan_decoder() {
+  use join_type <- zero.optional_field("Join Type", None, join_type_decoder())
+  use output <- zero.optional_field("Output", [], zero.list(zero.string))
+  use plans <- zero.optional_field("Plans", [], zero.list(plan_decoder()))
+  zero.success(Plan(join_type:, output:, plans:))
 }
 
-fn join_type_decoder(data: Dynamic) -> Result(JoinType, DecodeErrors) {
-  use data <- result.map(d.string(data))
+fn join_type_decoder() {
+  use data <- zero.then(zero.string)
   case data {
-    "Full" -> Full
-    "Left" -> Left
-    "Right" -> Right
-    _ -> Other
-  }
-}
-
-fn parent_relation_decoder(
-  data: Dynamic,
-) -> Result(ParentRelation, DecodeErrors) {
-  use data <- result.map(d.string(data))
-  case data {
-    "Inner" -> Inner
-    _ -> NotInner
+    "Full" -> zero.success(Some(FullJoin))
+    "Left" -> zero.success(Some(LeftJoin))
+    "Right" -> zero.success(Some(RightJoin))
+    "Inner" -> zero.success(Some(InnerJoin))
+    _ -> zero.failure(None, "a join type")
   }
 }
 

@@ -42,8 +42,7 @@ fn setup_database() {
 create table if not exists squirrel(
   name text primary key,
   acorns int
-);
-"
+)"
     |> pog.query
     |> pog.execute(db)
 
@@ -53,8 +52,7 @@ create table if not exists jsons(
   id bigserial primary key,
   json json,
   jsonb jsonb
-)
-"
+)"
     |> pog.query
     |> pog.execute(db)
 
@@ -64,41 +62,57 @@ do $$ begin
   if not exists (select * from pg_type where typname = 'squirrel_colour') then
     create type squirrel_colour as enum ('red', 'grey', 'light brown');
   end if;
-end $$;
-  "
+end $$;"
     |> pog.query
     |> pog.execute(db)
 
   let assert Ok(_) =
     "
-  do $$ begin
-    if not exists (select * from pg_type where typname = '1 invalid enum') then
-      create type \"1 invalid enum\" as enum ('value');
-    end if;
-  end $$;
+do $$ begin
+  if not exists (select * from pg_type where typname = '1 invalid enum') then
+    create type \"1 invalid enum\" as enum ('value');
+  end if;
+end $$;"
+    |> pog.query
+    |> pog.execute(db)
+
+  let assert Ok(_) =
+    "
+do $$ begin
+  if not exists (select * from pg_type where typname = 'invalid_variant') then
+    create type invalid_variant as enum ('1 invalid value');
+  end if;
+end $$;"
+    |> pog.query
+    |> pog.execute(db)
+
+  let assert Ok(_) =
+    "
+do $$ begin
+  if not exists (select * from pg_type where typname = 'no_variants') then
+    create type no_variants as enum ();
+  end if;
+end $$;"
+    |> pog.query
+    |> pog.execute(db)
+
+  // https://github.com/giacomocavalieri/squirrel/issues/41
+  let assert Ok(_) =
+    "
+create table if not exists users_issue41(
+  user_id bigserial primary key
+)
     "
     |> pog.query
     |> pog.execute(db)
 
   let assert Ok(_) =
     "
-    do $$ begin
-      if not exists (select * from pg_type where typname = 'invalid_variant') then
-        create type invalid_variant as enum ('1 invalid value');
-      end if;
-    end $$;
-      "
-    |> pog.query
-    |> pog.execute(db)
-
-  let assert Ok(_) =
-    "
-      do $$ begin
-        if not exists (select * from pg_type where typname = 'no_variants') then
-          create type no_variants as enum ();
-        end if;
-      end $$;
-        "
+create table if not exists profile_issue41(
+  profile_id bigserial primary key,
+  user_id bigserial not null,
+  roles text not null
+);"
     |> pog.query
     |> pog.execute(db)
 
@@ -628,4 +642,19 @@ pub fn a_query_failing_does_not_change_the_other_query_error_2_test() {
   |> birdie.snap(
     title: "a query failing does not change the other query's error 2",
   )
+}
+
+// https://github.com/giacomocavalieri/squirrel/issues/41
+pub fn left_join_nullability_inference_test() {
+  "
+select
+  users_issue41.user_id,
+  profile_issue41.roles
+from
+  users_issue41
+  left join profile_issue41
+    on profile_issue41.user_id = users_issue41.user_id;
+"
+  |> should_codegen
+  |> birdie.snap(title: "left join nullability inference")
 }
