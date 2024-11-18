@@ -55,10 +55,12 @@ const integration_tests = [
   TestType("bpchar", [TestValue("\"j\"")]),
   TestType("varchar(3)", [TestValue("\"jak\"")]),
   // Integers
-  TestType("int2", [TestValue("1")]), TestType("int4", [TestValue("1")]),
+  TestType("int2", [TestValue("1")]),
+  TestType("int4", [TestValue("1")]),
   TestType("int8", [TestValue("1")]),
   // Floats
-  TestType("float4", [TestValue("1.0")]), TestType("float8", [TestValue("1.0")]),
+  TestType("float4", [TestValue("1.0")]),
+  TestType("float8", [TestValue("1.0")]),
   TestType("numeric", [TestValue("1.0")]),
   // Uuid
   TestType("uuid", [TestValue("uuid.v7()")]),
