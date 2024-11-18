@@ -685,7 +685,7 @@ fn code_doc(
     use line, i <- list.index_map(lines)
     let prefix =
       int.to_string(i + starting_line)
-      |> string.pad_left(to: max_digits + 2, with: " ")
+      |> string.pad_start(to: max_digits + 2, with: " ")
 
     case pointer {
       Ok(#(pointer_line, from, pointer_doc)) if pointer_line == i -> [

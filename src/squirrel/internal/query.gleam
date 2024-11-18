@@ -143,7 +143,7 @@ fn take_comment(query: String) -> List(String) {
 }
 
 fn do_take_comment(query: String, lines: List(String)) -> List(String) {
-  case string.trim_left(query) {
+  case string.trim_start(query) {
     "--" <> rest ->
       case string.split_once(rest, on: "\n") {
         Ok(#(line, rest)) -> do_take_comment(rest, [string.trim(line), ..lines])
@@ -404,7 +404,7 @@ pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
 }
 
 fn separator_comment(value: String) -> Document {
-  string.pad_right("// --- " <> value <> " ", to: 80, with: "-")
+  string.pad_end("// --- " <> value <> " ", to: 80, with: "-")
   |> doc.from_string
 }
 
