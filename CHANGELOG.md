@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## Unreleased
+
+- `drop` is now highlighted as a keyword in sql snippets in error messages.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v2.0.1 - 2024-11-18
 
 - Fixed a bug where certain queries would generate code with the wrong optional
