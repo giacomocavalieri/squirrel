@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v2.0.2 - 2024-11-20
 
 - Fixed a bug where certain queries using conditions on foreign key would
   generate code with the wrong optional types.
