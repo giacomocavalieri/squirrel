@@ -80,6 +80,16 @@ pub type Error {
   ///
   PgPermissionDenied(query_file: String, reason: String)
 
+  /// When there's an error with the message exhange during the query explaining
+  /// phase needed to figure out the nullability of the returned values.
+  ///
+  PgCannotExplainQuery(
+    file: String,
+    query_name: String,
+    expected: String,
+    got: String,
+  )
+
   // --- OTHER GENERIC ERRORS --------------------------------------------------
   /// When the connection string provided as an env variable cannot be parsed.
   ///
@@ -354,6 +364,13 @@ because the server denied me permission with the following message: " <> reason 
       |> hint(
         "Make sure the current user has the privileges to run this query.",
       )
+
+    PgCannotExplainQuery(expected:, file:, got:, query_name:) ->
+      printable_error("Cannot explain query")
+      |> add_paragraph("I ran into an unexpected problem while trying to figure
+out the types of query " <> style_inline_code(query_name) <> "
+defined in " <> style_file(file) <> ". This is most definitely a bug!")
+      |> report_bug("Expected: " <> expected <> ", Got: " <> got)
 
     InvalidConnectionString(string:) ->
       printable_error("Invalid connection string")

@@ -116,6 +116,33 @@ create table if not exists profile_issue41(
     |> pog.query
     |> pog.execute(db)
 
+  // https://github.com/giacomocavalieri/squirrel/issues/43
+  let assert Ok(_) =
+    "
+create table if not exists category_issue43(
+  category_id bigserial primary key,
+  name text not null
+);"
+    |> pog.query
+    |> pog.execute(db)
+
+  let assert Ok(_) =
+    "
+create table if not exists site_issue43(
+  site_id bigserial primary key
+)"
+    |> pog.query
+    |> pog.execute(db)
+  let assert Ok(_) =
+    "
+create table if not exists item_issue43 (
+  item_id bigserial primary key,
+  category_id bigserial references category_issue43(category_id),
+  site_id bigserial references site_issue43(site_id)
+)"
+    |> pog.query
+    |> pog.execute(db)
+
   pog.disconnect(db)
 }
 
@@ -657,4 +684,20 @@ from
 "
   |> should_codegen
   |> birdie.snap(title: "left join nullability inference")
+}
+
+// https://github.com/giacomocavalieri/squirrel/issues/43
+pub fn nullability_with_foreign_key_condition_test() {
+  "
+select
+  item_issue43.item_id,
+  category_issue43.name
+from
+  item_issue43
+  left join category_issue43 using(category_id)
+where
+  item_issue43.site_id = $1;
+"
+  |> should_codegen
+  |> birdie.snap(title: "nullability with foreign key")
 }

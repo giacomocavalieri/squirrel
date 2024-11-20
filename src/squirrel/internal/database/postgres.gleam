@@ -29,9 +29,9 @@ import squirrel/internal/database/postgres_protocol as pg
 import squirrel/internal/error.{
   type EnumError, type Error, type Pointer, type ValueIdentifierError, ByteIndex,
   CannotParseQuery, PgCannotDecodeReceivedMessage, PgCannotDescribeQuery,
-  PgCannotEstablishTcpConnection, PgCannotReceiveMessage, PgCannotSendMessage,
-  PgInvalidPassword, PgInvalidSha256ServerProof, PgInvalidUserDatabase,
-  PgPermissionDenied, PgUnexpectedAuthMethodMessage,
+  PgCannotEstablishTcpConnection, PgCannotExplainQuery, PgCannotReceiveMessage,
+  PgCannotSendMessage, PgInvalidPassword, PgInvalidSha256ServerProof,
+  PgInvalidUserDatabase, PgPermissionDenied, PgUnexpectedAuthMethodMessage,
   PgUnexpectedCleartextAuthMessage, PgUnexpectedSha256AuthMessage,
   PgUnsupportedAuthentication, Pointer, QueryHasInvalidColumn,
   QueryHasInvalidEnum, QueryHasUnsupportedType,
@@ -124,13 +124,6 @@ where
   -- The index of the column we're looking for.
   and attnum = $2
 ",
-  )
-}
-
-fn explain_query(query: UntypedQuery) -> UntypedQuery {
-  query.UntypedQuery(
-    ..query,
-    content: "explain (format json, verbose) " <> query.content,
   )
 }
 
@@ -517,7 +510,7 @@ fn infer_types(query: UntypedQuery) -> Db(TypedQuery) {
   //   - But this is not enough! If a returned column comes from a left/right
   //     join it will be nullable even if it is not in the original table.
   //     To work around this we'll have to inspect the query plan.
-  use plan <- eval.try(query_plan(query, list.length(parameters)))
+  use plan <- eval.try(query_plan(query))
   let nullables = nullables_from_plan(plan)
   use returns <- eval.try(resolve_returns(query, returns, nullables))
 
@@ -715,28 +708,56 @@ fn resolve_enum_type(name: String, oid: Int) -> Db(PgType) {
 /// Returns the query plan for a given query.
 /// `parameters` is the number of parameter placeholders in the query.
 ///
-fn query_plan(query: UntypedQuery, parameters: Int) -> Db(Plan) {
-  // We ask postgres to give us the query plan. To do that we need to fill in
-  // all the possible holes in the user supplied query with null values;
-  // otherwise, the server would complain that it has arguments that are not
-  // bound.
-  let params = list.repeat(pg.Null, parameters)
-  let res =
-    explain_query(query)
-    |> run_query(params, [])
-    |> eval.map_error(adjust_parse_error_for_explain)
-
-  use res <- eval.try(res)
+fn query_plan(query: UntypedQuery) -> Db(Plan) {
+  use plan <- eval.try(
+    run_explain_query(query)
+    |> eval.map_error(adjust_parse_error_for_explain),
+  )
 
   // We know the output will only contain a single row that is the json string
   // containing the query plan.
-  let assert [[plan]] = res
   case json.decode_bits(plan, zero.run(_, json_plans_decoder())) {
     Ok([plan, ..]) -> eval.return(plan)
     Ok([]) -> panic as "unreachable: no query plan"
     Error(reason) ->
       eval.throw(error.CannotParsePlanForQuery(file: query.file, reason:))
   }
+}
+
+/// > 🚨 This is safe to run _only if it's after having prepared the query
+/// > earlier!_
+/// > This is because we're running the explain query in the simple mode that
+/// > allows running an arbitrary number of sql statements. So if your sql file
+/// > contains more than a query like this one:
+/// >
+/// > ```sql
+/// > select 1;
+/// > drop table users;
+/// > ```
+/// >
+/// > What you'd end up running would look like this:
+/// > ```gleam
+/// > "explain (verbose, generic_plan) select 1;
+/// > drop table users;"
+/// > ```
+/// >
+/// > Meaning it would erase your db!
+///
+fn run_explain_query(query: UntypedQuery) -> Db(BitArray) {
+  let explain_query =
+    "explain (format json, verbose, generic_plan) " <> query.content
+
+  use _ <- eval.try(send_all([pg.FeQuery(explain_query)]))
+
+  use msg <- eval.try(receive())
+  use _ <- eval.try(expect_query_plan_row_description(msg, query))
+  use msg <- eval.try(receive())
+  let assert pg.BeMessageDataRow([query_plan]) = msg
+  use msg <- eval.try(receive())
+  let assert pg.BeCommandComplete(_, _) = msg
+  use msg <- eval.try(receive())
+  let assert pg.BeReadyForQuery(_) = msg
+  eval.return(query_plan)
 }
 
 /// Given a query plan, returns a set with the indices of the output columns
@@ -997,31 +1018,49 @@ fn do_accumulate_data_rows_until_command_complete(
 fn expect_parse_complete(msg: pg.BackendMessage, query: UntypedQuery) -> Db(Nil) {
   case msg {
     pg.BeParseComplete -> eval.return(Nil)
-    pg.BeErrorResponse(fields) -> {
-      // In case we get an error response back from the server at this stage
-      // (we sent a query to run and it couldn't be parsed) the server will also
-      // send a `ReadyForQuery` after it to signal it's ready to keep going with
-      // other queries. So we expect to see that.
-      use msg <- eval.try(receive())
-      case msg {
-        pg.BeReadyForQuery(_) ->
-          eval.throw(error_fields_to_parse_error(query, fields))
-        _ ->
-          unexpected_message(
-            fn(expected, got) {
-              PgCannotDescribeQuery(
-                file: query.file,
-                query_name: gleam.value_identifier_to_string(query.name),
-                expected:,
-                got:,
-              )
-            },
-            "BeReadyForQuery(_)",
-            msg,
-          )
-      }
-    }
+
+    pg.BeErrorResponse(fields) ->
+      expect_ready_for_query_then_throw(query, fields, fn(expected, got) {
+        PgCannotDescribeQuery(
+          file: query.file,
+          query_name: gleam.value_identifier_to_string(query.name),
+          expected:,
+          got:,
+        )
+      })
+
     _ -> panic as string.inspect(msg)
+  }
+}
+
+fn expect_query_plan_row_description(
+  msg: pg.BackendMessage,
+  query: UntypedQuery,
+) -> Db(Nil) {
+  case msg {
+    pg.BeRowDescriptions([pg.RowDescriptionField(name: "QUERY PLAN", ..)]) ->
+      eval.return(Nil)
+
+    pg.BeErrorResponse(fields) ->
+      expect_ready_for_query_then_throw(query, fields, fn(expected, got) {
+        PgCannotExplainQuery(
+          file: query.file,
+          query_name: gleam.value_identifier_to_string(query.name),
+          expected:,
+          got:,
+        )
+      })
+
+    _ -> panic as string.inspect(msg)
+  }
+}
+
+fn expect_ready_for_query_then_throw(query, fields, to_error) {
+  use msg <- eval.try(receive())
+  case msg {
+    pg.BeReadyForQuery(_) ->
+      eval.throw(error_fields_to_parse_error(query, fields))
+    _ -> unexpected_message(to_error, "BeReadyForQuery(_)", msg)
   }
 }
 
@@ -1235,8 +1274,8 @@ fn invalid_column_error(
 /// since the query would be:
 ///
 /// ```sql
-/// explain (format json, verbose) ; select 1;
-/// --                             ^ parse error here
+/// explain (format json, verbose, generic_plan) ; select 1;
+/// --                                           ^ parse error here
 /// ```
 ///
 /// So in case we get a parse error during the explain step we want to slightly
@@ -1258,9 +1297,9 @@ fn adjust_parse_error_for_explain(error: Error) -> Error {
       let pointer = case pointer {
         Some(Pointer(ByteIndex(index), message)) ->
           // We also need to update any pointer to make sure it's pointing to
-          // the right place since we've dropped the first 31 bytes of the
+          // the right place since we've dropped the first 46 bytes of the
           // query's content.
-          Some(Pointer(ByteIndex(index - 31), message))
+          Some(Pointer(ByteIndex(index - 45), message))
 
         _ -> pointer
       }
@@ -1268,7 +1307,7 @@ fn adjust_parse_error_for_explain(error: Error) -> Error {
       CannotParseQuery(
         file:,
         name:,
-        content: string.drop_start(content, 31),
+        content:,
         starting_line:,
         error_code:,
         pointer:,

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed a bug where certain queries using conditions on foreign key would
+  generate code with the wrong optional types.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 - `drop` is now highlighted as a keyword in sql snippets in error messages.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
