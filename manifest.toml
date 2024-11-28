@@ -27,7 +27,7 @@ packages = [
   { name = "opentelemetry_api", version = "1.4.0", build_tools = ["rebar3", "mix"], requirements = [], otp_app = "opentelemetry_api", source = "hex", outer_checksum = "3DFBBFAA2C2ED3121C5C483162836C4F9027DEF469C41578AF5EF32589FCFC58" },
   { name = "pg_types", version = "0.4.0", build_tools = ["rebar3"], requirements = [], otp_app = "pg_types", source = "hex", outer_checksum = "B02EFA785CAECECF9702C681C80A9CA12A39F9161A846CE17B01FB20AEEED7EB" },
   { name = "pgo", version = "0.14.0", build_tools = ["rebar3"], requirements = ["backoff", "opentelemetry_api", "pg_types"], otp_app = "pgo", source = "hex", outer_checksum = "71016C22599936E042DC0012EE4589D24C71427D266292F775EBF201D97DF9C9" },
-  { name = "pog", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "pgo"], otp_app = "pog", source = "hex", outer_checksum = "00D57120936AFBF486BE357C472E483C1F0CA507FF9C3668075E87C733CA53F8" },
+  { name = "pog", version = "1.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib", "pgo"], otp_app = "pog", source = "hex", outer_checksum = "48D6570C1E98F77A3C29E7ED4F1D81205DD0D870DCEC55F536EF3A57A28DF627" },
   { name = "rank", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "rank", source = "hex", outer_checksum = "5660E361F0E49CBB714CC57CC4C89C63415D8986F05B2DA0C719D5642FAD91C9" },
   { name = "shellout", version = "1.6.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "shellout", source = "hex", outer_checksum = "E2FCD18957F0E9F67E1F497FC9FF57393392F8A9BAEAEA4779541DE7A68DD7E0" },
   { name = "simplifile", version = "2.2.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "0DFABEF7DC7A9E2FF4BB27B108034E60C81BEBFCB7AB816B9E7E18ED4503ACD8" },
@@ -56,7 +56,7 @@ gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 justin = { version = ">= 1.0.1 and < 2.0.0" }
 mug = { version = ">= 1.1.0 and < 2.0.0" }
 non_empty_list = { version = ">= 2.1.0 and < 3.0.0" }
-pog = { version = ">= 1.0.0 and < 2.0.0" }
+pog = { version = ">= 1.0.1 and < 2.0.0" }
 shellout = { version = ">= 1.6.0 and < 2.0.0" }
 simplifile = { version = ">= 2.0.1 and < 3.0.0" }
 temporary = { version = ">= 1.0.0 and < 2.0.0" }

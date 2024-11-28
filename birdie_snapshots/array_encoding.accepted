@@ -33,7 +33,7 @@ pub fn query(db, arg_1) {
   let query = "select true as res where $1 = array[1, 2, 3]"
 
   pog.query(query)
-  |> pog.parameter(pog.array(list.map(arg_1, fn(value) { pog.int(value) })))
+  |> pog.parameter(pog.array(fn(value) { pog.int(value) }, arg_1))
   |> pog.returning(zero.run(_, decoder))
   |> pog.execute(db)
 }
