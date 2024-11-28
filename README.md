@@ -29,12 +29,12 @@ pub fn find_squirrel(db: pog.Connection, name: String) {
 
   "
   select
-     name,
-     owned_acorns
-   from
-     squirrel
-   where
-     name = $1
+    name,
+    owned_acorns
+  from
+    squirrel
+  where
+    name = $1
   "
   |> pog.query
   |> pog.parameter(pog.text(name))
