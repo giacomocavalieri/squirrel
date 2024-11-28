@@ -185,6 +185,12 @@ pub type Error {
   /// a possible value I shouldn't so I have to ask to open an issue.
   ///
   CannotParsePlanForQuery(file: String, reason: json.DecodeError)
+
+  /// If, when trying to run `explain (generic_plan)` the query fails because
+  /// that option is not recognised, that means that the Postgres version is
+  /// older than 16 and should then be updated to use squirrel.
+  ///
+  PostgresVersionIsTooOld
 }
 
 pub type ValueIdentifierError {
@@ -567,6 +573,15 @@ Gleam type!",
 generate code for query " <> style_file(file) <> ".",
       )
       |> report_bug(string.inspect(reason))
+
+    PostgresVersionIsTooOld ->
+      printable_error("Outdated Postgres version")
+      |> add_paragraph("Squirrel only works with Postgres versions >= 16")
+      |> add_paragraph(
+        "If you have a good reason that's blocking you from upgrading Postgres version
+and you want to use Squirrel, please open an issue at "
+        <> style_link("https://github.com/giacomocavalieri/squirrel/issues/new"),
+      )
   }
 
   printable_error_to_doc(printable_error)

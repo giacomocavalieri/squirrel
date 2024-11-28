@@ -33,8 +33,8 @@ import squirrel/internal/error.{
   PgCannotSendMessage, PgInvalidPassword, PgInvalidSha256ServerProof,
   PgInvalidUserDatabase, PgPermissionDenied, PgUnexpectedAuthMethodMessage,
   PgUnexpectedCleartextAuthMessage, PgUnexpectedSha256AuthMessage,
-  PgUnsupportedAuthentication, Pointer, QueryHasInvalidColumn,
-  QueryHasInvalidEnum, QueryHasUnsupportedType,
+  PgUnsupportedAuthentication, Pointer, PostgresVersionIsTooOld,
+  QueryHasInvalidColumn, QueryHasInvalidEnum, QueryHasUnsupportedType,
 }
 import squirrel/internal/eval_extra
 import squirrel/internal/gleam
@@ -1282,18 +1282,13 @@ fn invalid_column_error(
 /// change it: we drop the explain part from the query so it doesn't show up in
 /// the public facing error.
 ///
+/// Another thing that could go wrong is trying to run squirrel on a Postgres
+/// version that's older than 16, this means the generic_plan option won't be
+/// recognized!
+///
 fn adjust_parse_error_for_explain(error: Error) -> Error {
   case error {
-    CannotParseQuery(
-      file:,
-      name:,
-      content:,
-      starting_line:,
-      error_code:,
-      pointer:,
-      additional_error_message:,
-      hint:,
-    ) -> {
+    CannotParseQuery(pointer:, ..) -> {
       let pointer = case pointer {
         Some(Pointer(ByteIndex(index), message)) ->
           // We also need to update any pointer to make sure it's pointing to
@@ -1304,16 +1299,23 @@ fn adjust_parse_error_for_explain(error: Error) -> Error {
         _ -> pointer
       }
 
-      CannotParseQuery(
-        file:,
-        name:,
-        content:,
-        starting_line:,
-        error_code:,
-        pointer:,
-        additional_error_message:,
-        hint:,
-      )
+      // If the error is due to using the generic_plan option in the explain
+      // query, then we error explaining that the postgres version is too old.
+      case pointer {
+        Some(Pointer(_, message)) -> {
+          let message = string.lowercase(message)
+          let is_explain_error =
+            string.contains(message, "explain")
+            && string.contains(message, "generic_plan")
+
+          case is_explain_error {
+            True -> PostgresVersionIsTooOld
+            False -> CannotParseQuery(..error, pointer:)
+          }
+        }
+
+        _ -> CannotParseQuery(..error, pointer:)
+      }
     }
 
     _ -> error

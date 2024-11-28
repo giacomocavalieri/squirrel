@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## Unreleased
+
+- Improved error message when using a Postgres version that's too old.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v2.0.2 - 2024-11-20
 
 - Fixed a bug where certain queries using conditions on foreign key would
