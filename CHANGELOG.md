@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v2.0.3 - 2024-11-28
 
 - Improved error message when using a Postgres version that's too old.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
