@@ -709,10 +709,7 @@ fn resolve_enum_type(name: String, oid: Int) -> Db(PgType) {
 /// `parameters` is the number of parameter placeholders in the query.
 ///
 fn query_plan(query: UntypedQuery) -> Db(Plan) {
-  use plan <- eval.try(
-    run_explain_query(query)
-    |> eval.map_error(adjust_parse_error_for_explain),
-  )
+  use plan <- eval.try(run_explain_query(query))
 
   // We know the output will only contain a single row that is the json string
   // containing the query plan.
@@ -1019,15 +1016,15 @@ fn expect_parse_complete(msg: pg.BackendMessage, query: UntypedQuery) -> Db(Nil)
   case msg {
     pg.BeParseComplete -> eval.return(Nil)
 
-    pg.BeErrorResponse(fields) ->
-      expect_ready_for_query_then_throw(query, fields, fn(expected, got) {
-        PgCannotDescribeQuery(
-          file: query.file,
-          query_name: gleam.value_identifier_to_string(query.name),
-          expected:,
-          got:,
-        )
-      })
+    pg.BeErrorResponse(fields) -> {
+      let UntypedQuery(file:, name:, ..) = query
+      let query_name = gleam.value_identifier_to_string(name)
+      let unexpected = fn(expected, got) {
+        PgCannotDescribeQuery(file:, query_name:, expected:, got:)
+      }
+      let parse_error = error_fields_to_parse_error(query, fields)
+      expect_ready_for_query_then_throw(parse_error, or: unexpected)
+    }
 
     _ -> panic as string.inspect(msg)
   }
@@ -1041,25 +1038,28 @@ fn expect_query_plan_row_description(
     pg.BeRowDescriptions([pg.RowDescriptionField(name: "QUERY PLAN", ..)]) ->
       eval.return(Nil)
 
-    pg.BeErrorResponse(fields) ->
-      expect_ready_for_query_then_throw(query, fields, fn(expected, got) {
-        PgCannotExplainQuery(
-          file: query.file,
-          query_name: gleam.value_identifier_to_string(query.name),
-          expected:,
-          got:,
-        )
-      })
+    pg.BeErrorResponse(fields) -> {
+      let UntypedQuery(file:, name:, ..) = query
+      let query_name = gleam.value_identifier_to_string(name)
+      let unexpected = fn(expected, got) {
+        PgCannotExplainQuery(file:, query_name:, expected:, got:)
+      }
+
+      let parse_error =
+        error_fields_to_parse_error(query, fields)
+        |> adjust_parse_error_for_explain
+
+      expect_ready_for_query_then_throw(parse_error, or: unexpected)
+    }
 
     _ -> panic as string.inspect(msg)
   }
 }
 
-fn expect_ready_for_query_then_throw(query, fields, to_error) {
+fn expect_ready_for_query_then_throw(error, or to_error) {
   use msg <- eval.try(receive())
   case msg {
-    pg.BeReadyForQuery(_) ->
-      eval.throw(error_fields_to_parse_error(query, fields))
+    pg.BeReadyForQuery(_) -> eval.throw(error)
     _ -> unexpected_message(to_error, "BeReadyForQuery(_)", msg)
   }
 }
