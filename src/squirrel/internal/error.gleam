@@ -1,9 +1,9 @@
-import gleam/regexp
 import glam/doc.{type Document}
 import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/regexp
 import gleam/result
 import gleam/string
 import gleam_community/ansi

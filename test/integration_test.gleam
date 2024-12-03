@@ -1,4 +1,3 @@
-import gleam/regexp
 import argv
 import envoy
 import filepath
@@ -7,6 +6,7 @@ import gleam/erlang
 import gleam/erlang/atom
 import gleam/io
 import gleam/list
+import gleam/regexp
 import gleam/string
 import shellout
 import simplifile
