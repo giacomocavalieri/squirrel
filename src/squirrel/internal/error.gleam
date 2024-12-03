@@ -1,9 +1,9 @@
+import gleam/regexp
 import glam/doc.{type Document}
 import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/regex
 import gleam/result
 import gleam/string
 import gleam_community/ansi
@@ -852,19 +852,19 @@ fn syntax_highlight(content: String) -> String {
 
   let assert Ok(keyword) =
     { "\\b(" <> keywords <> ")\\b" <> not_inside_string }
-    |> regex.compile(regex.Options(True, False))
+    |> regexp.compile(regexp.Options(True, False))
   let assert Ok(number) =
-    regex.from_string("(?<!\\$)\\b(\\d+(\\.\\d+)?\\b)" <> not_inside_string)
-  let assert Ok(comment) = regex.from_string("(^\\s*--.*)")
-  let assert Ok(string) = regex.from_string("(\\'.*\\')")
-  let assert Ok(hole) = regex.from_string("(\\$\\d+)" <> not_inside_string)
+    regexp.from_string("(?<!\\$)\\b(\\d+(\\.\\d+)?\\b)" <> not_inside_string)
+  let assert Ok(comment) = regexp.from_string("(^\\s*--.*)")
+  let assert Ok(string) = regexp.from_string("(\\'.*\\')")
+  let assert Ok(hole) = regexp.from_string("(\\$\\d+)" <> not_inside_string)
 
   content
-  |> regex.replace(each: comment, with: "\u{001B}[2m\\1\u{001B}[0m")
-  |> regex.replace(each: keyword, with: "\u{001B}[36m\\1\u{001B}[39m")
-  |> regex.replace(each: string, with: "\u{001B}[33m\\1\u{001B}[39m")
-  |> regex.replace(each: number, with: "\u{001B}[32m\\1\u{001B}[39m")
-  |> regex.replace(each: hole, with: "\u{001B}[35m\\1\u{001B}[39m")
+  |> regexp.replace(each: comment, with: "\u{001B}[2m\\1\u{001B}[0m")
+  |> regexp.replace(each: keyword, with: "\u{001B}[36m\\1\u{001B}[39m")
+  |> regexp.replace(each: string, with: "\u{001B}[33m\\1\u{001B}[39m")
+  |> regexp.replace(each: number, with: "\u{001B}[32m\\1\u{001B}[39m")
+  |> regexp.replace(each: hole, with: "\u{001B}[35m\\1\u{001B}[39m")
 }
 
 fn report_bug_doc(additional_info: String) -> Document {
