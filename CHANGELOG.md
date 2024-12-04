@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## Unreleased
+
+- Fixed a bug where a queries with enum arrays would cause a crash.
+  ([Leah Ulmschneider](https://github.com/leah-u))
+
 ## v2.0.4 - 2024-12-04
 
 - Replace deprecated `gleam/regex` module with `gleam/regexp`.
