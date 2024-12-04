@@ -6,7 +6,7 @@ import gleam/erlang
 import gleam/erlang/atom
 import gleam/io
 import gleam/list
-import gleam/regex
+import gleam/regexp
 import gleam/string
 import shellout
 import simplifile
@@ -319,6 +319,6 @@ fn test_project(dir: String) -> Result(String, #(Int, String)) {
 }
 
 fn safe_name(string: String) {
-  let assert Ok(regex) = regex.from_string("[()\\[\\]]")
-  regex.replace(each: regex, with: "_", in: string)
+  let assert Ok(regex) = regexp.from_string("[()\\[\\]]")
+  regexp.replace(each: regex, with: "_", in: string)
 }
