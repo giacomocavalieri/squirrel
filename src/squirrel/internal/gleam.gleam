@@ -87,34 +87,13 @@ pub fn value_identifier(
 ) -> Result(ValueIdentifier, ValueIdentifierError) {
   // A valid identifier needs to start with a lowercase letter.
   // We do not accept _discard identifier as valid.
-  case name {
-    "a" <> rest
-    | "b" <> rest
-    | "c" <> rest
-    | "d" <> rest
-    | "e" <> rest
-    | "f" <> rest
-    | "g" <> rest
-    | "h" <> rest
-    | "i" <> rest
-    | "j" <> rest
-    | "k" <> rest
-    | "l" <> rest
-    | "m" <> rest
-    | "n" <> rest
-    | "o" <> rest
-    | "p" <> rest
-    | "q" <> rest
-    | "r" <> rest
-    | "s" <> rest
-    | "t" <> rest
-    | "u" <> rest
-    | "v" <> rest
-    | "w" <> rest
-    | "x" <> rest
-    | "y" <> rest
-    | "z" <> rest -> to_value_identifier_rest(name, rest, 1)
-    _ ->
+
+  let first = result.unwrap(string.first(name), "")
+  let rest = string.drop_start(name, 1)
+
+  case list.contains(alphabet_lower, first) {
+    True -> to_value_identifier_rest(name, rest, 1)
+    False ->
       case string.pop_grapheme(name) {
         Ok(#(g, _)) -> Error(ValueContainsInvalidGrapheme(0, g))
         Error(_) -> Error(ValueIsEmpty)
@@ -129,46 +108,20 @@ fn to_value_identifier_rest(
 ) -> Result(ValueIdentifier, ValueIdentifierError) {
   // The rest of an identifier can only contain lowercase letters, _, numbers,
   // or be empty. In all other cases it's not valid.
-  case rest {
-    "a" <> rest
-    | "b" <> rest
-    | "c" <> rest
-    | "d" <> rest
-    | "e" <> rest
-    | "f" <> rest
-    | "g" <> rest
-    | "h" <> rest
-    | "i" <> rest
-    | "j" <> rest
-    | "k" <> rest
-    | "l" <> rest
-    | "m" <> rest
-    | "n" <> rest
-    | "o" <> rest
-    | "p" <> rest
-    | "q" <> rest
-    | "r" <> rest
-    | "s" <> rest
-    | "t" <> rest
-    | "u" <> rest
-    | "v" <> rest
-    | "w" <> rest
-    | "x" <> rest
-    | "y" <> rest
-    | "z" <> rest
-    | "_" <> rest
-    | "0" <> rest
-    | "1" <> rest
-    | "2" <> rest
-    | "3" <> rest
-    | "4" <> rest
-    | "5" <> rest
-    | "6" <> rest
-    | "7" <> rest
-    | "8" <> rest
-    | "9" <> rest -> to_value_identifier_rest(name, rest, position + 1)
-    "" -> Ok(ValueIdentifier(name))
-    _ ->
+
+  let first = result.unwrap(string.first(rest), "")
+  let rest = string.drop_start(rest, 1)
+
+  let empty = first == ""
+  let contained =
+    list.contains(alphabet_lower, first)
+    || list.contains(digits, first)
+    || first == "_"
+
+  case contained, empty {
+    True, _ -> to_value_identifier_rest(name, rest, position + 1)
+    _, True -> Ok(ValueIdentifier(name))
+    _, _ ->
       case string.pop_grapheme(rest) {
         Ok(#(g, _)) -> Error(ValueContainsInvalidGrapheme(position, g))
         Error(_) -> panic as "unreachable: empty identifier rest should be ok"
@@ -192,34 +145,13 @@ pub fn type_identifier(
   from name: String,
 ) -> Result(TypeIdentifier, TypeIdentifierError) {
   // A valid type identifier needs to start with an uppercase letter.
-  case name {
-    "A" <> rest
-    | "B" <> rest
-    | "C" <> rest
-    | "D" <> rest
-    | "E" <> rest
-    | "F" <> rest
-    | "G" <> rest
-    | "H" <> rest
-    | "I" <> rest
-    | "J" <> rest
-    | "K" <> rest
-    | "L" <> rest
-    | "M" <> rest
-    | "N" <> rest
-    | "O" <> rest
-    | "P" <> rest
-    | "Q" <> rest
-    | "R" <> rest
-    | "S" <> rest
-    | "T" <> rest
-    | "U" <> rest
-    | "V" <> rest
-    | "W" <> rest
-    | "X" <> rest
-    | "Y" <> rest
-    | "Z" <> rest -> to_type_identifier_rest(name, rest, 1)
-    _ ->
+
+  let first = result.unwrap(string.first(name), "")
+  let rest = string.drop_start(name, 1)
+
+  case list.contains(alphabet_upper, first) {
+    True -> to_type_identifier_rest(name, rest, 1)
+    False ->
       case string.pop_grapheme(name) {
         Ok(#(g, _)) -> Error(TypeContainsInvalidGrapheme(0, g))
         Error(_) -> Error(TypeIsEmpty)
@@ -234,71 +166,21 @@ fn to_type_identifier_rest(
 ) -> Result(TypeIdentifier, TypeIdentifierError) {
   // The rest of an identifier can only contain lowercase or uppercase letters,
   // numbers, or be empty. In all other cases it's not valid.
-  case rest {
-    "a" <> rest
-    | "b" <> rest
-    | "c" <> rest
-    | "d" <> rest
-    | "e" <> rest
-    | "f" <> rest
-    | "g" <> rest
-    | "h" <> rest
-    | "i" <> rest
-    | "j" <> rest
-    | "k" <> rest
-    | "l" <> rest
-    | "m" <> rest
-    | "n" <> rest
-    | "o" <> rest
-    | "p" <> rest
-    | "q" <> rest
-    | "r" <> rest
-    | "s" <> rest
-    | "t" <> rest
-    | "u" <> rest
-    | "v" <> rest
-    | "w" <> rest
-    | "x" <> rest
-    | "y" <> rest
-    | "z" <> rest
-    | "A" <> rest
-    | "B" <> rest
-    | "C" <> rest
-    | "D" <> rest
-    | "E" <> rest
-    | "F" <> rest
-    | "G" <> rest
-    | "H" <> rest
-    | "I" <> rest
-    | "J" <> rest
-    | "K" <> rest
-    | "L" <> rest
-    | "M" <> rest
-    | "N" <> rest
-    | "O" <> rest
-    | "P" <> rest
-    | "Q" <> rest
-    | "R" <> rest
-    | "S" <> rest
-    | "T" <> rest
-    | "U" <> rest
-    | "V" <> rest
-    | "W" <> rest
-    | "X" <> rest
-    | "Y" <> rest
-    | "Z" <> rest
-    | "0" <> rest
-    | "1" <> rest
-    | "2" <> rest
-    | "3" <> rest
-    | "4" <> rest
-    | "5" <> rest
-    | "6" <> rest
-    | "7" <> rest
-    | "8" <> rest
-    | "9" <> rest -> to_type_identifier_rest(name, rest, position + 1)
-    "" -> Ok(TypeIdentifier(name))
-    _ ->
+
+  let first = result.unwrap(string.first(rest), "")
+  let rest = string.drop_start(rest, 1)
+
+  let empty = first == ""
+  let contained =
+    list.contains(alphabet_lower, first)
+    || list.contains(alphabet_upper, first)
+    || list.contains(digits, first)
+    || first == "_"
+
+  case contained, empty {
+    True, _ -> to_type_identifier_rest(name, rest, position + 1)
+    _, True -> Ok(TypeIdentifier(name))
+    _, _ ->
       case string.pop_grapheme(rest) {
         Ok(#(g, _)) -> Error(TypeContainsInvalidGrapheme(position, g))
         Error(_) -> panic as "unreachable: empty identifier rest should be ok"
@@ -402,53 +284,24 @@ pub fn try_make_enum(
 }
 
 // --- UTILS -------------------------------------------------------------------
+const alphabet_lower = [
+  "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p",
+  "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+]
+
+const alphabet_upper = [
+  "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P",
+  "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
+]
+
+const digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
 fn is_digit(char: String) -> Bool {
-  case char {
-    "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" -> True
-    _ -> False
-  }
+  list.contains(digits, char)
 }
 
 fn is_identifier_char(char: String) -> Bool {
-  case char {
-    "a"
-    | "b"
-    | "c"
-    | "d"
-    | "e"
-    | "f"
-    | "g"
-    | "h"
-    | "i"
-    | "j"
-    | "k"
-    | "l"
-    | "m"
-    | "n"
-    | "o"
-    | "p"
-    | "q"
-    | "r"
-    | "s"
-    | "t"
-    | "u"
-    | "v"
-    | "w"
-    | "x"
-    | "y"
-    | "z"
-    | "_"
-    | "0"
-    | "1"
-    | "2"
-    | "3"
-    | "4"
-    | "5"
-    | "6"
-    | "7"
-    | "8"
-    | "9" -> True
-    _ -> False
-  }
+  list.contains(alphabet_lower, char)
+  || list.contains(digits, char)
+  || char == "_"
 }
