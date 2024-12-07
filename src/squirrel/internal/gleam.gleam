@@ -87,37 +87,12 @@ pub fn value_identifier(
 ) -> Result(ValueIdentifier, ValueIdentifierError) {
   // A valid identifier needs to start with a lowercase letter.
   // We do not accept _discard identifier as valid.
-  case name {
-    "a" <> rest
-    | "b" <> rest
-    | "c" <> rest
-    | "d" <> rest
-    | "e" <> rest
-    | "f" <> rest
-    | "g" <> rest
-    | "h" <> rest
-    | "i" <> rest
-    | "j" <> rest
-    | "k" <> rest
-    | "l" <> rest
-    | "m" <> rest
-    | "n" <> rest
-    | "o" <> rest
-    | "p" <> rest
-    | "q" <> rest
-    | "r" <> rest
-    | "s" <> rest
-    | "t" <> rest
-    | "u" <> rest
-    | "v" <> rest
-    | "w" <> rest
-    | "x" <> rest
-    | "y" <> rest
-    | "z" <> rest -> to_value_identifier_rest(name, rest, 1)
-    _ ->
-      case string.pop_grapheme(name) {
-        Ok(#(g, _)) -> Error(ValueContainsInvalidGrapheme(0, g))
-        Error(_) -> Error(ValueIsEmpty)
+  case string.pop_grapheme(name) {
+    Error(_) -> Error(ValueIsEmpty)
+    Ok(#(char, rest)) ->
+      case is_lowercase_letter(char) {
+        True -> to_value_identifier_rest(name, rest, 1)
+        False -> Error(ValueContainsInvalidGrapheme(0, char))
       }
   }
 }
@@ -129,50 +104,16 @@ fn to_value_identifier_rest(
 ) -> Result(ValueIdentifier, ValueIdentifierError) {
   // The rest of an identifier can only contain lowercase letters, _, numbers,
   // or be empty. In all other cases it's not valid.
-  case rest {
-    "a" <> rest
-    | "b" <> rest
-    | "c" <> rest
-    | "d" <> rest
-    | "e" <> rest
-    | "f" <> rest
-    | "g" <> rest
-    | "h" <> rest
-    | "i" <> rest
-    | "j" <> rest
-    | "k" <> rest
-    | "l" <> rest
-    | "m" <> rest
-    | "n" <> rest
-    | "o" <> rest
-    | "p" <> rest
-    | "q" <> rest
-    | "r" <> rest
-    | "s" <> rest
-    | "t" <> rest
-    | "u" <> rest
-    | "v" <> rest
-    | "w" <> rest
-    | "x" <> rest
-    | "y" <> rest
-    | "z" <> rest
-    | "_" <> rest
-    | "0" <> rest
-    | "1" <> rest
-    | "2" <> rest
-    | "3" <> rest
-    | "4" <> rest
-    | "5" <> rest
-    | "6" <> rest
-    | "7" <> rest
-    | "8" <> rest
-    | "9" <> rest -> to_value_identifier_rest(name, rest, position + 1)
-    "" -> Ok(ValueIdentifier(name))
-    _ ->
-      case string.pop_grapheme(rest) {
-        Ok(#(g, _)) -> Error(ValueContainsInvalidGrapheme(position, g))
-        Error(_) -> panic as "unreachable: empty identifier rest should be ok"
+  case string.pop_grapheme(rest) {
+    Error(_) -> Ok(ValueIdentifier(name))
+    Ok(#(char, rest)) -> {
+      let is_valid_char =
+        char == "_" || is_lowercase_letter(char) || is_digit(char)
+      case is_valid_char {
+        True -> to_value_identifier_rest(name, rest, position + 1)
+        False -> Error(ValueContainsInvalidGrapheme(position, char))
       }
+    }
   }
 }
 
@@ -192,37 +133,12 @@ pub fn type_identifier(
   from name: String,
 ) -> Result(TypeIdentifier, TypeIdentifierError) {
   // A valid type identifier needs to start with an uppercase letter.
-  case name {
-    "A" <> rest
-    | "B" <> rest
-    | "C" <> rest
-    | "D" <> rest
-    | "E" <> rest
-    | "F" <> rest
-    | "G" <> rest
-    | "H" <> rest
-    | "I" <> rest
-    | "J" <> rest
-    | "K" <> rest
-    | "L" <> rest
-    | "M" <> rest
-    | "N" <> rest
-    | "O" <> rest
-    | "P" <> rest
-    | "Q" <> rest
-    | "R" <> rest
-    | "S" <> rest
-    | "T" <> rest
-    | "U" <> rest
-    | "V" <> rest
-    | "W" <> rest
-    | "X" <> rest
-    | "Y" <> rest
-    | "Z" <> rest -> to_type_identifier_rest(name, rest, 1)
-    _ ->
-      case string.pop_grapheme(name) {
-        Ok(#(g, _)) -> Error(TypeContainsInvalidGrapheme(0, g))
-        Error(_) -> Error(TypeIsEmpty)
+  case string.pop_grapheme(name) {
+    Error(_) -> Error(TypeIsEmpty)
+    Ok(#(char, rest)) ->
+      case is_uppercase_letter(char) {
+        False -> Error(TypeContainsInvalidGrapheme(0, char))
+        True -> to_type_identifier_rest(name, rest, 1)
       }
   }
 }
@@ -234,75 +150,16 @@ fn to_type_identifier_rest(
 ) -> Result(TypeIdentifier, TypeIdentifierError) {
   // The rest of an identifier can only contain lowercase or uppercase letters,
   // numbers, or be empty. In all other cases it's not valid.
-  case rest {
-    "a" <> rest
-    | "b" <> rest
-    | "c" <> rest
-    | "d" <> rest
-    | "e" <> rest
-    | "f" <> rest
-    | "g" <> rest
-    | "h" <> rest
-    | "i" <> rest
-    | "j" <> rest
-    | "k" <> rest
-    | "l" <> rest
-    | "m" <> rest
-    | "n" <> rest
-    | "o" <> rest
-    | "p" <> rest
-    | "q" <> rest
-    | "r" <> rest
-    | "s" <> rest
-    | "t" <> rest
-    | "u" <> rest
-    | "v" <> rest
-    | "w" <> rest
-    | "x" <> rest
-    | "y" <> rest
-    | "z" <> rest
-    | "A" <> rest
-    | "B" <> rest
-    | "C" <> rest
-    | "D" <> rest
-    | "E" <> rest
-    | "F" <> rest
-    | "G" <> rest
-    | "H" <> rest
-    | "I" <> rest
-    | "J" <> rest
-    | "K" <> rest
-    | "L" <> rest
-    | "M" <> rest
-    | "N" <> rest
-    | "O" <> rest
-    | "P" <> rest
-    | "Q" <> rest
-    | "R" <> rest
-    | "S" <> rest
-    | "T" <> rest
-    | "U" <> rest
-    | "V" <> rest
-    | "W" <> rest
-    | "X" <> rest
-    | "Y" <> rest
-    | "Z" <> rest
-    | "0" <> rest
-    | "1" <> rest
-    | "2" <> rest
-    | "3" <> rest
-    | "4" <> rest
-    | "5" <> rest
-    | "6" <> rest
-    | "7" <> rest
-    | "8" <> rest
-    | "9" <> rest -> to_type_identifier_rest(name, rest, position + 1)
-    "" -> Ok(TypeIdentifier(name))
-    _ ->
-      case string.pop_grapheme(rest) {
-        Ok(#(g, _)) -> Error(TypeContainsInvalidGrapheme(position, g))
-        Error(_) -> panic as "unreachable: empty identifier rest should be ok"
+  case string.pop_grapheme(rest) {
+    Error(_) -> Ok(TypeIdentifier(name))
+    Ok(#(char, rest)) -> {
+      let is_valid_char =
+        is_lowercase_letter(char) || is_uppercase_letter(char) || is_digit(char)
+      case is_valid_char {
+        True -> to_type_identifier_rest(name, rest, position + 1)
+        False -> Error(TypeContainsInvalidGrapheme(position, char))
       }
+    }
   }
 }
 
@@ -410,45 +267,25 @@ fn is_digit(char: String) -> Bool {
   }
 }
 
-fn is_identifier_char(char: String) -> Bool {
+fn is_lowercase_letter(char: String) -> Bool {
   case char {
-    "a"
-    | "b"
-    | "c"
-    | "d"
-    | "e"
-    | "f"
-    | "g"
-    | "h"
-    | "i"
-    | "j"
-    | "k"
-    | "l"
-    | "m"
-    | "n"
-    | "o"
-    | "p"
-    | "q"
-    | "r"
-    | "s"
-    | "t"
-    | "u"
-    | "v"
-    | "w"
-    | "x"
-    | "y"
-    | "z"
-    | "_"
-    | "0"
-    | "1"
-    | "2"
-    | "3"
-    | "4"
-    | "5"
-    | "6"
-    | "7"
-    | "8"
-    | "9" -> True
+    // lowercase letters
+    "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" -> True
+    "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" -> True
+    "w" | "x" | "y" | "z" -> True
     _ -> False
   }
+}
+
+fn is_uppercase_letter(char: String) -> Bool {
+  case char {
+    "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" -> True
+    "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" -> True
+    "W" | "X" | "Y" | "Z" -> True
+    _ -> False
+  }
+}
+
+fn is_identifier_char(char: String) -> Bool {
+  char == "_" || is_lowercase_letter(char) || is_digit(char)
 }
