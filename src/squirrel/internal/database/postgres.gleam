@@ -60,6 +60,12 @@ select
     else elem.typname
  	end as type,
 
+  -- The oid of the type or the array item type.
+  case
+    when elem.typname is null then type.oid
+    else elem.oid
+ 	end as oid,
+
   -- Tells us how to interpret the first column: if this is true then the first
   -- column is the type of the elements of the array type.
   -- Otherwise it means we've found a base type.
@@ -664,13 +670,14 @@ fn find_gleam_type(query: UntypedQuery, oid: Int) -> Db(gleam.Type) {
   let params = [pg.Parameter(<<oid:32>>)]
   use res <- eval.try(run_query(find_postgres_type_query(), params, [23]))
 
-  // We know the output must only contain two values: the name and a boolean to
-  // check wether it is an array or not.
+  // We know the output must only contain four values: the name, the oid, a boolean to
+  // check wether it is an array or not and the type of the type / array item.
   // It's safe to assert because this query is hard coded in our code and the
   // output shape cannot change without us changing that query.
-  let assert [[name, is_array, kind]] = res
+  let assert [[name, oid, is_array, kind]] = res
   let assert Ok(name) = bit_array.to_string(name)
   let assert Ok(kind) = bit_array.to_string(kind)
+  let assert <<oid:size(32)>> = oid
 
   use type_ <- eval.try(case kind {
     "e" -> resolve_enum_type(name, oid)

@@ -426,6 +426,12 @@ pub fn enum_encoding_test() {
   |> birdie.snap(title: "enum encoding")
 }
 
+pub fn enum_array_decoding_test() {
+  "select array['red'::squirrel_colour] as res"
+  |> should_codegen
+  |> birdie.snap(title: "enum array decoding")
+}
+
 // --- CODEGEN STRUCTURE TESTS -------------------------------------------------
 // This is a group of tests to ensure the generated code has some specific
 // structure (e.g. the names and comments are what we expect...)
