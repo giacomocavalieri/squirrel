@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v2.0.5 - 2024-12-12
 
 - Fixed a bug where queries with enum arrays would cause an error.
   ([Leah Ulmschneider](https://github.com/leah-u))
