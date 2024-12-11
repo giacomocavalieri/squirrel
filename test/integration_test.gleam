@@ -75,6 +75,7 @@ const integration_tests = [
   ),
   // Array
   TestType("int[]", [TestValue("[1, 2, 3]")]),
+  TestType("squirrel_colour[]", [TestValue("[sql.Red, sql.Grey]")]),
   // Custom enums
   TestType(
     "squirrel_colour",
@@ -318,7 +319,12 @@ fn test_project(dir: String) -> Result(String, #(Int, String)) {
   shellout.command(run: "gleam", with: ["run", "-mmain"], in: dir, opt: [])
 }
 
-fn safe_name(string: String) {
+fn safe_name(string: String) -> String {
   let assert Ok(regex) = regexp.from_string("[()\\[\\]]")
-  regexp.replace(each: regex, with: "_", in: string)
+
+  let safe_string = regexp.replace(each: regex, with: "_", in: string)
+  case string.ends_with(string, "[]") {
+    False -> safe_string
+    True -> safe_string <> "array"
+  }
 }
