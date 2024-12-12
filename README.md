@@ -49,7 +49,7 @@ the burden when you have a lot of queries:
 - The SQL query you write is just a plain string, you do not get syntax
   highlighting, auto formatting, suggestions... all the little niceties you
   would otherwise get if you where writing a plain `*.sql` file.
-- This also means you loose the ability to run these queries on their own with
+- This also means you lose the ability to run these queries on their own with
   other external tools, inspect them and so on.
 - You have to manually keep in sync the decoder with the query's output.
 
