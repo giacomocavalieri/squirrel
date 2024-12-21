@@ -24,7 +24,7 @@ tom = ">= 1.0.1 and < 2.0.0"
 youid = ">= 1.2.0 and < 2.0.0"
 non_empty_list = ">= 2.1.0 and < 3.0.0"
 tote = ">= 1.0.2 and < 2.0.0"
-pog = ">= 1.0.1 and < 2.0.0"
+pog = ">= 1.0.1 and < 3.0.0"
 gleam_regexp = ">= 1.0.0 and < 2.0.0"
 
 [dev-dependencies]
