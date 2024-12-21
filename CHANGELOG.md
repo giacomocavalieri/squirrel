@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v2.1.0 - Unreleased
+
+- The version requirement for `pog` has been relaxed to permit v2 in addition
+  to v1.
+  ([Louis Pilfold](https://github.com/lpil))
+
 ## v2.0.5 - 2024-12-12
 
 - Fixed a bug where queries with enum arrays would cause an error.
