@@ -1,10 +1,10 @@
 ---
-version: 1.2.3
+version: 1.2.5
 title: generated type fields are labelled with their name in the select list
 file: ./test/squirrel_test.gleam
 test_name: generated_type_fields_are_labelled_with_their_name_in_the_select_list_test
 ---
-import decode/zero
+import gleam/dynamic/decode
 import gleam/option.{type Option}
 import pog
 
@@ -26,9 +26,9 @@ pub type QueryRow {
 ///
 pub fn query(db) {
   let decoder = {
-    use acorns <- zero.field(0, zero.optional(zero.int))
-    use squirrel_name <- zero.field(1, zero.string)
-    zero.success(QueryRow(acorns:, squirrel_name:))
+    use acorns <- decode.field(0, decode.optional(decode.int))
+    use squirrel_name <- decode.field(1, decode.string)
+    decode.success(QueryRow(acorns:, squirrel_name:))
   }
 
   let query = "
@@ -40,6 +40,6 @@ from
 "
 
   pog.query(query)
-  |> pog.returning(zero.run(_, decoder))
+  |> pog.returning(decoder)
   |> pog.execute(db)
 }

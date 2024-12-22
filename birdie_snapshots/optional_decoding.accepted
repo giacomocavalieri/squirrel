@@ -1,10 +1,10 @@
 ---
-version: 1.2.3
+version: 1.2.5
 title: optional decoding
 file: ./test/squirrel_test.gleam
 test_name: optional_decoding_test
 ---
-import decode/zero
+import gleam/dynamic/decode
 import gleam/option.{type Option}
 import pog
 
@@ -26,13 +26,13 @@ pub type QueryRow {
 ///
 pub fn query(db) {
   let decoder = {
-    use acorns <- zero.field(0, zero.optional(zero.int))
-    zero.success(QueryRow(acorns:))
+    use acorns <- decode.field(0, decode.optional(decode.int))
+    decode.success(QueryRow(acorns:))
   }
 
   let query = "select acorns from squirrel"
 
   pog.query(query)
-  |> pog.returning(zero.run(_, decoder))
+  |> pog.returning(decoder)
   |> pog.execute(db)
 }

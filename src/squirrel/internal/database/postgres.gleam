@@ -13,11 +13,11 @@
 //// > that is a bug! Please do reach out, I'd love to hear your feedback.
 ////
 
-import decode/zero
 import eval
 import gleam/bit_array
 import gleam/bool
 import gleam/dict.{type Dict}
+import gleam/dynamic/decode
 import gleam/int
 import gleam/json
 import gleam/list
@@ -720,7 +720,7 @@ fn query_plan(query: UntypedQuery) -> Db(Plan) {
 
   // We know the output will only contain a single row that is the json string
   // containing the query plan.
-  case json.decode_bits(plan, zero.run(_, json_plans_decoder())) {
+  case json.parse_bits(plan, json_plans_decoder()) {
     Ok([plan, ..]) -> eval.return(plan)
     Ok([]) -> panic as "unreachable: no query plan"
     Error(reason) ->
@@ -1332,24 +1332,24 @@ fn adjust_parse_error_for_explain(error: Error) -> Error {
 // --- DECODERS ----------------------------------------------------------------
 
 fn json_plans_decoder() {
-  zero.list(zero.at(["Plan"], plan_decoder()))
+  decode.list(decode.at(["Plan"], plan_decoder()))
 }
 
 fn plan_decoder() {
-  use join_type <- zero.optional_field("Join Type", None, join_type_decoder())
-  use output <- zero.optional_field("Output", [], zero.list(zero.string))
-  use plans <- zero.optional_field("Plans", [], zero.list(plan_decoder()))
-  zero.success(Plan(join_type:, output:, plans:))
+  use join_type <- decode.optional_field("Join Type", None, join_type_decoder())
+  use output <- decode.optional_field("Output", [], decode.list(decode.string))
+  use plans <- decode.optional_field("Plans", [], decode.list(plan_decoder()))
+  decode.success(Plan(join_type:, output:, plans:))
 }
 
 fn join_type_decoder() {
-  use data <- zero.then(zero.string)
+  use data <- decode.then(decode.string)
   case data {
-    "Full" -> zero.success(Some(FullJoin))
-    "Left" -> zero.success(Some(LeftJoin))
-    "Right" -> zero.success(Some(RightJoin))
-    "Inner" -> zero.success(Some(InnerJoin))
-    _ -> zero.failure(None, "a join type")
+    "Full" -> decode.success(Some(FullJoin))
+    "Left" -> decode.success(Some(LeftJoin))
+    "Right" -> decode.success(Some(RightJoin))
+    "Inner" -> decode.success(Some(InnerJoin))
+    _ -> decode.failure(None, "a join type")
   }
 }
 

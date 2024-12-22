@@ -161,8 +161,6 @@ type CodeGenState {
   CodeGenState(
     imports: Dict(String, Set(String)),
     needs_uuid_decoder: Bool,
-    needs_date_decoder: Bool,
-    needs_timestamp_decoder: Bool,
     // All the enums used in the module, this maps from name of the enum to a
     // list of its variants and what kind of helpers need to be generated for
     // the enum encoding/decoding.
@@ -198,11 +196,9 @@ fn default_codegen_state() {
   CodeGenState(
     imports: dict.new(),
     needs_uuid_decoder: False,
-    needs_date_decoder: False,
-    needs_timestamp_decoder: False,
     enums: dict.new(),
   )
-  |> import_module("decode/zero")
+  |> import_module("gleam/dynamic/decode")
   |> import_module("pog")
 }
 
@@ -219,26 +215,20 @@ fn gleam_type_to_decoder(
     }
     gleam.List(type_) -> {
       let #(state, inner_decoder) = gleam_type_to_decoder(state, type_)
-      #(state, call_doc("zero.list", [inner_decoder]))
+      #(state, call_doc("decode.list", [inner_decoder]))
     }
     gleam.Option(type_) -> {
       let #(state, inner_decoder) = gleam_type_to_decoder(state, type_)
-      #(state, call_doc("zero.optional", [inner_decoder]))
+      #(state, call_doc("decode.optional", [inner_decoder]))
     }
-    gleam.Date -> {
-      let state = CodeGenState(..state, needs_date_decoder: True)
-      #(state, doc.from_string("date_decoder()"))
-    }
-    gleam.Timestamp -> {
-      let state = CodeGenState(..state, needs_timestamp_decoder: True)
-      #(state, doc.from_string("timestamp_decoder()"))
-    }
-    gleam.Int -> #(state, doc.from_string("zero.int"))
-    gleam.Float -> #(state, doc.from_string("zero.float"))
-    gleam.Bool -> #(state, doc.from_string("zero.bool"))
-    gleam.String -> #(state, doc.from_string("zero.string"))
-    gleam.BitArray -> #(state, doc.from_string("zero.bit_array"))
-    gleam.Json -> #(state, doc.from_string("zero.string"))
+    gleam.Date -> #(state, doc.from_string("pog.date_decoder()"))
+    gleam.Timestamp -> #(state, doc.from_string("pog.timestamp_decoder()"))
+    gleam.Int -> #(state, doc.from_string("decode.int"))
+    gleam.Float -> #(state, doc.from_string("decode.float"))
+    gleam.Bool -> #(state, doc.from_string("decode.bool"))
+    gleam.String -> #(state, doc.from_string("decode.string"))
+    gleam.BitArray -> #(state, doc.from_string("decode.bit_array"))
+    gleam.Json -> #(state, doc.from_string("decode.string"))
     gleam.Enum(original_name:, name: enum_name, variants:) -> #(
       state |> enum_needs_decoder(original_name, enum_name, variants),
       doc.from_string(enum_decoder_name(enum_name) <> "()"),
@@ -346,19 +336,11 @@ pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
   }
   let queries_docs = list.reverse(queries_docs)
 
-  let CodeGenState(
-    imports:,
-    needs_uuid_decoder:,
-    needs_date_decoder:,
-    needs_timestamp_decoder:,
-    enums:,
-  ) = state
+  let CodeGenState(imports:, needs_uuid_decoder:, enums:) = state
 
   let utils =
     []
     |> prepend_if(needs_uuid_decoder, doc.from_string(uuid_decoder))
-    |> prepend_if(needs_date_decoder, doc.from_string(date_decoder))
-    |> prepend_if(needs_timestamp_decoder, doc.from_string(timestamp_decoder))
 
   // We always want to output the imports and the code for the queries.
   // But in case we also need some helpers we add a final section to our file
@@ -482,8 +464,6 @@ fn query_doc(
   let encoders = list.reverse(encoders)
 
   let #(state, decoder) = decoder_doc(state, constructor_name, returns)
-  let zero_decoder =
-    call_doc("zero.run", [doc.from_string("_"), doc.from_string("decoder")])
 
   let code =
     [
@@ -495,7 +475,7 @@ fn query_doc(
         let_var("query", string_doc(content)),
         call_doc("pog.query", [doc.from_string("query")])
           |> pipe_all_encoders(encoders)
-          |> pipe_call_doc("pog.returning", _, [zero_decoder])
+          |> pipe_call_doc("pog.returning", _, [doc.from_string("decoder")])
           |> pipe_call_doc("pog.execute", _, [doc.from_string("db")]),
       ]),
     ]
@@ -692,7 +672,7 @@ fn enum_decoder_doc(
     doc.concat([
       string_doc(variant.string_representation),
       doc.from_string(" -> "),
-      call_doc("zero.success", [
+      call_doc("decode.success", [
         gleam.type_identifier_to_string(variant.name)
         |> doc.from_string,
       ]),
@@ -702,7 +682,7 @@ fn enum_decoder_doc(
   let failure_case_line =
     [
       doc.from_string("_ -> "),
-      call_doc("zero.failure", [
+      call_doc("decode.failure", [
         doc.from_string(gleam.type_identifier_to_string(variants.first.name)),
         string_doc(gleam.type_identifier_to_string(name)),
       ]),
@@ -711,7 +691,7 @@ fn enum_decoder_doc(
 
   let body =
     [
-      doc.from_string("use variant <- zero.then(zero.string)"),
+      doc.from_string("use variant <- decode.then(decode.string)"),
       doc.line,
       doc.from_string("case variant "),
       success_case_lines
@@ -729,40 +709,16 @@ fn enum_decoder_doc(
 const uuid_decoder = "/// A decoder to decode `Uuid`s coming from a Postgres query.
 ///
 fn uuid_decoder() {
-  use bit_array <- zero.then(zero.bit_array)
+  use bit_array <- decode.then(decode.bit_array)
   case uuid.from_bit_array(bit_array) {
-    Ok(uuid) -> zero.success(uuid)
-    Error(_) -> zero.failure(uuid.v7(), \"uuid\")
-  }
-}"
-
-const date_decoder = "/// A decoder to decode `date`s coming from a Postgres query.
-///
-fn date_decoder() {
-  use dynamic <- zero.then(zero.dynamic)
-  case pog.decode_date(dynamic) {
-    Ok(date) -> zero.success(date)
-    Error(_) -> zero.failure(pog.Date(0, 0, 0), \"date\")
-  }
-}"
-
-const timestamp_decoder = "/// A decoder to decode `timestamp`s coming from a Postgres query.
-///
-fn timestamp_decoder() {
-  use dynamic <- zero.then(zero.dynamic)
-  case pog.decode_timestamp(dynamic) {
-    Ok(timestamp) -> zero.success(timestamp)
-    Error(_) -> {
-      let date = pog.Date(0, 0, 0)
-      let time = pog.Time(0, 0, 0, 0)
-      zero.failure(pog.Timestamp(date:, time:), \"timestamp\")
-    }
+    Ok(uuid) -> decode.success(uuid)
+    Error(_) -> decode.failure(uuid.v7(), \"uuid\")
   }
 }"
 
 /// A decoder that discards its value and always returns `Nil` instead.
 ///
-const nil_decoder = "zero.map(zero.dynamic, fn(_) { Nil })"
+const nil_decoder = "decode.map(decode.dynamic, fn(_) { Nil })"
 
 /// A pretty printed decoder that decodes an n-item dynamic tuple using the
 /// `decode` package.
@@ -786,7 +742,7 @@ fn decoder_doc(
     let #(state, decoder) = gleam_type_to_decoder(state, field.type_)
     let param =
       doc.from_string("use " <> label <> " <- ")
-      |> doc.append(call_doc("zero.field", [position, decoder]))
+      |> doc.append(call_doc("decode.field", [position, decoder]))
     let parameters = [param, ..parameters]
 
     #(state, parameters, labelled_names)
@@ -798,7 +754,7 @@ fn decoder_doc(
     block([
       doc.join(parameters, with: doc.line),
       doc.line,
-      call_doc("zero.success", [call_doc(constructor, labelled_names)]),
+      call_doc("decode.success", [call_doc(constructor, labelled_names)]),
     ])
 
   #(state, doc)

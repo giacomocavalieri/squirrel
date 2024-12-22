@@ -1,10 +1,10 @@
 ---
-version: 1.2.3
+version: 1.2.5
 title: array encoding
 file: ./test/squirrel_test.gleam
 test_name: array_encoding_test
 ---
-import decode/zero
+import gleam/dynamic/decode
 import gleam/list
 import pog
 
@@ -26,14 +26,14 @@ pub type QueryRow {
 ///
 pub fn query(db, arg_1) {
   let decoder = {
-    use res <- zero.field(0, zero.bool)
-    zero.success(QueryRow(res:))
+    use res <- decode.field(0, decode.bool)
+    decode.success(QueryRow(res:))
   }
 
   let query = "select true as res where $1 = array[1, 2, 3]"
 
   pog.query(query)
   |> pog.parameter(pog.array(fn(value) { pog.int(value) }, arg_1))
-  |> pog.returning(zero.run(_, decoder))
+  |> pog.returning(decoder)
   |> pog.execute(db)
 }

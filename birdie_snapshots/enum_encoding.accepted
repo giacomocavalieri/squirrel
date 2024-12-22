@@ -1,10 +1,10 @@
 ---
-version: 1.2.3
+version: 1.2.5
 title: enum encoding
 file: ./test/squirrel_test.gleam
 test_name: enum_encoding_test
 ---
-import decode/zero
+import gleam/dynamic/decode
 import pog
 
 /// A row you get from running the `query` query
@@ -25,15 +25,15 @@ pub type QueryRow {
 ///
 pub fn query(db, arg_1) {
   let decoder = {
-    use res <- zero.field(0, zero.int)
-    zero.success(QueryRow(res:))
+    use res <- decode.field(0, decode.int)
+    decode.success(QueryRow(res:))
   }
 
   let query = "select 1 as res where $1 = 'red'::squirrel_colour"
 
   pog.query(query)
   |> pog.parameter(squirrel_colour_encoder(arg_1))
-  |> pog.returning(zero.run(_, decoder))
+  |> pog.returning(decoder)
   |> pog.execute(db)
 }
 

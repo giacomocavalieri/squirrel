@@ -1,10 +1,10 @@
 ---
-version: 1.2.3
+version: 1.2.5
 title: json encoding
 file: ./test/squirrel_test.gleam
 test_name: json_encoding_test
 ---
-import decode/zero
+import gleam/dynamic/decode
 import gleam/json
 import pog
 
@@ -15,12 +15,12 @@ import pog
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub fn query(db, arg_1) {
-  let decoder = zero.map(zero.dynamic, fn(_) { Nil })
+  let decoder = decode.map(decode.dynamic, fn(_) { Nil })
 
   let query = "insert into jsons(json) values ($1)"
 
   pog.query(query)
   |> pog.parameter(pog.text(json.to_string(arg_1)))
-  |> pog.returning(zero.run(_, decoder))
+  |> pog.returning(decoder)
   |> pog.execute(db)
 }

@@ -1,10 +1,10 @@
 ---
-version: 1.2.3
+version: 1.2.5
 title: string encoding
 file: ./test/squirrel_test.gleam
 test_name: string_encoding_test
 ---
-import decode/zero
+import gleam/dynamic/decode
 import pog
 
 /// A row you get from running the `query` query
@@ -25,14 +25,14 @@ pub type QueryRow {
 ///
 pub fn query(db, arg_1) {
   let decoder = {
-    use res <- zero.field(0, zero.bool)
-    zero.success(QueryRow(res:))
+    use res <- decode.field(0, decode.bool)
+    decode.success(QueryRow(res:))
   }
 
   let query = "select true as res where $1 = 'wibble'"
 
   pog.query(query)
   |> pog.parameter(pog.text(arg_1))
-  |> pog.returning(zero.run(_, decoder))
+  |> pog.returning(decoder)
   |> pog.execute(db)
 }

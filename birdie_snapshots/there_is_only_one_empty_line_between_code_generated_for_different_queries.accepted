@@ -1,10 +1,10 @@
 ---
-version: 1.2.3
+version: 1.2.5
 title: there is only one empty line between code generated for different queries
 file: ./test/squirrel_test.gleam
 test_name: there_is_only_one_empty_line_between_code_generated_for_different_queries_test
 ---
-import decode/zero
+import gleam/dynamic/decode
 import pog
 
 /// A row you get from running the `one` query
@@ -25,14 +25,14 @@ pub type OneRow {
 ///
 pub fn one(db) {
   let decoder = {
-    use res <- zero.field(0, zero.int)
-    zero.success(OneRow(res:))
+    use res <- decode.field(0, decode.int)
+    decode.success(OneRow(res:))
   }
 
   let query = "select 1 as res"
 
   pog.query(query)
-  |> pog.returning(zero.run(_, decoder))
+  |> pog.returning(decoder)
   |> pog.execute(db)
 }
 
@@ -54,13 +54,13 @@ pub type TwoRow {
 ///
 pub fn two(db) {
   let decoder = {
-    use res <- zero.field(0, zero.int)
-    zero.success(TwoRow(res:))
+    use res <- decode.field(0, decode.int)
+    decode.success(TwoRow(res:))
   }
 
   let query = "select 2 as res"
 
   pog.query(query)
-  |> pog.returning(zero.run(_, decoder))
+  |> pog.returning(decoder)
   |> pog.execute(db)
 }

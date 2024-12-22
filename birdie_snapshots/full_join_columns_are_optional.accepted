@@ -1,10 +1,10 @@
 ---
-version: 1.2.3
+version: 1.2.5
 title: full join columns are optional
 file: ./test/squirrel_test.gleam
 test_name: full_join_columns_are_optional_test
 ---
-import decode/zero
+import gleam/dynamic/decode
 import gleam/option.{type Option}
 import pog
 
@@ -26,9 +26,9 @@ pub type QueryRow {
 ///
 pub fn query(db) {
   let decoder = {
-    use optional1 <- zero.field(0, zero.optional(zero.string))
-    use optional2 <- zero.field(1, zero.optional(zero.string))
-    zero.success(QueryRow(optional1:, optional2:))
+    use optional1 <- decode.field(0, decode.optional(decode.string))
+    use optional2 <- decode.field(1, decode.optional(decode.string))
+    decode.success(QueryRow(optional1:, optional2:))
   }
 
   let query = "
@@ -41,6 +41,6 @@ from
 "
 
   pog.query(query)
-  |> pog.returning(zero.run(_, decoder))
+  |> pog.returning(decoder)
   |> pog.execute(db)
 }

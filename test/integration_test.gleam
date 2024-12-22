@@ -13,6 +13,7 @@ import simplifile
 import temporary
 
 /// An integration test for a specific postgres type.
+///
 type TestType {
   TestType(postgres_type: String, values: List(TestValue))
 }

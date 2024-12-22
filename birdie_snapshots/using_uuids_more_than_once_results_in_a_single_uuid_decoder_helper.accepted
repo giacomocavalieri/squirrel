@@ -1,10 +1,10 @@
 ---
-version: 1.2.3
+version: 1.2.5
 title: using uuids more than once results in a single uuid decoder helper
 file: ./test/squirrel_test.gleam
 test_name: using_uuids_more_than_once_results_in_a_single_uuid_decoder_helper_test
 ---
-import decode/zero
+import gleam/dynamic/decode
 import pog
 import youid/uuid.{type Uuid}
 
@@ -26,14 +26,14 @@ pub type OneRow {
 ///
 pub fn one(db) {
   let decoder = {
-    use gen_random_uuid <- zero.field(0, uuid_decoder())
-    zero.success(OneRow(gen_random_uuid:))
+    use gen_random_uuid <- decode.field(0, uuid_decoder())
+    decode.success(OneRow(gen_random_uuid:))
   }
 
   let query = "select gen_random_uuid()"
 
   pog.query(query)
-  |> pog.returning(zero.run(_, decoder))
+  |> pog.returning(decoder)
   |> pog.execute(db)
 }
 
@@ -55,14 +55,14 @@ pub type OtherRow {
 ///
 pub fn other(db) {
   let decoder = {
-    use gen_random_uuid <- zero.field(0, uuid_decoder())
-    zero.success(OtherRow(gen_random_uuid:))
+    use gen_random_uuid <- decode.field(0, uuid_decoder())
+    decode.success(OtherRow(gen_random_uuid:))
   }
 
   let query = "select gen_random_uuid()"
 
   pog.query(query)
-  |> pog.returning(zero.run(_, decoder))
+  |> pog.returning(decoder)
   |> pog.execute(db)
 }
 
@@ -71,9 +71,9 @@ pub fn other(db) {
 /// A decoder to decode `Uuid`s coming from a Postgres query.
 ///
 fn uuid_decoder() {
-  use bit_array <- zero.then(zero.bit_array)
+  use bit_array <- decode.then(decode.bit_array)
   case uuid.from_bit_array(bit_array) {
-    Ok(uuid) -> zero.success(uuid)
-    Error(_) -> zero.failure(uuid.v7(), "uuid")
+    Ok(uuid) -> decode.success(uuid)
+    Error(_) -> decode.failure(uuid.v7(), "uuid")
   }
 }

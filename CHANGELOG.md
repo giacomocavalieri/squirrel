@@ -2,9 +2,12 @@
 
 ## v2.1.0 - Unreleased
 
-- The version requirement for `pog` has been relaxed to permit v2 in addition
-  to v1.
-  ([Louis Pilfold](https://github.com/lpil))
+- The version requirement for `pog` has been changed to only permit v3.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
+- The generated code no longer relies on the `decode` package and now uses the
+  `gleam/dynamic/decode` module from the `gleam_stdlib` package.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
 ## v2.0.5 - 2024-12-12
 
