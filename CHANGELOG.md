@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v2.1.0 - Unreleased
+## v2.1.0 - 2024-12-22
 
 - The version requirement for `pog` has been changed to only permit v3.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
