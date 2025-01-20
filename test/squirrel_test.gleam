@@ -6,6 +6,7 @@ import gleam/string
 import gleeunit
 import pog
 import simplifile
+import squirrel
 import squirrel/internal/database/postgres
 import squirrel/internal/error.{type Error}
 import squirrel/internal/query.{type TypedQuery}
@@ -607,6 +608,36 @@ pub fn query_returning_columns_with_same_names_test() {
     5 as duplicate_2"
   |> should_error
   |> birdie.snap(title: "query returning columns with same names")
+}
+
+// --- CHECKING ----------------------------------------------------------------
+// Tests for the `check` command.
+//
+
+pub fn checking_two_identical_snippets_of_code_test() {
+  let code = should_codegen("select 1 as number")
+  let assert squirrel.Same = squirrel.compare_code_snippets(code, code)
+}
+
+pub fn if_code_snippets_differ_by_formatting_they_are_the_same_test() {
+  let expected_code = should_codegen("select 1 as number")
+  let actual_code = expected_code |> string.replace(each: "\n", with: "\n ")
+  let assert squirrel.Same =
+    squirrel.compare_code_snippets(expected_code, actual_code)
+}
+
+pub fn if_code_snippets_differ_by_comments_they_are_the_same_test() {
+  let expected_code = should_codegen("select 1 as number")
+  let actual_code = "// Comment!\n" <> expected_code
+  let assert squirrel.Same =
+    squirrel.compare_code_snippets(expected_code, actual_code)
+}
+
+pub fn comparing_different_snippets_of_code_test() {
+  let expected_code = should_codegen("select 1 as number")
+  let actual_code = should_codegen("select 2 as number")
+  let assert squirrel.Different =
+    squirrel.compare_code_snippets(expected_code, actual_code)
 }
 
 // --- REGRESSIONS -------------------------------------------------------------
