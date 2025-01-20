@@ -17,7 +17,8 @@ import glexer/token
 import simplifile
 import squirrel/internal/database/postgres
 import squirrel/internal/error.{
-  type Error, CannotWriteToFile, InvalidConnectionString, OutdatedFile,
+  type Error, CannotReadFile, CannotWriteToFile, InvalidConnectionString,
+  OutdatedFile,
 }
 import squirrel/internal/project
 import squirrel/internal/query.{type TypedQuery}
@@ -367,15 +368,20 @@ fn check_queries(
     [_, ..] -> Error(errors)
     [] -> {
       let output_file = directory_to_output_file(directory)
-      case check_queries_file(queries, output_file) {
-        Different -> Error([OutdatedFile(output_file)])
-        Same -> Ok(Nil)
+      case simplifile.read(output_file) {
+        Error(reason) -> Error([CannotReadFile(file: output_file, reason:)])
+        Ok(actual_code) ->
+          case check_queries_code(queries, actual_code) {
+            Different -> Error([OutdatedFile(file: output_file)])
+            Same -> Ok(Nil)
+          }
       }
     }
   }
 }
 
-type CheckResult {
+@internal
+pub type CheckResult {
   Different
   Same
 }
@@ -388,16 +394,25 @@ type CheckResult {
 /// > account! If the only thing that changed are comments and/or formatting
 /// > two files will still be considered the same.
 ///
-fn check_queries_file(queries: List(TypedQuery), file: String) -> CheckResult {
-  let assert Ok(actual_code) = simplifile.read(file)
+fn check_queries_code(
+  queries: List(TypedQuery),
+  actual_code: String,
+) -> CheckResult {
+  let expected_code = query.generate_code(queries, squirrel_version)
+  compare_code_snippets(actual_code, expected_code)
+}
 
+@internal
+pub fn compare_code_snippets(
+  actual_code: String,
+  expected_code: String,
+) -> CheckResult {
   let actual_tokens =
     glexer.new(actual_code)
     |> glexer.discard_comments
     |> glexer.discard_whitespace
     |> glexer.lex
 
-  let expected_code = query.generate_code(queries, squirrel_version)
   let expected_tokens =
     glexer.new(expected_code)
     |> glexer.discard_comments
