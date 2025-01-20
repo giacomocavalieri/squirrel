@@ -442,7 +442,9 @@ fn compare_token_lists(
 // --- PRETTY REPORT PRINTING --------------------------------------------------
 
 fn term_width() -> Int {
-  term_size.columns() |> result.unwrap(80)
+  term_size.columns()
+  |> result.unwrap(80)
+  |> int.min(80)
 }
 
 fn report_written_queries(
