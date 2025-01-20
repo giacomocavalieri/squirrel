@@ -2,7 +2,14 @@
 
 ## Unreleased
 
+- Added a new command line option `check`, to check that the generated code is
+  up to date with the sql queries.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 - The `exit` function from the `squirrel` module has been removed.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
+- The CLI text displayed by Squirrel will never exceed the 80 chars line limit.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
 ## v2.1.0 - 2024-12-22
