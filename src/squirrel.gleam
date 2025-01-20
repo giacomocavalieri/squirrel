@@ -1,3 +1,4 @@
+import argv
 import envoy
 import filepath
 import glam/doc.{type Document}
@@ -11,10 +12,12 @@ import gleam/result
 import gleam/string
 import gleam/uri.{Uri}
 import gleam_community/ansi
+import glexer
+import glexer/token
 import simplifile
 import squirrel/internal/database/postgres
 import squirrel/internal/error.{
-  type Error, CannotWriteToFile, InvalidConnectionString,
+  type Error, CannotWriteToFile, InvalidConnectionString, OutdatedFile,
 }
 import squirrel/internal/project
 import squirrel/internal/query.{type TypedQuery}
@@ -59,28 +62,41 @@ const squirrel_version = "v2.1.0"
 /// > add those as dependencies to your project.
 ///
 pub fn main() {
-  case connection_options() {
+  case parse_cli_args(), connection_options() {
+    Error(Nil), _ -> {
+      help_text()
+      |> doc.to_string(term_width())
+      |> io.println
+
+      exit(1)
+    }
+
     // In case we cannot read the connection options we just immediately fail.
-    Error(error) -> {
+    _, Error(error) -> {
       error.to_doc(error)
       |> doc.to_string(term_width())
       |> io.println
 
       exit(1)
     }
+
     // Otherwise we can walk through the file system and type all the queries,
     // connecting to the database.
-    Ok(options) -> {
+    Ok(mode), Ok(options) -> {
       let generated_queries =
         walk(project.src())
         |> generate_queries(options)
 
-      let mode = GenerateCode
       let #(report, status_code) = case mode {
         GenerateCode ->
           generated_queries
           |> write_queries
           |> report_written_queries
+
+        CheckGeneratedCode ->
+          generated_queries
+          |> check_queries
+          |> report_checked_queries
       }
 
       io.println(report)
@@ -89,9 +105,54 @@ pub fn main() {
   }
 }
 
+// --- CLI ARGS PARSING --------------------------------------------------------
+
 type Mode {
   GenerateCode
+  CheckGeneratedCode
 }
+
+fn parse_cli_args() -> Result(Mode, Nil) {
+  case argv.load().arguments {
+    [] -> Ok(GenerateCode)
+    ["check"] -> Ok(CheckGeneratedCode)
+    _ -> Error(Nil)
+  }
+}
+
+fn help_text() -> Document {
+  let nesting = 4
+  let title_line = doc.from_string("🐿️  Squirrel " <> squirrel_version)
+
+  let usage_line =
+    doc.concat([
+      doc.zero_width_string(ansi.yellow("Usage: ")),
+      doc.zero_width_string(ansi.green("gleam run -m squirrel")),
+      doc.from_string(" [COMMAND]"),
+    ])
+
+  let check_command =
+    [
+      doc.from_string("check  "),
+      "checks the generated code is up to date with the sql files"
+        |> flexible_string
+        |> doc.nest(by: 7),
+    ]
+    |> doc.concat
+    |> doc.group
+
+  let commands =
+    [
+      doc.zero_width_string(ansi.yellow("Commands:")),
+      doc.nest(check_command, by: nesting),
+    ]
+    |> doc.join(with: doc.nest(doc.line, by: nesting))
+
+  [title_line, usage_line, commands]
+  |> doc.join(with: doc.lines(2))
+}
+
+// --- CONNECTION OPTIONS PARSING ----------------------------------------------
 
 /// Returns the connection options to use to connect to the database.
 /// It first tries to read and parse a `DATABASE_URL` env variable (failing if
@@ -232,6 +293,8 @@ fn walk(from: String) -> Dict(String, List(String)) {
   }
 }
 
+// --- MODE: GENERATE QUERIES --------------------------------------------------
+
 /// Given a dict of directories and their `*.sql` files, performs code
 /// generation for each one, bundling all `*.sql` files under the same directory
 /// into a single Gleam module.
@@ -261,11 +324,7 @@ fn write_queries(
   queries: Dict(String, #(List(TypedQuery), List(Error))),
 ) -> Dict(String, #(Int, List(Error))) {
   use directory, #(queries, errors) <- dict.map_values(queries)
-
-  let output_file =
-    filepath.directory_name(directory)
-    |> filepath.join("sql.gleam")
-
+  let output_file = directory_to_output_file(directory)
   case write_queries_to_file(queries, to: output_file) {
     Ok(n) -> #(n, errors)
     Error(error) -> #(list.length(queries), [error, ..errors])
@@ -277,11 +336,9 @@ fn write_queries_to_file(
   to file: String,
 ) -> Result(Int, Error) {
   use <- bool.guard(when: queries == [], return: Ok(0))
-
   let directory = filepath.directory_name(file)
   let _ = simplifile.create_directory_all(directory)
 
-  // We need the top level imports.
   let code = query.generate_code(queries, squirrel_version)
   let try_write =
     simplifile.write(code, to: file)
@@ -289,6 +346,82 @@ fn write_queries_to_file(
 
   use _ <- result.try(try_write)
   Ok(list.length(queries))
+}
+
+fn directory_to_output_file(directory: String) -> String {
+  filepath.directory_name(directory)
+  |> filepath.join("sql.gleam")
+}
+
+// --- MODE: CHECK GENERATED CODE ----------------------------------------------
+
+fn check_queries(
+  queries: Dict(String, #(List(query.TypedQuery), List(Error))),
+) -> Dict(String, Result(Nil, List(Error))) {
+  use directory, #(queries, errors) <- dict.map_values(queries)
+  case errors {
+    // If there's any error in the query generation (for example there's a piece
+    // of sql code with a syntax error, or a column doesn't exist, ...)
+    // we don't even try to check that the files match, but just report the
+    // errors that took place.
+    [_, ..] -> Error(errors)
+    [] -> {
+      let output_file = directory_to_output_file(directory)
+      case check_queries_file(queries, output_file) {
+        Different -> Error([OutdatedFile(output_file)])
+        Same -> Ok(Nil)
+      }
+    }
+  }
+}
+
+type CheckResult {
+  Different
+  Same
+}
+
+/// Checks that the given `file`'s code is the same that would be generated from
+/// the given `queries`.
+/// Returns `Same` if the code is ok, `Different` otherwise.
+///
+/// > ⚠️ Note how this comparison doesn't take comments and whitespace into
+/// > account! If the only thing that changed are comments and/or formatting
+/// > two files will still be considered the same.
+///
+fn check_queries_file(queries: List(TypedQuery), file: String) -> CheckResult {
+  let assert Ok(actual_code) = simplifile.read(file)
+
+  let actual_tokens =
+    glexer.new(actual_code)
+    |> glexer.discard_comments
+    |> glexer.discard_whitespace
+    |> glexer.lex
+
+  let expected_code = query.generate_code(queries, squirrel_version)
+  let expected_tokens =
+    glexer.new(expected_code)
+    |> glexer.discard_comments
+    |> glexer.discard_whitespace
+    |> glexer.lex
+
+  compare_token_lists(expected_tokens, actual_tokens)
+}
+
+fn compare_token_lists(
+  expected_tokens: List(#(token.Token, glexer.Position)),
+  actual_tokens: List(#(token.Token, glexer.Position)),
+) {
+  case expected_tokens, actual_tokens {
+    [], [] -> Same
+    [], _ | _, [] -> Different
+    [#(expected_token, _position), ..expected_rest],
+      [#(actual_token, _position), ..actual_rest]
+    ->
+      case expected_token == actual_token {
+        True -> compare_token_lists(expected_rest, actual_rest)
+        False -> Different
+      }
+  }
 }
 
 // --- PRETTY REPORT PRINTING --------------------------------------------------
@@ -301,10 +434,11 @@ fn report_written_queries(
   dirs: Dict(String, #(Int, List(Error))),
 ) -> #(String, Int) {
   let #(ok, errors) = {
-    use #(all_ok, all_errors), _, result <- dict.fold(dirs, #(0, []))
-    let #(ok, errors) = result
-    #(all_ok + ok, errors |> list.append(all_errors))
+    use acc, _, #(oks, errors) <- dict.fold(dirs, #(0, []))
+    let #(all_ok, all_errors) = acc
+    #(all_ok + oks, errors |> list.append(all_errors))
   }
+
   let errors_doc =
     list.map(errors, error.to_doc)
     |> doc.join(with: doc.lines(2))
@@ -359,6 +493,35 @@ under your project's `src` directory.",
       ]
       |> doc.concat
       |> doc.to_string(term_width())
+  }
+
+  #(report, status_code)
+}
+
+fn report_checked_queries(dirs: Dict(String, Result(Nil, List(Error)))) {
+  let errors = {
+    use all_errors, _, result <- dict.fold(dirs, [])
+    case result {
+      Error(errors) -> errors |> list.append(all_errors)
+      Ok(_) -> all_errors
+    }
+  }
+
+  let status_code = case errors {
+    [_, ..] -> 1
+    [] -> 0
+  }
+
+  let report = case errors {
+    [_, ..] ->
+      list.map(errors, error.to_doc)
+      |> doc.join(with: doc.lines(2))
+      |> doc.to_string(term_width())
+
+    [] ->
+      text_with_header("🐿️  ", "All good!")
+      |> doc.to_string(term_width())
+      |> ansi.green
   }
 
   #(report, status_code)
