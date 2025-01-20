@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v3.0.0 - 2025-01-20
 
 - Added a new command line option `check`, to check that the generated code is
   up to date with the sql queries.
