@@ -6,50 +6,13 @@ on:
       - v*.*.*
 
 jobs:
-  test:
-    uses: ./.github/workflows/test.yml
-
-  version:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-      - run: cargo install tomlq
-      - run: |
-          if [ "v$(tomlq version -f gleam.toml)" == "${{ github.ref_name }}" ]; then
-            exit 0
-          fi
-          echo "tag does not match version in gleam.toml, refusing to publish"
-          exit 1
-
-  release-gh:
-    runs-on: ubuntu-latest
-    needs:
-      - test
-      - version
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - uses: TanklesXL/gleam_actions/.github/actions/deps_cache@main
-      - name: Release
-        uses: softprops/action-gh-release@v1
-
-  release-hex:
-    runs-on: ubuntu-latest
-    needs:
-      - test
-      - version
-    steps:
-      - uses: actions/checkout@v4
-      - uses: TanklesXL/gleam_actions/.github/actions/deps_cache@main
-      - uses: TanklesXL/gleam_actions/.github/actions/install_gleam@main
-        with:
-          erlang_version: 27
-          gleam_version: 1.6.1
-      - uses: TanklesXL/gleam_actions/.github/actions/hex_publish@main
-        with:
-          hex_user: ${{ secrets.HEXPM_USER }}
-          hex_pass: ${{ secrets.HEXPM_PASS }}
-          hex_key: ${{ secrets.HEXPM_API_KEY }}
+  release:
+    uses: TanklesXL/gleam_actions/.github/workflows/release.yaml@5c5d99b6d80e097f6eaf7daffa63bf446ca7d5ea
+    secrets:
+      HEXPM_USER: ${{ secrets.HEXPM_USER }}
+      HEXPM_PASS: ${{ secrets.HEXPM_PASS }}
+    with:
+      gleam_version: 1.7.0
+      erlang_version: 27
+      test_erlang: true
+      test_node: false
