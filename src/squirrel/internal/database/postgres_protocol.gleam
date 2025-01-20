@@ -291,14 +291,10 @@ fn decode_what(binary) {
 
 fn encode_message_data_row(columns) {
   <<list.length(columns):16>>
-  |> list.fold(
-    columns,
-    _,
-    fn(sum, column) {
-      let len = bit_array.byte_size(column)
-      <<sum:bits, len:32, column:bits>>
-    },
-  )
+  |> list.fold(columns, _, fn(sum, column) {
+    let len = bit_array.byte_size(column)
+    <<sum:bits, len:32, column:bits>>
+  })
   |> encode("D", _)
 }
 
