@@ -555,4 +555,4 @@ fn flexible_string(string: String) -> Document {
 // --- FFI ---------------------------------------------------------------------
 
 @external(erlang, "squirrel_ffi", "exit")
-pub fn exit(n: Int) -> Nil
+fn exit(n: Int) -> Nil

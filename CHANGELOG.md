@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## Unreleased
+
+- The `exit` function from the `squirrel` module has been removed.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v2.1.0 - 2024-12-22
 
 - The version requirement for `pog` has been changed to only permit v3.
