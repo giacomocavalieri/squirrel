@@ -147,6 +147,16 @@ work:
 > defining two functions `find_squirrel` and `list_squirrels` you can then
 > import and use in your code.
 
+### CLI Commands
+
+Squirrel offers the following commands to streamline your workflow:
+
+- `gleam run -m squirrel`: Generates type-safe Gleam code for all SQL queries
+  found in `src/**/sql/*.sql`.
+- `gleam run -m squirrel check`: Validates that the generated Gleam code is
+  up-to-date with the SQL queries. This is particularly useful to run in a CI
+  pipeline to make sure you don't forget to run `gleam run -m squirrel`.
+
 ### Talking to the database
 
 In order to understand the type of your queries, Squirrel needs to connect to
