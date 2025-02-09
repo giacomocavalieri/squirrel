@@ -5,7 +5,6 @@ file: ./test/squirrel_test.gleam
 test_name: array_encoding_test
 ---
 import gleam/dynamic/decode
-import gleam/list
 import pog
 
 /// A row you get from running the `query` query

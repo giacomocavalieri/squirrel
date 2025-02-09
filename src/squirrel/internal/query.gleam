@@ -250,7 +250,6 @@ fn gleam_type_to_encoder(
   let name = doc.from_string(name)
   case type_ {
     gleam.List(type_) -> {
-      let state = state |> import_module("gleam/list")
       let #(state, inner_encoder) = gleam_type_to_encoder(state, type_, "value")
       let map_fn = fn_doc(["value"], inner_encoder)
       let doc = call_doc("pog.array", [map_fn, name])
