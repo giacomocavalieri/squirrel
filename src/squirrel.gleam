@@ -58,9 +58,8 @@ const squirrel_version = "v3.0.0"
 /// > - `PGPASSWORD`: `""`
 ///
 /// > ⚠️ The generated code relies on the
-/// > [`pog`](https://hexdocs.pm/pog/) and
-/// > [`decode`](https://hexdocs.pm/decode/) packages to work, so make sure to
-/// > add those as dependencies to your project.
+/// > [`pog`](https://hexdocs.pm/pog/) package to work, so make sure to
+/// > add that dependency to your project.
 ///
 pub fn main() {
   case parse_cli_args(), connection_options() {
