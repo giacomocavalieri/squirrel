@@ -29,9 +29,8 @@ pub fn query(db, arg_1) {
     decode.success(QueryRow(res:))
   }
 
-  let query = "select true as res where $1 = 'wibble'::varchar(6)"
-
-  pog.query(query)
+  "select true as res where $1 = 'wibble'::varchar(6)"
+  |> pog.query
   |> pog.parameter(pog.text(arg_1))
   |> pog.returning(decoder)
   |> pog.execute(db)

@@ -31,7 +31,7 @@ pub fn query(db) {
     decode.success(QueryRow(user_id:, roles:))
   }
 
-  let query = "
+  "
 select
   users_issue41.user_id,
   profile_issue41.roles
@@ -40,8 +40,7 @@ from
   left join profile_issue41
     on profile_issue41.user_id = users_issue41.user_id;
 "
-
-  pog.query(query)
+  |> pog.query
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

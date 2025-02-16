@@ -29,11 +29,10 @@ pub fn query(db) {
     decode.success(QueryRow(res:))
   }
 
-  let query = "
+  "
 select true as res
 "
-
-  pog.query(query)
+  |> pog.query
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

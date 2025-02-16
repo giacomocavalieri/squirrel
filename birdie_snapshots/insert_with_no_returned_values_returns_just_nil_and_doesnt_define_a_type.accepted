@@ -16,9 +16,8 @@ import pog
 pub fn query(db) {
   let decoder = decode.map(decode.dynamic, fn(_) { Nil })
 
-  let query = "insert into squirrel values ('sandy', 1000)"
-
-  pog.query(query)
+  "insert into squirrel values ('sandy', 1000)"
+  |> pog.query
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

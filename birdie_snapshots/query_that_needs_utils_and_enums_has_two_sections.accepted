@@ -30,9 +30,8 @@ pub fn query(db) {
     decode.success(QueryRow(squirrel_colour:, date:))
   }
 
-  let query = "select 'red'::squirrel_colour, 'Jan-2-1970'::date"
-
-  pog.query(query)
+  "select 'red'::squirrel_colour, 'Jan-2-1970'::date"
+  |> pog.query
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

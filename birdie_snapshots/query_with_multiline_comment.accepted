@@ -29,13 +29,12 @@ pub fn query(db) {
     decode.success(QueryRow(res:))
   }
 
-  let query = "
+  "
 -- This is a comment
 -- that goes over multiple lines!
 select true as res
 "
-
-  pog.query(query)
+  |> pog.query
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

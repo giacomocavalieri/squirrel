@@ -29,9 +29,8 @@ pub fn one(db) {
     decode.success(OneRow(res:))
   }
 
-  let query = "select 1 as res"
-
-  pog.query(query)
+  "select 1 as res"
+  |> pog.query
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -58,9 +57,8 @@ pub fn two(db) {
     decode.success(TwoRow(res:))
   }
 
-  let query = "select 2 as res"
-
-  pog.query(query)
+  "select 2 as res"
+  |> pog.query
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

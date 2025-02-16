@@ -31,15 +31,14 @@ pub fn query(db) {
     decode.success(QueryRow(acorns:, squirrel_name:))
   }
 
-  let query = "
+  "
 select
   acorns,
   name as squirrel_name
 from
   squirrel
 "
-
-  pog.query(query)
+  |> pog.query
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

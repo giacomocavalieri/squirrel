@@ -471,8 +471,8 @@ fn query_doc(
       doc.line,
       fun_doc(gleam.value_identifier_to_string(name), ["db", ..inputs], [
         let_var("decoder", decoder),
-        let_var("query", string_doc(content)),
-        call_doc("pog.query", [doc.from_string("query")])
+        string_doc(content)
+          |> pipe_call_doc("pog.query", _, [])
           |> pipe_all_encoders(encoders)
           |> pipe_call_doc("pog.returning", _, [doc.from_string("decoder")])
           |> pipe_call_doc("pog.execute", _, [doc.from_string("db")]),
@@ -767,7 +767,12 @@ fn pipe_call_doc(
   first: Document,
   rest: List(Document),
 ) -> Document {
-  [first, doc.line, call_doc("|> " <> function, rest)]
+  let function = case rest {
+    [] -> doc.from_string("|> " <> function)
+    [_, ..] -> call_doc("|> " <> function, rest)
+  }
+
+  [first, doc.line, function]
   |> doc.concat
 }
 

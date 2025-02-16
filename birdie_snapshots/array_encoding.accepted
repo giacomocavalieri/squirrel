@@ -29,9 +29,8 @@ pub fn query(db, arg_1) {
     decode.success(QueryRow(res:))
   }
 
-  let query = "select true as res where $1 = array[1, 2, 3]"
-
-  pog.query(query)
+  "select true as res where $1 = array[1, 2, 3]"
+  |> pog.query
   |> pog.parameter(pog.array(fn(value) { pog.int(value) }, arg_1))
   |> pog.returning(decoder)
   |> pog.execute(db)

@@ -5,6 +5,9 @@
 - Fixed a bug where code generation would include an unused import.
   ([Leah Ulmschneider](https://github.com/leah-u))
 
+- Fixed a bug where the generated code would not be formatted properly.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v3.0.0 - 2025-01-20
 
 - Added a new command line option `check`, to check that the generated code is

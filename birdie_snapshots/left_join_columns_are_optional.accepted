@@ -31,7 +31,7 @@ pub fn query(db) {
     decode.success(QueryRow(not_optional:, optional:))
   }
 
-  let query = "
+  "
 select
   s1.name as not_optional,
   s2.name as optional
@@ -39,8 +39,7 @@ from
   squirrel s1
   left join squirrel s2 using(name)
 "
-
-  pog.query(query)
+  |> pog.query
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

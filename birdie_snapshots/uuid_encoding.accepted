@@ -30,9 +30,8 @@ pub fn query(db, arg_1) {
     decode.success(QueryRow(res:))
   }
 
-  let query = "select true as res where $1 = gen_random_uuid()"
-
-  pog.query(query)
+  "select true as res where $1 = gen_random_uuid()"
+  |> pog.query
   |> pog.parameter(pog.text(uuid.to_string(arg_1)))
   |> pog.returning(decoder)
   |> pog.execute(db)

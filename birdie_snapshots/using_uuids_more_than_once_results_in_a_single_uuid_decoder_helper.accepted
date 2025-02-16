@@ -30,9 +30,8 @@ pub fn one(db) {
     decode.success(OneRow(gen_random_uuid:))
   }
 
-  let query = "select gen_random_uuid()"
-
-  pog.query(query)
+  "select gen_random_uuid()"
+  |> pog.query
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
@@ -59,9 +58,8 @@ pub fn other(db) {
     decode.success(OtherRow(gen_random_uuid:))
   }
 
-  let query = "select gen_random_uuid()"
-
-  pog.query(query)
+  "select gen_random_uuid()"
+  |> pog.query
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

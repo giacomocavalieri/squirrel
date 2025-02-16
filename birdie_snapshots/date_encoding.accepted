@@ -29,9 +29,8 @@ pub fn query(db, arg_1) {
     decode.success(QueryRow(res:))
   }
 
-  let query = "select true as res where $1 = 'Jan-2-1970'::date"
-
-  pog.query(query)
+  "select true as res where $1 = 'Jan-2-1970'::date"
+  |> pog.query
   |> pog.parameter(pog.date(arg_1))
   |> pog.returning(decoder)
   |> pog.execute(db)

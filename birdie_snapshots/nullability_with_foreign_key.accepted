@@ -31,7 +31,7 @@ pub fn query(db, arg_1) {
     decode.success(QueryRow(item_id:, name:))
   }
 
-  let query = "
+  "
 select
   item_issue43.item_id,
   category_issue43.name
@@ -41,8 +41,7 @@ from
 where
   item_issue43.site_id = $1;
 "
-
-  pog.query(query)
+  |> pog.query
   |> pog.parameter(pog.int(arg_1))
   |> pog.returning(decoder)
   |> pog.execute(db)

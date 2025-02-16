@@ -31,9 +31,8 @@ pub fn query(db) {
     decode.success(QueryRow(gen_random_uuid:, date:))
   }
 
-  let query = "select gen_random_uuid(), 'Jan-2-1970'::date"
-
-  pog.query(query)
+  "select gen_random_uuid(), 'Jan-2-1970'::date"
+  |> pog.query
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

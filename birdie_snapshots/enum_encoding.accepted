@@ -29,9 +29,8 @@ pub fn query(db, arg_1) {
     decode.success(QueryRow(res:))
   }
 
-  let query = "select 1 as res where $1 = 'red'::squirrel_colour"
-
-  pog.query(query)
+  "select 1 as res where $1 = 'red'::squirrel_colour"
+  |> pog.query
   |> pog.parameter(squirrel_colour_encoder(arg_1))
   |> pog.returning(decoder)
   |> pog.execute(db)

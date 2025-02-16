@@ -31,11 +31,10 @@ pub fn query(db) {
     decode.success(QueryRow(first:, second:, third:))
   }
 
-  let query = "
+  "
 select true as first, 1 as second, 'wibble' as third
 "
-
-  pog.query(query)
+  |> pog.query
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

@@ -29,9 +29,8 @@ pub fn query(db) {
     decode.success(QueryRow(res:))
   }
 
-  let query = "select array[1, 2, 3] as res"
-
-  pog.query(query)
+  "select array[1, 2, 3] as res"
+  |> pog.query
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

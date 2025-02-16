@@ -30,9 +30,8 @@ pub fn query(db) {
     decode.success(QueryRow(acorns:))
   }
 
-  let query = "select acorns from squirrel"
-
-  pog.query(query)
+  "select acorns from squirrel"
+  |> pog.query
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

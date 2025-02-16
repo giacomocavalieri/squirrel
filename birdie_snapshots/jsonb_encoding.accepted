@@ -17,9 +17,8 @@ import pog
 pub fn query(db, arg_1) {
   let decoder = decode.map(decode.dynamic, fn(_) { Nil })
 
-  let query = "insert into jsons(jsonb) values($1)"
-
-  pog.query(query)
+  "insert into jsons(jsonb) values($1)"
+  |> pog.query
   |> pog.parameter(pog.text(json.to_string(arg_1)))
   |> pog.returning(decoder)
   |> pog.execute(db)

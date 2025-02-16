@@ -29,9 +29,8 @@ pub fn query(db) {
     decode.success(QueryRow(res:))
   }
 
-  let query = "select 'Jan-2-1970 12:34:56'::timestamp as res"
-
-  pog.query(query)
+  "select 'Jan-2-1970 12:34:56'::timestamp as res"
+  |> pog.query
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

@@ -29,9 +29,8 @@ pub fn query(db) {
     decode.success(QueryRow(squirrel_colour:))
   }
 
-  let query = "select 'red'::squirrel_colour"
-
-  pog.query(query)
+  "select 'red'::squirrel_colour"
+  |> pog.query
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
