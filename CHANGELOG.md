@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## Unreleased
+
+- Fixed a bug where code generation would include an unused import.
+  ([Leah Ulmschneider](https://github.com/leah-u))
+
 ## v3.0.0 - 2025-01-20
 
 - Added a new command line option `check`, to check that the generated code is
