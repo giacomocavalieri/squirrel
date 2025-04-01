@@ -244,7 +244,7 @@ pub type SquirrelColour {
 
 ### What flavour of SQL does squirrel support?
 
-Squirrel only has support for Postgres.
+Squirrel only supports Postgres. It supports all versions `>= 16`.
 
 ### Why isn't squirrel configurable in any way?
 
