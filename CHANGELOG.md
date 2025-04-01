@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v3.0.2 - 2025-04-01
 
 - Fixed a bug where Squirrel couldn't tell a Postgres server had a version below
   the minimum required one.
