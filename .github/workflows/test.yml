@@ -8,31 +8,8 @@ on:
   workflow_call:
 
 jobs:
-  format:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: TanklesXL/gleam_actions/.github/actions/install_gleam@main
-        with:
-          gleam_version: 1.7.0
-          erlang_version: 27
-      - uses: TanklesXL/gleam_actions/.github/actions/format@main
-
-  deps:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: TanklesXL/gleam_actions/.github/actions/install_gleam@main
-        with:
-          gleam_version: 1.7.0
-          erlang_version: 27
-      - uses: TanklesXL/gleam_actions/.github/actions/deps_cache@main
-        with:
-          gleam_version: 1.7.0
-
   test:
     runs-on: ubuntu-latest
-    needs: deps
     strategy:
       fail-fast: true
       matrix:
@@ -63,10 +40,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: TanklesXL/gleam_actions/.github/actions/deps_cache@main
-      - uses: TanklesXL/gleam_actions/.github/actions/install_gleam@main
+      - uses: erlef/setup-beam@v1
         with:
-          gleam_version: 1.7.0
-          erlang_version: ${{ matrix.erlang }}
-      - name: "integration test"
-        run: ./integration_test
+          otp-version: ${{ matrix.erlang }}
+          gleam-version: "1.9.1"
+          rebar3-version: "3"
+      - run: gleam deps download
+      - run: ./integration_test
+      - run: gleam format --check src test
