@@ -28,18 +28,15 @@ import gleam/string
 import squirrel/internal/database/postgres_protocol as pg
 import squirrel/internal/error.{
   type EnumError, type Error, type Pointer, type ValueIdentifierError, ByteIndex,
-  CannotParseQuery, PgCannotDecodeReceivedMessage, PgCannotDescribeQuery,
-  PgCannotEstablishTcpConnection, PgCannotExplainQuery, PgCannotReceiveMessage,
-  PgCannotSendMessage, PgInvalidPassword, PgInvalidSha256ServerProof,
-  PgInvalidUserDatabase, PgPermissionDenied, PgUnexpectedAuthMethodMessage,
-  PgUnexpectedCleartextAuthMessage, PgUnexpectedSha256AuthMessage,
-  PgUnsupportedAuthentication, Pointer, PostgresVersionIsTooOld,
-  QueryHasInvalidColumn, QueryHasInvalidEnum, QueryHasUnsupportedType,
+  Pointer,
 }
+
 import squirrel/internal/eval_extra
 import squirrel/internal/gleam
 import squirrel/internal/query.{type TypedQuery, type UntypedQuery, UntypedQuery}
 import squirrel/internal/scram
+
+const minimum_required_version = 160_000
 
 fn find_postgres_type_query() -> UntypedQuery {
   let assert Ok(name) = gleam.value_identifier("find_postgres_type_query")
@@ -128,6 +125,18 @@ where
   -- The index of the column we're looking for.
   and attnum = $2
 ",
+  )
+}
+
+fn find_postgres_version_query() -> UntypedQuery {
+  let assert Ok(name) = gleam.value_identifier("find_postgres_version_query")
+
+  query.UntypedQuery(
+    file: "",
+    starting_line: 1,
+    name:,
+    comment: [],
+    content: "select current_setting('server_version_num')",
   )
 }
 
@@ -291,7 +300,7 @@ pub fn main(
 ) -> Result(#(List(TypedQuery), List(Error)), Error) {
   use db <- result.try(
     pg.connect(connection.host, connection.port, connection.timeout)
-    |> result.map_error(PgCannotEstablishTcpConnection(
+    |> result.map_error(error.PgCannotEstablishTcpConnection(
       host: connection.host,
       port: connection.port,
       reason: _,
@@ -308,16 +317,21 @@ pub fn main(
   //
   //     https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-EXT-QUERY
   //
-  let #(context, connection) = eval.step(authenticate(connection), context)
-  case connection {
-    Error(error) -> Error(error)
-    // After successfully authenticating we can try and type all the queries.
-    Ok(_) ->
-      list.map(queries, infer_types)
-      |> eval_extra.run_all(context)
-      |> result.partition
-      |> Ok
+
+  let setup_script = {
+    use _ <- eval.try(authenticate(connection))
+    use _ <- eval.try(ensure_postgres_version())
+    eval.return(Nil)
   }
+
+  let #(context, connection) = eval.step(setup_script, context)
+  use _ <- result.try(connection)
+
+  // After successfully authenticating we can try and type all the queries.
+  list.map(queries, infer_types)
+  |> eval_extra.run_all(context)
+  |> result.partition
+  |> Ok
 }
 
 fn authenticate(connection: ConnectionOptions) -> Db(Nil) {
@@ -351,7 +365,8 @@ fn authenticate(connection: ConnectionOptions) -> Db(Nil) {
       }
     pg.BeAuthenticationSSPI -> unsupported_authentication("SSPI")
     pg.BeAuthenticationKerberosV5 -> unsupported_authentication("KerberosV5")
-    _ -> unexpected_message(PgUnexpectedAuthMethodMessage, "AuthMethod", msg)
+    _ ->
+      unexpected_message(error.PgUnexpectedAuthMethodMessage, "AuthMethod", msg)
   })
 
   use _ <- eval.try(
@@ -359,7 +374,7 @@ fn authenticate(connection: ConnectionOptions) -> Db(Nil) {
     // In case there's a receive error while waiting for the server to be ready
     // we want to display a more helpful error message because the problem here
     // must be with an invalid username/database combination.
-    |> eval.replace_error(PgInvalidUserDatabase(
+    |> eval.replace_error(error.PgInvalidUserDatabase(
       user: connection.user,
       database: connection.database,
     )),
@@ -368,18 +383,31 @@ fn authenticate(connection: ConnectionOptions) -> Db(Nil) {
   eval.return(Nil)
 }
 
+/// Makes sure that the Postgres version is supported by Squirrel
+fn ensure_postgres_version() -> Db(Nil) {
+  use version <- eval.try(run_query(find_postgres_version_query(), [], []))
+  let assert [[version, ..], ..] = version
+    as "select version should always return at least one row"
+
+  case bit_array.to_string(version) |> result.then(int.parse) {
+    Error(_) -> eval.throw(error.PostgresVersionHasInvalidFormat(version))
+    Ok(version) if version >= minimum_required_version -> eval.return(Nil)
+    Ok(_) -> eval.throw(error.PostgresVersionIsTooOld)
+  }
+}
+
 fn cleartext_authenticate(user: String, password: String) -> Db(Nil) {
   use _ <- eval.try(send(pg.FeAmbigous(pg.FePasswordMessage(password))))
   use msg <- eval.try(receive())
   case msg {
     pg.BeAuthenticationOk -> eval.return(Nil)
-    pg.BeErrorResponse(_) -> eval.throw(PgInvalidPassword(user:))
+    pg.BeErrorResponse(_) -> eval.throw(error.PgInvalidPassword(user:))
 
     // The response should only ever be Ok or Error (in case the password is
     // not correct).
     _ ->
       unexpected_message(
-        PgUnexpectedCleartextAuthMessage,
+        error.PgUnexpectedCleartextAuthMessage,
         "AuthenticationOk ok ErrorRespose",
         msg,
       )
@@ -440,7 +468,7 @@ fn expect_sasl_continue_message(msg: pg.BackendMessage) -> Db(BitArray) {
     pg.BeAuthenticationSASLContinue(server_first) -> eval.return(server_first)
     _ ->
       unexpected_message(
-        PgUnexpectedSha256AuthMessage,
+        error.PgUnexpectedSha256AuthMessage,
         "AuthenticationSASLContinue(server-first)",
         msg,
       )
@@ -456,7 +484,7 @@ fn expect_sasl_continue_message(msg: pg.BackendMessage) -> Db(BitArray) {
 fn expect_sasl_final_message(msg: pg.BackendMessage, user: String) {
   let unexpected_message =
     unexpected_message(
-      PgUnexpectedSha256AuthMessage,
+      error.PgUnexpectedSha256AuthMessage,
       "AuthenticationSASLFinal or BeErrorResponse",
       msg,
     )
@@ -465,7 +493,7 @@ fn expect_sasl_final_message(msg: pg.BackendMessage, user: String) {
     pg.BeAuthenticationSASLFinal(msg) -> eval.return(msg)
     pg.BeErrorResponse(fields) ->
       case set.contains(fields, pg.Code("28P01")) {
-        True -> eval.throw(PgInvalidPassword(user))
+        True -> eval.throw(error.PgInvalidPassword(user))
         False -> unexpected_message
       }
     _ -> unexpected_message
@@ -481,12 +509,12 @@ fn check_sasl_final_message(
   user: String,
 ) -> Db(Nil) {
   case scram.parse_server_final(msg) {
-    Error(Nil) -> eval.throw(PgInvalidSha256ServerProof)
-    Ok(scram.Failed(_)) -> eval.throw(PgInvalidPassword(user))
+    Error(Nil) -> eval.throw(error.PgInvalidSha256ServerProof)
+    Ok(scram.Failed(_)) -> eval.throw(error.PgInvalidPassword(user))
     Ok(scram.Successful(server_proof)) ->
       case server_proof == expected_server_proof {
         True -> eval.return(Nil)
-        False -> eval.throw(PgInvalidSha256ServerProof)
+        False -> eval.throw(error.PgInvalidSha256ServerProof)
       }
   }
 }
@@ -542,7 +570,7 @@ fn parameters_and_returns(query: UntypedQuery) -> Db(_) {
   // Error builder used in the following steps in case the message sequence
   // doesn't go as planned.
   let cannot_describe = fn(expected, got) {
-    PgCannotDescribeQuery(
+    error.PgCannotDescribeQuery(
       file: query.file,
       query_name: gleam.value_identifier_to_string(query.name),
       expected:,
@@ -1025,7 +1053,7 @@ fn expect_parse_complete(msg: pg.BackendMessage, query: UntypedQuery) -> Db(Nil)
       let UntypedQuery(file:, name:, ..) = query
       let query_name = gleam.value_identifier_to_string(name)
       let unexpected = fn(expected, got) {
-        PgCannotDescribeQuery(file:, query_name:, expected:, got:)
+        error.PgCannotDescribeQuery(file:, query_name:, expected:, got:)
       }
       let parse_error = error_fields_to_parse_error(query, fields)
       expect_ready_for_query_then_throw(parse_error, or: unexpected)
@@ -1047,7 +1075,7 @@ fn expect_query_plan_row_description(
       let UntypedQuery(file:, name:, ..) = query
       let query_name = gleam.value_identifier_to_string(name)
       let unexpected = fn(expected, got) {
-        PgCannotExplainQuery(file:, query_name:, expected:, got:)
+        error.PgCannotExplainQuery(file:, query_name:, expected:, got:)
       }
 
       let parse_error =
@@ -1082,7 +1110,8 @@ fn fields_to_permission_denied_error(
     }
   }
   case code, reason {
-    Some("42501"), Some(reason) -> Ok(PgPermissionDenied(query_file:, reason:))
+    Some("42501"), Some(reason) ->
+      Ok(error.PgPermissionDenied(query_file:, reason:))
     _, _ -> Error(Nil)
   }
 }
@@ -1095,11 +1124,11 @@ fn receive() -> Db(pg.BackendMessage) {
     Ok(#(db, msg)) -> #(Context(..context, db:), Ok(msg))
     Error(pg.ReadDecodeError(error)) -> #(
       context,
-      Error(PgCannotDecodeReceivedMessage(string.inspect(error))),
+      Error(error.PgCannotDecodeReceivedMessage(string.inspect(error))),
     )
     Error(pg.SocketError(error)) -> #(
       context,
-      Error(PgCannotReceiveMessage(string.inspect(error))),
+      Error(error.PgCannotReceiveMessage(string.inspect(error))),
     )
   }
 }
@@ -1116,7 +1145,10 @@ fn send(message message: pg.FrontendMessage) -> Db(Nil) {
 
   let #(db, result) = case result {
     Ok(db) -> #(db, Ok(Nil))
-    Error(error) -> #(db, Error(PgCannotSendMessage(string.inspect(error))))
+    Error(error) -> #(
+      db,
+      Error(error.PgCannotSendMessage(string.inspect(error))),
+    )
   }
 
   #(Context(..context, db:), result)
@@ -1159,8 +1191,8 @@ fn unexpected_message(
 
 /// Throws a `PgUnexpectedAuthentication` error.
 ///
-fn unsupported_authentication(auth: String) {
-  eval.throw(PgUnsupportedAuthentication(auth))
+fn unsupported_authentication(auth: String) -> Db(a) {
+  eval.throw(error.PgUnsupportedAuthentication(auth))
 }
 
 /// Looks up for a type with the given id in a global cache.
@@ -1217,7 +1249,7 @@ fn with_cached_column(
 
 fn unsupported_type_error(query: UntypedQuery, type_: String) -> Error {
   let UntypedQuery(content:, file:, name:, starting_line:, comment: _) = query
-  QueryHasUnsupportedType(
+  error.QueryHasUnsupportedType(
     file:,
     name: gleam.value_identifier_to_string(name),
     content:,
@@ -1228,7 +1260,13 @@ fn unsupported_type_error(query: UntypedQuery, type_: String) -> Error {
 
 fn invalid_enum_error(query: UntypedQuery, enum_name: String, reason: EnumError) {
   let UntypedQuery(content:, file:, name: _, starting_line:, comment: _) = query
-  QueryHasInvalidEnum(file:, content:, starting_line:, enum_name:, reason:)
+  error.QueryHasInvalidEnum(
+    file:,
+    content:,
+    starting_line:,
+    enum_name:,
+    reason:,
+  )
 }
 
 fn cannot_parse_error(
@@ -1239,7 +1277,7 @@ fn cannot_parse_error(
   pointer pointer: Option(Pointer),
 ) -> Error {
   let UntypedQuery(content:, file:, name:, starting_line:, comment: _) = query
-  CannotParseQuery(
+  error.CannotParseQuery(
     content:,
     file:,
     name: gleam.value_identifier_to_string(name),
@@ -1257,7 +1295,7 @@ fn invalid_column_error(
   reason: ValueIdentifierError,
 ) -> Error {
   let UntypedQuery(name: _, file:, content:, starting_line:, comment: _) = query
-  QueryHasInvalidColumn(
+  error.QueryHasInvalidColumn(
     file:,
     column_name:,
     suggested_name: gleam.similar_value_identifier_string(column_name)
@@ -1287,40 +1325,18 @@ fn invalid_column_error(
 /// change it: we drop the explain part from the query so it doesn't show up in
 /// the public facing error.
 ///
-/// Another thing that could go wrong is trying to run squirrel on a Postgres
-/// version that's older than 16, this means the generic_plan option won't be
-/// recognized!
-///
 fn adjust_parse_error_for_explain(error: Error) -> Error {
   case error {
-    CannotParseQuery(pointer:, ..) -> {
+    error.CannotParseQuery(pointer:, ..) -> {
       let pointer = case pointer {
         Some(Pointer(ByteIndex(index), message)) ->
           // We also need to update any pointer to make sure it's pointing to
           // the right place since we've dropped the first 46 bytes of the
           // query's content.
           Some(Pointer(ByteIndex(index - 45), message))
-
         _ -> pointer
       }
-
-      // If the error is due to using the generic_plan option in the explain
-      // query, then we error explaining that the postgres version is too old.
-      case pointer {
-        Some(Pointer(_, message)) -> {
-          let message = string.lowercase(message)
-          let is_explain_error =
-            string.contains(message, "explain")
-            && string.contains(message, "generic_plan")
-
-          case is_explain_error {
-            True -> PostgresVersionIsTooOld
-            False -> CannotParseQuery(..error, pointer:)
-          }
-        }
-
-        _ -> CannotParseQuery(..error, pointer:)
-      }
+      error.CannotParseQuery(..error, pointer:)
     }
 
     _ -> error

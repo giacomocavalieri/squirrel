@@ -3,7 +3,7 @@ version = "3.0.1"
 description = "🐿️ Type safe SQL in Gleam"
 licences = ["Apache-2.0"]
 repository = { type = "github", user = "giacomocavalieri", repo = "squirrel" }
-gleam = ">= 1.6.0"
+gleam = ">= 1.7.0"
 
 [dependencies]
 argv = ">= 1.0.2 and < 2.0.0"

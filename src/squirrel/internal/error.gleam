@@ -1,4 +1,5 @@
 import glam/doc.{type Document}
+import gleam/bit_array
 import gleam/int
 import gleam/json
 import gleam/list
@@ -191,6 +192,12 @@ pub type Error {
   /// older than 16 and should then be updated to use squirrel.
   ///
   PostgresVersionIsTooOld
+
+  /// This happens when the version number returned by the Postgres server is
+  /// in an invalid format (that is it's not UTF8 encoded nor a valid integer
+  /// number).
+  ///
+  PostgresVersionHasInvalidFormat(version: BitArray)
 
   /// This happens when we're checking the generated code with the `--check`
   /// flag and the generated code is not in sync with the actual sql queries
@@ -449,28 +456,27 @@ contain lowercase letters, numbers and underscores." <> case suggested_name {
 all columns should have a valid Gleam name as name.",
           )
 
-        _ ->
+        _ -> {
+          let message = case suggested_name {
+            None -> "This is not a valid Gleam name"
+            Some(suggestion) ->
+              "This is not a valid Gleam name, maybe try "
+              <> style_inline_code(suggestion)
+              <> "?"
+          }
+
           printable_error("Column with invalid name")
           |> add_code_paragraph(
             file:,
             content:,
             starting_line:,
-            point: Some(
-              Pointer(point_to: Name(column_name), message: case
-                suggested_name
-              {
-                None -> "This is not a valid Gleam name"
-                Some(suggestion) ->
-                  "This is not a valid Gleam name, maybe try "
-                  <> style_inline_code(suggestion)
-                  <> "?"
-              }),
-            ),
+            point: Some(Pointer(point_to: Name(column_name), message:)),
           )
           |> hint(
             "A column name must start with a lowercase letter and can only
 contain lowercase letters, numbers and underscores.",
           )
+        }
       }
 
     QueryHasInvalidEnum(file:, content:, starting_line:, enum_name:, reason:) ->
@@ -584,10 +590,19 @@ generate code for query " <> style_file(file) <> ".",
       printable_error("Outdated Postgres version")
       |> add_paragraph("Squirrel only works with Postgres versions >= 16")
       |> add_paragraph(
-        "If you have a good reason that's blocking you from upgrading Postgres version
-and you want to use Squirrel, please open an issue at "
-        <> style_link("https://github.com/giacomocavalieri/squirrel/issues/new"),
+        "If you have a good reason that's blocking you from upgrading Postgres
+version and you want to use Squirrel, please open an issue at " <> style_link(
+          "https://github.com/giacomocavalieri/squirrel/issues/new",
+        ),
       )
+
+    PostgresVersionHasInvalidFormat(invalid_version) ->
+      printable_error("Postgres version with unexpected format")
+      |> add_paragraph(
+        "It looks like your Postgres server's version has an unexpected format.
+This is most definitely a bug!",
+      )
+      |> report_bug(bit_array.inspect(invalid_version))
 
     OutdatedFile(file:) ->
       printable_error("Outdated file")
