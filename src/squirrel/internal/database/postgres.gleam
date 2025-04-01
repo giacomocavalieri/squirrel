@@ -38,9 +38,7 @@ import squirrel/internal/error.{
 }
 import squirrel/internal/eval_extra
 import squirrel/internal/gleam
-import squirrel/internal/query.{
-  type TypedQuery, type UntypedQuery, TypedQuery, UntypedQuery,
-}
+import squirrel/internal/query.{type TypedQuery, type UntypedQuery, UntypedQuery}
 import squirrel/internal/scram
 
 fn find_postgres_type_query() -> UntypedQuery {

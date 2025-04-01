@@ -766,7 +766,7 @@ pub fn decode_frontend_message(
   }
 }
 
-fn decode_startup_message(binary, size, result) {
+fn decode_startup_message(binary, size, _result) {
   case binary {
     <<data:bytes-size(size), next:bytes>> ->
       decode_startup_message_pairs(data, [])

@@ -4,7 +4,7 @@ import gleam/bool
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{None, Some}
 import gleam/result
 import gleam/set.{type Set}
 import gleam/string
@@ -14,9 +14,7 @@ import squirrel/internal/error.{
   type Error, CannotReadFile, QueryFileHasInvalidName,
   QueryReturnsMultipleValuesWithTheSameName,
 }
-import squirrel/internal/gleam.{
-  type EnumVariant, type TypeIdentifier, EnumVariant,
-}
+import squirrel/internal/gleam.{type EnumVariant, type TypeIdentifier}
 import tote/bag
 
 /// A query that still needs to go through the type checking process.
