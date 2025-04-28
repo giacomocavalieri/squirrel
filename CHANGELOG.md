@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## Unreleased
+
+- Fixed a bug where Squirrel would not be able to generate code for queries with
+  recursive common table expressions relying on semi joins.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v3.0.2 - 2025-04-01
 
 - Fixed a bug where Squirrel couldn't tell a Postgres server had a version below
