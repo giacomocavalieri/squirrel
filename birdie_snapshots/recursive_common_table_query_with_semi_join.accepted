@@ -1,6 +1,8 @@
 ---
 version: 1.2.5
-title: asasdasdas
+title: recursive common table query with semi join
+file: ./test/squirrel_test.gleam
+test_name: recursive_common_table_query_with_semi_join_test
 ---
 import gleam/dynamic/decode
 import pog
@@ -13,7 +15,7 @@ import youid/uuid.{type Uuid}
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub type QueryRow {
-  QueryRow(id: Uuid)
+  QueryRow(id: Uuid, name: String)
 }
 
 /// Runs the `query` query
@@ -25,7 +27,8 @@ pub type QueryRow {
 pub fn query(db, arg_1) {
   let decoder = {
     use id <- decode.field(0, uuid_decoder())
-    decode.success(QueryRow(id:))
+    use name <- decode.field(1, decode.string)
+    decode.success(QueryRow(id:, name:))
   }
 
   "
@@ -40,7 +43,7 @@ with recursive subcategories as (
   from categories_issue75 c
   join subcategories sc on c.parent_id = sc.id
 )
-select i.id
+select i.id, i.name
 from items_issue75 i
 left join items_categories_issue75 ic on ic.item_id = i.id
 where ic.category_id in (select id from subcategories);"

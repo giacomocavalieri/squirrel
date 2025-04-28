@@ -144,7 +144,7 @@ fn find_postgres_version_query() -> UntypedQuery {
 
 /// A Postgres type.
 ///
-/// > ⚠️Postgres has loads of types and this might not cover the more exotic
+/// > ⚠️ Postgres has loads of types and this might not cover the more exotic
 /// > ones but for now it feels more than enough.
 ///
 type PgType {
@@ -224,6 +224,13 @@ type JoinType {
   LeftJoin
   RightJoin
   InnerJoin
+  /// > ⚠️ From my understanding a semi join only returns rows from the relation
+  /// > on the left. It also has some other invariants regarding duplicates that
+  /// > are not really relevant to squirrel.
+  /// > It looks like this is virtually the same as a left join as far as code
+  /// > generation is concerned!
+  ///
+  SemiJoin
 }
 
 /// This is the type of a database-related action.
@@ -822,7 +829,7 @@ fn do_nullables_from_plan(
 
     // If this is a left join then we must mark the outputs of its right part as
     // nullable!
-    Some(LeftJoin), [left, right] -> {
+    Some(LeftJoin), [left, right] | Some(SemiJoin), [left, right] -> {
       let nullables =
         plan_outputs_indices(right, query_outputs)
         |> set.union(nullables)
@@ -832,7 +839,11 @@ fn do_nullables_from_plan(
 
     // This should never happen in theory (a join with 0, 1, or more than two
     // childs), so we just inspect their plans as a safe bet.
-    Some(RightJoin), plans | Some(LeftJoin), plans | None, plans -> {
+    Some(RightJoin), plans
+    | Some(LeftJoin), plans
+    | Some(SemiJoin), plans
+    | None, plans
+    -> {
       use nullables, plan <- list.fold(plans, nullables)
       do_nullables_from_plan(plan, query_outputs, nullables)
     }
@@ -1363,6 +1374,7 @@ fn join_type_decoder() {
     "Left" -> decode.success(Some(LeftJoin))
     "Right" -> decode.success(Some(RightJoin))
     "Inner" -> decode.success(Some(InnerJoin))
+    "Semi" -> decode.success(Some(SemiJoin))
     _ -> decode.failure(None, "a join type")
   }
 }
