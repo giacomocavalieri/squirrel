@@ -144,6 +144,38 @@ create table if not exists item_issue43 (
     |> pog.query
     |> pog.execute(db)
 
+  // https://github.com/giacomocavalieri/squirrel/issues/75
+  let assert Ok(_) =
+    "
+create table if not exists categories_issue75 (
+  id uuid primary key,
+  name varchar(70) not null,
+  parent_id uuid not null
+);
+  "
+    |> pog.query
+    |> pog.execute(db)
+
+  let assert Ok(_) =
+    "
+create table if not exists items_issue75 (
+  id uuid primary key,
+  name varchar(70) not null
+);
+"
+    |> pog.query
+    |> pog.execute(db)
+
+  let assert Ok(_) =
+    "
+create table if not exists items_categories_issue75 (
+  item_id uuid not null,
+  category_id uuid not null,
+  primary key (item_id, category_id)
+);"
+    |> pog.query
+    |> pog.execute(db)
+
   pog.disconnect(db)
 }
 
@@ -737,4 +769,26 @@ where
 "
   |> should_codegen
   |> birdie.snap(title: "nullability with foreign key")
+}
+
+// https://github.com/giacomocavalieri/squirrel/issues/75
+pub fn recursive_common_table_query_test() {
+  "
+with recursive subcategories as (
+  select id
+  from categories_issue75
+  where id = $1
+
+  union all
+
+  select c.id
+  from categories_issue75 c
+  join subcategories sc on c.parent_id = sc.id
+)
+select i.id, i.name
+from items_issue75 i
+left join items_categories_issue75 ic on ic.item_id = i.id
+where ic.category_id in (select id from subcategories);"
+  |> should_codegen
+  |> birdie.snap(title: "asasdasdas")
 }
