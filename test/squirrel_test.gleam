@@ -772,7 +772,7 @@ where
 }
 
 // https://github.com/giacomocavalieri/squirrel/issues/75
-pub fn recursive_common_table_query_test() {
+pub fn recursive_common_table_query_with_semi_join_test() {
   "
 with recursive subcategories as (
   select id
@@ -790,5 +790,5 @@ from items_issue75 i
 left join items_categories_issue75 ic on ic.item_id = i.id
 where ic.category_id in (select id from subcategories);"
   |> should_codegen
-  |> birdie.snap(title: "asasdasdas")
+  |> birdie.snap(title: "recursive common table query with semi join")
 }
