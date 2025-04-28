@@ -61,6 +61,6 @@ fn uuid_decoder() {
   use bit_array <- decode.then(decode.bit_array)
   case uuid.from_bit_array(bit_array) {
     Ok(uuid) -> decode.success(uuid)
-    Error(_) -> decode.failure(uuid.v7(), "uuid")
+    Error(_) -> decode.failure(uuid.v7(), "Uuid")
   }
 }
