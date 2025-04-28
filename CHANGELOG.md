@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v3.0.3 - 2025-04-28
 
 - Fixed a bug where Squirrel would not be able to generate code for queries with
   recursive common table expressions relying on semi joins.
