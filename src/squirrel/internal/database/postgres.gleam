@@ -17,7 +17,7 @@ import eval
 import gleam/bit_array
 import gleam/bool
 import gleam/dict.{type Dict}
-import gleam/dynamic/decode
+import gleam/dynamic/decode.{type Decoder}
 import gleam/int
 import gleam/json
 import gleam/list
@@ -1356,18 +1356,18 @@ fn adjust_parse_error_for_explain(error: Error) -> Error {
 
 // --- DECODERS ----------------------------------------------------------------
 
-fn json_plans_decoder() {
+fn json_plans_decoder() -> Decoder(List(Plan)) {
   decode.list(decode.at(["Plan"], plan_decoder()))
 }
 
-fn plan_decoder() {
+fn plan_decoder() -> Decoder(Plan) {
   use join_type <- decode.optional_field("Join Type", None, join_type_decoder())
   use output <- decode.optional_field("Output", [], decode.list(decode.string))
   use plans <- decode.optional_field("Plans", [], decode.list(plan_decoder()))
   decode.success(Plan(join_type:, output:, plans:))
 }
 
-fn join_type_decoder() {
+fn join_type_decoder() -> Decoder(Option(JoinType)) {
   use data <- decode.then(decode.string)
   case data {
     "Full" -> decode.success(Some(FullJoin))
@@ -1375,7 +1375,7 @@ fn join_type_decoder() {
     "Right" -> decode.success(Some(RightJoin))
     "Inner" -> decode.success(Some(InnerJoin))
     "Semi" -> decode.success(Some(SemiJoin))
-    _ -> decode.failure(None, "a join type")
+    _ -> decode.failure(None, "JoinType")
   }
 }
 
