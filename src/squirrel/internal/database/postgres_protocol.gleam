@@ -727,7 +727,7 @@ pub fn decode_frontend_packet(
     <<8:32, 1234:16, 5680:16, next:bytes>> -> Ok(#(FeGssEncRequest, next))
     // not sure if there's a way to use the `protocol_version` constant here
     <<length:32, 3:16, 0:16, next:bytes>> ->
-      decode_startup_message(next, length - 8, [])
+      decode_startup_message(next, length - 8)
     <<message_type:bytes-size(1), length:32, tail:bytes>> -> {
       let len = length - 4
       case tail {
@@ -766,7 +766,7 @@ pub fn decode_frontend_message(
   }
 }
 
-fn decode_startup_message(binary, size, _result) {
+fn decode_startup_message(binary, size) {
   case binary {
     <<data:bytes-size(size), next:bytes>> ->
       decode_startup_message_pairs(data, [])
