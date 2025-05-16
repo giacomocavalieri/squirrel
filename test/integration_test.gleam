@@ -82,6 +82,16 @@ const integration_tests = [
     "squirrel_colour",
     [TestValue("sql.LightBrown"), TestValue("sql.Red"), TestValue("sql.Grey")],
   ),
+  // Custom types
+  TestType(
+    "custom_type",
+    [
+      TestValue("sql.CustomType(Some(\"a\"), Some(sql.LightBrown))"),
+      TestValue("sql.CustomType(None, Some(sql.LightBrown))"),
+      TestValue("sql.CustomType(Some(\"a\"), None)"),
+      TestValue("sql.CustomType(None, None)"),
+    ],
+  ),
   // Json
   TestType(
     "json",
@@ -278,6 +288,7 @@ let assert Ok(pog.Returned(1, [])) = sql.<delete>(db)
 fn write_main(assertions: String, to dir: String) -> Nil {
   let main = "
 import gleam/io
+import gleam/option.{Some, None}
 import gleam/string
 import pog
 import gleam/json
@@ -309,13 +320,21 @@ let db = pog.connect(config)
 /// the project to run all the generated assertions.
 ///
 fn test_project(dir: String) -> Result(String, #(Int, String)) {
-  let assert Ok(_) =
+  let result =
     shellout.command(
       run: "gleam",
       with: ["run", "-msquirrel"],
       in: dir,
       opt: [],
     )
+
+  let _ = case result {
+    Ok(_) -> Nil
+    Error(#(_, message)) -> {
+      io.println(message)
+      panic as "failed to run squirrel"
+    }
+  }
 
   shellout.command(run: "gleam", with: ["run", "-mmain"], in: dir, opt: [])
 }

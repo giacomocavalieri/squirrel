@@ -27,8 +27,8 @@ import gleam/set.{type Set}
 import gleam/string
 import squirrel/internal/database/postgres_protocol as pg
 import squirrel/internal/error.{
-  type EnumError, type Error, type Pointer, type ValueIdentifierError, ByteIndex,
-  Pointer,
+  type CustomTypeError, type EnumError, type Error, type Pointer,
+  type ValueIdentifierError, ByteIndex, Pointer,
 }
 
 import squirrel/internal/eval_extra
@@ -105,6 +105,33 @@ order by
   )
 }
 
+fn find_custom_type_columns_query() -> UntypedQuery {
+  let assert Ok(name) = gleam.value_identifier("find_custom_type_columns_query")
+
+  query.UntypedQuery(
+    file: "",
+    starting_line: 1,
+    name:,
+    comment: [],
+    content: "
+select
+  pg_attribute.attname,   -- the name of the column
+  pg_attribute.atttypid,  -- the column's type oid
+  not pg_attribute.attnotnull -- wether it is nullable or not
+from
+  pg_type
+  -- If the type is composite `pg_type.typrelid` will point to
+  -- the `pg_class` entry that defines the corresponding table.
+  join pg_class on pg_class.oid = pg_type.typrelid
+  join pg_attribute on pg_attribute.attrelid = pg_class.oid
+where
+  pg_type.oid = $1
+  and pg_class.relkind = 'c'
+  and not pg_attribute.attisdropped;
+",
+  )
+}
+
 fn find_column_nullability_query() -> UntypedQuery {
   let assert Ok(name) = gleam.value_identifier("find_column_nullability_query")
 
@@ -166,8 +193,18 @@ type PgType {
   /// )
   /// ```
   ///
-  ///
   PEnum(name: String, variants: List(String))
+
+  /// A postgres custom type, for example:
+  ///
+  /// ```sql
+  /// create type acorn as (
+  ///   colour text,
+  ///   quality int
+  /// )
+  /// ```
+  ///
+  PRecord(name: String, columns: List(#(String, PgType)))
 
   /// A type that could also be `NULL`, this is particularly common for columns
   /// that do not have a `not null` constraint; or for those coming from partial
@@ -288,6 +325,18 @@ fn pg_to_gleam_type(
     PEnum(name:, variants:) ->
       gleam.try_make_enum(name, variants)
       |> result.map_error(invalid_enum_error(query, name, _))
+
+    PRecord(name:, columns:) -> {
+      use columns <- result.try(
+        list.try_map(columns, fn(column) {
+          let #(name, type_) = column
+          use type_ <- result.try(pg_to_gleam_type(query, type_))
+          Ok(#(name, type_))
+        }),
+      )
+      gleam.try_make_custom_type(name, columns)
+      |> result.map_error(invalid_custom_type_error(query, name, _))
+    }
   }
 }
 
@@ -697,14 +746,23 @@ fn find_gleam_type(query: UntypedQuery, oid: Int) -> Db(gleam.Type) {
   // We first look for the Gleam type corresponding to this id in the cache to
   // avoid hammering the db with needless queries.
   use <- with_cached_gleam_type(oid)
+  use type_ <- eval.try(resolve_postgres_type(oid))
 
+  pg_to_gleam_type(query, type_)
+  |> eval.from_result
+}
+
+/// Given an `oid` this returns the Postgres type for that id.
+///
+fn resolve_postgres_type(oid: Int) -> eval.Eval(PgType, Error, Context) {
   // The only parameter to this query is the oid of the type to lookup:
   // that's a 32bit integer (its oid needed to prepare the query is 23).
   let params = [pg.Parameter(<<oid:32>>)]
   use res <- eval.try(run_query(find_postgres_type_query(), params, [23]))
 
-  // We know the output must only contain four values: the name, the oid, a boolean to
-  // check wether it is an array or not and the type of the type / array item.
+  // We know the output must only contain four values: the name, the oid, a
+  // boolean to check wether it is an array or not and the type of the
+  // type/array item.
   // It's safe to assert because this query is hard coded in our code and the
   // output shape cannot change without us changing that query.
   let assert [[name, oid, is_array, kind]] = res
@@ -714,6 +772,7 @@ fn find_gleam_type(query: UntypedQuery, oid: Int) -> Db(gleam.Type) {
 
   use type_ <- eval.try(case kind {
     "e" -> resolve_enum_type(name, oid)
+    "c" -> resolve_custom_type(name, oid)
     _ -> eval.return(PBase(name))
   })
 
@@ -726,8 +785,7 @@ fn find_gleam_type(query: UntypedQuery, oid: Int) -> Db(gleam.Type) {
     False -> type_
   }
 
-  pg_to_gleam_type(query, type_)
-  |> eval.from_result
+  eval.return(type_)
 }
 
 fn resolve_enum_type(name: String, oid: Int) -> Db(PgType) {
@@ -743,6 +801,37 @@ fn resolve_enum_type(name: String, oid: Int) -> Db(PgType) {
     })
 
   eval.return(PEnum(name:, variants:))
+}
+
+fn resolve_custom_type(name: String, oid: Int) -> Db(PgType) {
+  let params = [pg.Parameter(<<oid:32>>)]
+  use columns <- eval.try(
+    run_query(find_custom_type_columns_query(), params, [23]),
+  )
+  use columns <- eval.try(
+    // The query returns a row for each of the columns of the custom type with
+    // three pieces of info: the name, the column's type oid and wether it is
+    // nullable or not.
+    //
+    // > ⚠️ Right now postgres does not allow adding a not null constraint to
+    // > custom type's columns so this will always be `true` and return a
+    // > nullable type! However, this should future-proof the code in case this
+    // > restriction is ever lifted.
+    eval_extra.try_map(columns, fn(column) {
+      let assert [column_name, column_type_oid, nullable] = column
+      let assert Ok(column_name) = bit_array.to_string(column_name)
+      let assert <<column_type_oid:size(32)>> = column_type_oid
+      let nullable = bit_array_to_bool(nullable)
+      use column_type <- eval.try(resolve_postgres_type(column_type_oid))
+      let column_type = case nullable {
+        False -> column_type
+        True -> POption(column_type)
+      }
+      eval.return(#(column_name, column_type))
+    }),
+  )
+
+  eval.return(PRecord(name:, columns:))
 }
 
 /// Returns the query plan for a given query.
@@ -969,10 +1058,6 @@ fn column_nullability(table table: Int, column column: Int) -> Db(Nullability) {
 /// > `parameters` and correctly describe each parameter's type. This function
 /// > makes no attempt whatsoever to verify this assumption is correct so be
 /// > careful!
-///
-/// > ⚠️ This function makes the assumption that the query will only return one
-/// > single row. This is totally fine here because we only use this to run
-/// > specific hard coded queries that are guaranteed to return a single row.
 ///
 fn run_query(
   query: UntypedQuery,
@@ -1276,6 +1361,21 @@ fn invalid_enum_error(query: UntypedQuery, enum_name: String, reason: EnumError)
     content:,
     starting_line:,
     enum_name:,
+    reason:,
+  )
+}
+
+fn invalid_custom_type_error(
+  query: UntypedQuery,
+  custom_type_name: String,
+  reason: CustomTypeError,
+) -> Error {
+  let UntypedQuery(content:, file:, name: _, starting_line:, comment: _) = query
+  error.QueryHasInvalidCustomType(
+    file:,
+    content:,
+    starting_line:,
+    custom_type_name:,
     reason:,
   )
 }

@@ -149,6 +149,17 @@ pub type Error {
     reason: EnumError,
   )
 
+  /// When a query param/return type is a custom type that cannot be
+  /// automatically converted into a Gleam type definition.
+  ///
+  QueryHasInvalidCustomType(
+    file: String,
+    content: String,
+    starting_line: Int,
+    custom_type_name: String,
+    reason: CustomTypeError,
+  )
+
   /// If the query contains an error and cannot be parsed by the DBMS.
   ///
   CannotParseQuery(
@@ -220,6 +231,11 @@ pub type EnumError {
   EnumWithNoVariants
   InvalidEnumName(name: String)
   InvalidEnumVariants(fields: List(String))
+}
+
+pub type CustomTypeError {
+  InvalidCustomTypeName(name: String)
+  InvalidCustomTypeColumns(invalid_colum_names: List(String))
 }
 
 /// Used to literally point to a particular piece of a string and attach a
@@ -517,6 +533,45 @@ any snake_case name to PascalCase so that it can be used as the name of a
 Gleam type!",
           )
         EnumWithNoVariants -> None
+      })
+
+    QueryHasInvalidCustomType(
+      file:,
+      content:,
+      starting_line:,
+      custom_type_name:,
+      reason:,
+    ) ->
+      printable_error("Query with invalid custom type")
+      |> add_code_paragraph(file:, content:, point: None, starting_line:)
+      |> add_paragraph(
+        "One of the values in this query is the "
+        <> style_inline_code(custom_type_name)
+        <> " custom type, but I cannot turn it into a Gleam type definition because "
+        <> case reason {
+          InvalidCustomTypeName(_) ->
+            "its name cannot be turned into a valid type name."
+          InvalidCustomTypeColumns(columns) -> {
+            let pretty_fields =
+              list.map(columns, style_inline_code)
+              |> string.join(with: ", ")
+
+            "some of its columns ("
+            <> pretty_fields
+            <> ") do not have a valid name that can be used as a field."
+          }
+        },
+      )
+      |> hint(case reason {
+        InvalidCustomTypeName(_) ->
+          "A valid custom type name must start with a letter and can only contain
+letters, underscores and numbers. I will take care automatically of converting
+any snake_case name to PascalCase so that it can be used as the name of a
+Gleam type!"
+
+        InvalidCustomTypeColumns(_) ->
+          "A column name must start with a lowercase letter and can only
+contain lowercase letters, numbers and underscores."
       })
 
     QueryHasUnsupportedType(file:, name: _, content:, type_:, starting_line:) ->

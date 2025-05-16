@@ -14,7 +14,9 @@ import squirrel/internal/error.{
   type Error, CannotReadFile, QueryFileHasInvalidName,
   QueryReturnsMultipleValuesWithTheSameName,
 }
-import squirrel/internal/gleam.{type EnumVariant, type TypeIdentifier}
+import squirrel/internal/gleam.{
+  type EnumVariant, type Type, type TypeIdentifier, type ValueIdentifier,
+}
 import tote/bag
 
 /// A query that still needs to go through the type checking process.
@@ -58,7 +60,7 @@ pub type TypedQuery {
 ///
 pub fn add_types(
   to query: UntypedQuery,
-  params params: List(gleam.Type),
+  params params: List(Type),
   returns returns: List(gleam.Field),
 ) -> Result(TypedQuery, Error) {
   let UntypedQuery(file:, name:, comment:, content:, starting_line:) = query
@@ -163,6 +165,10 @@ type CodeGenState {
     // list of its variants and what kind of helpers need to be generated for
     // the enum encoding/decoding.
     enums: Dict(TypeIdentifier, EnumCodeGenData),
+    // All the custom types used in the module, this maps from name of the
+    // custom type to its columns and what kind of helpers need to be generated
+    // for the custom type encoding/decoding.
+    custom_types: Dict(TypeIdentifier, CustomTypeCodeGenData),
   )
 }
 
@@ -172,7 +178,7 @@ type EnumCodeGenData {
   EnumCodeGenData(
     /// Needed to know what kind of functions to generate for the specific case.
     ///
-    required_helpers: EnumRequiredHelpers,
+    required_helpers: RequiredHelpers,
     /// The original name used to define the enum in postgres to generate a
     /// useful comment.
     ///
@@ -183,11 +189,43 @@ type EnumCodeGenData {
   )
 }
 
-type EnumRequiredHelpers {
+/// Data needed to perform codegen for a custom type.
+///
+type CustomTypeCodeGenData {
+  CustomTypeCodeGenData(
+    /// Needed to know what kind of functions to generate for the specific case.
+    ///
+    required_helpers: RequiredHelpers,
+    /// The original name used to define the custom type in postgres to generate
+    /// a useful comment.
+    ///
+    original_name: String,
+    /// The fields of the single variant of the custom type.
+    ///
+    fields: List(#(gleam.ValueIdentifier, gleam.Type)),
+  )
+}
+
+type RequiredHelpers {
   NeedsEncoderAndDecoder
   NeedsDecoder
   NeedsEncoder
   NoHelpers
+}
+
+fn merge_helpers(
+  one: RequiredHelpers,
+  other: RequiredHelpers,
+) -> RequiredHelpers {
+  case one, other {
+    NoHelpers, other | other, NoHelpers -> other
+    NeedsEncoder, NeedsDecoder | NeedsDecoder, NeedsEncoder ->
+      NeedsEncoderAndDecoder
+    NeedsEncoderAndDecoder, _ | _, NeedsEncoderAndDecoder ->
+      NeedsEncoderAndDecoder
+    NeedsDecoder, NeedsDecoder -> NeedsDecoder
+    NeedsEncoder, NeedsEncoder -> NeedsEncoder
+  }
 }
 
 fn default_codegen_state() {
@@ -195,6 +233,7 @@ fn default_codegen_state() {
     imports: dict.new(),
     needs_uuid_decoder: False,
     enums: dict.new(),
+    custom_types: dict.new(),
   )
   |> import_module("gleam/dynamic/decode")
   |> import_module("pog")
@@ -202,7 +241,7 @@ fn default_codegen_state() {
 
 fn gleam_type_to_decoder(
   state: CodeGenState,
-  type_: gleam.Type,
+  type_: Type,
 ) -> #(CodeGenState, Document) {
   case type_ {
     gleam.Uuid -> {
@@ -231,6 +270,20 @@ fn gleam_type_to_decoder(
       state |> enum_needs_decoder(original_name, enum_name, variants),
       doc.from_string(enum_decoder_name(enum_name) <> "()"),
     )
+    gleam.CustomType(original_name:, name:, columns:) -> {
+      // We need to keep track of the decoders needed by each column, so we
+      // update the current state for each of them!
+      let state = {
+        use state, #(_, column_type) <- list.fold(columns, state)
+        let #(state, _) = gleam_type_to_decoder(state, column_type)
+        state
+      }
+
+      #(
+        state |> custom_type_needs_decoder(original_name, name, columns),
+        doc.from_string(custom_type_decoder_name(name) <> "()"),
+      )
+    }
   }
 }
 
@@ -240,46 +293,66 @@ fn enum_decoder_name(enum_name: TypeIdentifier) -> String {
   |> string.append("_decoder")
 }
 
+fn custom_type_decoder_name(custom_type_name: TypeIdentifier) -> String {
+  gleam.type_identifier_to_value_identifier(custom_type_name)
+  |> gleam.value_identifier_to_string
+  |> string.append("_decoder")
+}
+
 fn gleam_type_to_encoder(
   state: CodeGenState,
-  type_: gleam.Type,
-  name: String,
+  type_: Type,
+  arg: String,
 ) -> #(CodeGenState, Document) {
-  let name = doc.from_string(name)
+  let arg = doc.from_string(arg)
   case type_ {
     gleam.List(type_) -> {
       let #(state, inner_encoder) = gleam_type_to_encoder(state, type_, "value")
       let map_fn = fn_doc(["value"], inner_encoder)
-      let doc = call_doc("pog.array", [map_fn, name])
+      let doc = call_doc("pog.array", [map_fn, arg])
       #(state, doc)
     }
     gleam.Option(type_) -> {
       let #(state, inner_encoder) = gleam_type_to_encoder(state, type_, "value")
       let doc =
-        call_doc("pog.nullable", [fn_doc(["value"], inner_encoder), name])
+        call_doc("pog.nullable", [fn_doc(["value"], inner_encoder), arg])
       #(state, doc)
     }
     gleam.Uuid -> {
       let state = state |> import_module("youid/uuid")
-      let doc = call_doc("pog.text", [call_doc("uuid.to_string", [name])])
+      let doc = call_doc("pog.text", [call_doc("uuid.to_string", [arg])])
       #(state, doc)
     }
     gleam.Json -> {
       let state = state |> import_module("gleam/json")
-      let doc = call_doc("pog.text", [call_doc("json.to_string", [name])])
+      let doc = call_doc("pog.text", [call_doc("json.to_string", [arg])])
       #(state, doc)
     }
-    gleam.Date -> #(state, call_doc("pog.date", [name]))
-    gleam.Timestamp -> #(state, call_doc("pog.timestamp", [name]))
-    gleam.Int -> #(state, call_doc("pog.int", [name]))
-    gleam.Float -> #(state, call_doc("pog.float", [name]))
-    gleam.Bool -> #(state, call_doc("pog.bool", [name]))
-    gleam.String -> #(state, call_doc("pog.text", [name]))
-    gleam.BitArray -> #(state, call_doc("pog.bytea", [name]))
-    gleam.Enum(original_name:, name: enum_name, variants:) -> #(
-      state |> enum_needs_encoder(original_name, enum_name, variants),
-      call_doc(enum_encoder_name(enum_name), [name]),
+    gleam.Date -> #(state, call_doc("pog.date", [arg]))
+    gleam.Timestamp -> #(state, call_doc("pog.timestamp", [arg]))
+    gleam.Int -> #(state, call_doc("pog.int", [arg]))
+    gleam.Float -> #(state, call_doc("pog.float", [arg]))
+    gleam.Bool -> #(state, call_doc("pog.bool", [arg]))
+    gleam.String -> #(state, call_doc("pog.text", [arg]))
+    gleam.BitArray -> #(state, call_doc("pog.bytea", [arg]))
+    gleam.Enum(original_name:, name:, variants:) -> #(
+      state |> enum_needs_encoder(original_name, name, variants),
+      call_doc(enum_encoder_name(name), [arg]),
     )
+    gleam.CustomType(original_name:, name:, columns:) -> {
+      // We need to keep track of the decoders needed by each column, so we
+      // update the current state for each of them!
+      let state = {
+        use state, #(_, column_type) <- list.fold(columns, state)
+        let #(state, _) = gleam_type_to_encoder(state, column_type, "")
+        state
+      }
+
+      #(
+        state |> custom_type_needs_encoder(original_name, name, columns),
+        call_doc(custom_type_encoder_name(name), [arg]),
+      )
+    }
   }
 }
 
@@ -289,9 +362,15 @@ fn enum_encoder_name(enum_name: TypeIdentifier) -> String {
   |> string.append("_encoder")
 }
 
+fn custom_type_encoder_name(custom_type_name: TypeIdentifier) -> String {
+  gleam.type_identifier_to_value_identifier(custom_type_name)
+  |> gleam.value_identifier_to_string
+  |> string.append("_encoder")
+}
+
 fn gleam_type_to_field_type(
   state: CodeGenState,
-  type_: gleam.Type,
+  type_: Type,
 ) -> #(CodeGenState, Document) {
   case type_ {
     gleam.List(type_) -> {
@@ -319,6 +398,20 @@ fn gleam_type_to_field_type(
       state |> register_enum_type(original_name, name, variants),
       gleam.type_identifier_to_string(name) |> doc.from_string,
     )
+    gleam.CustomType(original_name:, name:, columns:) -> {
+      // We need to keep track of the decoders needed by each column, so we
+      // update the current state for each of them!
+      let state = {
+        use state, #(_, column_type) <- list.fold(columns, state)
+        let #(state, _) = gleam_type_to_field_type(state, column_type)
+        state
+      }
+
+      #(
+        state |> register_custom_type(original_name, name, columns),
+        gleam.type_identifier_to_string(name) |> doc.from_string,
+      )
+    }
   }
 }
 
@@ -333,11 +426,9 @@ pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
   }
   let queries_docs = list.reverse(queries_docs)
 
-  let CodeGenState(imports:, needs_uuid_decoder:, enums:) = state
+  let CodeGenState(imports:, needs_uuid_decoder:, enums:, custom_types:) = state
 
-  let utils =
-    []
-    |> prepend_if(needs_uuid_decoder, doc.from_string(uuid_decoder))
+  let utils = prepend_if([], needs_uuid_decoder, doc.from_string(uuid_decoder))
 
   // We always want to output the imports and the code for the queries.
   // But in case we also need some helpers we add a final section to our file
@@ -359,6 +450,19 @@ pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
         separator_comment("Enums"),
         doc.lines(2),
         enums_doc(version, enums),
+      ]
+      |> doc.concat
+  }
+
+  let code = case dict.is_empty(custom_types) {
+    True -> code
+    False ->
+      [
+        code,
+        doc.lines(2),
+        separator_comment("Custom types"),
+        doc.lines(2),
+        custom_types_docs(version, custom_types),
       ]
       |> doc.concat
   }
@@ -467,8 +571,8 @@ fn query_doc(
       record,
       doc.from_string(function_doc(version, query)),
       doc.line,
-      fun_doc(gleam.value_identifier_to_string(name), ["db", ..inputs], [
-        let_var("decoder", decoder),
+      fun_doc(Public, gleam.value_identifier_to_string(name), ["db", ..inputs], [
+        let_var(doc.from_string("decoder"), decoder),
         string_doc(content)
           |> pipe_call_doc("pog.query", _, [])
           |> pipe_all_encoders(encoders)
@@ -572,6 +676,17 @@ fn enums_doc(
   doc.append(doc, enum_doc(version, name, enum_data))
 }
 
+/// Returns the document for the definition and encoding/decoding of all
+/// custom types in the dictionary.
+///
+fn custom_types_docs(
+  version: String,
+  custom_types: Dict(TypeIdentifier, CustomTypeCodeGenData),
+) -> Document {
+  use doc, name, custom_type_data <- dict.fold(custom_types, doc.empty)
+  doc.append(doc, custom_type_doc(version, name, custom_type_data))
+}
+
 /// Returns the document with the enum definition and any additional helper that
 /// might be needed to encode and decode it.
 ///
@@ -582,22 +697,16 @@ fn enum_doc(
 ) -> Document {
   let EnumCodeGenData(original_name:, required_helpers:, variants:) = enum_data
 
+  let definition =
+    enum_type_definition_doc(version, enum_name, original_name, variants)
   case required_helpers {
-    NeedsDecoder -> [
-      enum_type_definition_doc(version, enum_name, original_name, variants),
-      enum_decoder_doc(enum_name, variants),
-    ]
-    NeedsEncoder -> [
-      enum_type_definition_doc(version, enum_name, original_name, variants),
-      enum_encoder_doc(enum_name, variants),
-    ]
+    NoHelpers -> [definition]
+    NeedsDecoder -> [definition, enum_decoder_doc(enum_name, variants)]
+    NeedsEncoder -> [definition, enum_encoder_doc(enum_name, variants)]
     NeedsEncoderAndDecoder -> [
-      enum_type_definition_doc(version, enum_name, original_name, variants),
+      definition,
       enum_decoder_doc(enum_name, variants),
       enum_encoder_doc(enum_name, variants),
-    ]
-    NoHelpers -> [
-      enum_type_definition_doc(version, enum_name, original_name, variants),
     ]
   }
   |> doc.join(with: doc.lines(2))
@@ -649,15 +758,18 @@ fn enum_encoder_doc(
     |> doc.concat
   }
 
-  let body = [
-    doc.from_string("case variant "),
-    case_lines |> non_empty_list.to_list |> list.intersperse(doc.line) |> block,
-    doc.line,
-    doc.from_string("|> pog.text"),
-  ]
+  let case_ =
+    doc.concat([
+      doc.from_string("case variant "),
+      case_lines
+        |> non_empty_list.to_list
+        |> list.intersperse(doc.line)
+        |> block,
+      doc.line,
+      doc.from_string("|> pog.text"),
+    ])
 
-  doc.from_string("fn " <> enum_encoder_name(name) <> "(variant) ")
-  |> doc.append(block(body))
+  fun_doc(Private, enum_encoder_name(name), ["variant"], [case_])
 }
 
 fn enum_decoder_doc(
@@ -699,8 +811,151 @@ fn enum_decoder_doc(
     ]
     |> doc.concat
 
-  doc.from_string("fn " <> enum_decoder_name(name) <> "() ")
-  |> doc.append(block([body]))
+  fun_doc(Private, enum_decoder_name(name), [], [body])
+}
+
+/// Returns the document with the enum definition and any additional helper that
+/// might be needed to encode and decode it.
+///
+fn custom_type_doc(
+  version: String,
+  custom_type_name: TypeIdentifier,
+  custom_type_data: CustomTypeCodeGenData,
+) -> Document {
+  let CustomTypeCodeGenData(original_name:, required_helpers:, fields:) =
+    custom_type_data
+
+  let definition =
+    custom_type_definition_doc(version, custom_type_name, original_name, fields)
+
+  case required_helpers {
+    NoHelpers -> [definition]
+    NeedsDecoder -> [
+      definition,
+      custom_type_decoder_doc(custom_type_name, fields),
+    ]
+    NeedsEncoder -> [
+      definition,
+      custom_type_encoder_doc(custom_type_name, fields),
+    ]
+    NeedsEncoderAndDecoder -> [
+      definition,
+      custom_type_decoder_doc(custom_type_name, fields),
+      custom_type_encoder_doc(custom_type_name, fields),
+    ]
+  }
+  |> doc.join(with: doc.lines(2))
+}
+
+fn custom_type_definition_doc(
+  version: String,
+  enum_name: TypeIdentifier,
+  original_name: String,
+  fields: List(#(ValueIdentifier, Type)),
+) -> Document {
+  let string_custom_type_name = gleam.type_identifier_to_string(enum_name)
+  let fields =
+    list.map(fields, fn(field) {
+      let #(name, type_) = field
+      // Here we turn the type into its name to be used as a field's type.
+      // This function would also update a codegen state to keep track of the
+      // additional needed decoders but we've already done that at the upper
+      // level. So we just use a default state and discard it!
+      let #(_, type_) = gleam_type_to_field_type(default_codegen_state(), type_)
+
+      { gleam.value_identifier_to_string(name) <> ": " }
+      |> doc.from_string
+      |> doc.append(type_)
+    })
+
+  let custom_type_doc =
+    "/// Corresponds to the Postgres `" <> original_name <> "` type.
+///
+/// > 🐿️ This type definition was generated automatically using " <> version <> " of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///"
+
+  let variant = case fields {
+    [] -> doc.from_string(string_custom_type_name)
+    _ -> call_doc(string_custom_type_name, fields)
+  }
+
+  [
+    doc.from_string(custom_type_doc),
+    doc.line,
+    doc.from_string("pub type " <> string_custom_type_name <> " "),
+    block([variant]),
+  ]
+  |> doc.concat
+}
+
+fn custom_type_encoder_doc(
+  name: TypeIdentifier,
+  fields: List(#(ValueIdentifier, Type)),
+) -> Document {
+  let arg_to_decode =
+    gleam.type_identifier_to_value_identifier(name)
+    |> gleam.value_identifier_to_string
+
+  let destructure_pattern =
+    call_doc(gleam.type_identifier_to_string(name), {
+      use #(field_name, _) <- list.map(fields)
+      doc.from_string(gleam.value_identifier_to_string(field_name) <> ":")
+    })
+
+  let fields = {
+    use #(field_name, field_type) <- list.map(fields)
+    let field_name = gleam.value_identifier_to_string(field_name)
+    let #(_, encoder) =
+      gleam_type_to_encoder(default_codegen_state(), field_type, field_name)
+    encoder
+  }
+
+  fun_doc(Private, custom_type_encoder_name(name), [arg_to_decode], [
+    let_var(destructure_pattern, doc.from_string(arg_to_decode)),
+    let_var(doc.from_string("encoded_fields"), comma_list("[", fields, "]")),
+    call_doc("pog.array", [
+      doc.from_string("fn(value) { value }"),
+      doc.from_string("encoded_fields"),
+    ]),
+  ])
+}
+
+fn custom_type_decoder_doc(
+  name: TypeIdentifier,
+  fields: List(#(ValueIdentifier, Type)),
+) -> Document {
+  let field_decoding_lines = {
+    use #(field_name, field_type), index <- list.index_map(fields)
+    let field_name = gleam.value_identifier_to_string(field_name)
+    let index = int.to_string(index)
+    let #(_, field_decoder) =
+      gleam_type_to_decoder(default_codegen_state(), field_type)
+
+    doc.concat([
+      doc.from_string("use " <> field_name <> " <- "),
+      call_doc("decode.field", [doc.from_string(index), field_decoder]),
+    ])
+  }
+
+  let name_string = gleam.type_identifier_to_string(name)
+  let name_doc = doc.from_string(name_string)
+  let field_names = {
+    use #(field_name, _) <- list.map(fields)
+    doc.from_string(gleam.value_identifier_to_string(field_name) <> ":")
+  }
+
+  let success_line = case field_decoding_lines {
+    [] -> call_doc("decode.success", [name_doc])
+    [_, ..] -> call_doc("decode.success", [call_doc(name_string, field_names)])
+  }
+
+  fun_doc(Private, custom_type_decoder_name(name), [], [
+    field_decoding_lines
+    |> list.append([success_line])
+    |> list.intersperse(doc.line)
+    |> doc.concat,
+  ])
 }
 
 const uuid_decoder = "/// A decoder to decode `Uuid`s coming from a Postgres query.
@@ -796,13 +1051,27 @@ fn block(body: List(Document)) -> Document {
   |> doc.concat
 }
 
-/// A pretty printed public function definition.
+type Publicity {
+  Public
+  Private
+}
+
+/// A pretty printed function definition.
 ///
-fn fun_doc(name: String, args: List(String), body: List(Document)) -> Document {
+fn fun_doc(
+  publicity: Publicity,
+  name: String,
+  args: List(String),
+  body: List(Document),
+) -> Document {
   let args = list.map(args, doc.from_string)
+  let publicity = case publicity {
+    Public -> "pub "
+    Private -> ""
+  }
 
   [
-    doc.from_string("pub fn " <> name),
+    doc.from_string(publicity <> "fn " <> name),
     comma_list("(", args, ") "),
     block([body |> doc.join(with: doc.lines(2))]),
   ]
@@ -826,8 +1095,8 @@ fn fn_doc(args: List(String), body: Document) -> Document {
 
 /// A pretty printed let assignment.
 ///
-fn let_var(name: String, body: Document) -> Document {
-  [doc.from_string("let " <> name <> " ="), doc.space, body]
+fn let_var(name: Document, body: Document) -> Document {
+  [doc.from_string("let "), name, doc.from_string(" ="), doc.space, body]
   |> doc.concat
 }
 
@@ -913,6 +1182,25 @@ fn register_enum_type(
   CodeGenState(..state, enums:)
 }
 
+fn register_custom_type(
+  state: CodeGenState,
+  original_name: String,
+  name: TypeIdentifier,
+  fields: List(#(ValueIdentifier, Type)),
+) -> CodeGenState {
+  let custom_types = case dict.has_key(state.custom_types, name) {
+    True -> state.custom_types
+    False ->
+      dict.insert(
+        state.custom_types,
+        name,
+        CustomTypeCodeGenData(NoHelpers, original_name:, fields:),
+      )
+  }
+
+  CodeGenState(..state, custom_types:)
+}
+
 fn enum_needs_encoder(
   state: CodeGenState,
   original_name: String,
@@ -922,14 +1210,11 @@ fn enum_needs_encoder(
   let enums =
     dict.upsert(state.enums, name, fn(value) {
       case value {
-        Some(EnumCodeGenData(NoHelpers, ..) as data) ->
-          EnumCodeGenData(..data, required_helpers: NeedsEncoder)
-
-        Some(EnumCodeGenData(NeedsDecoder, ..) as data) ->
-          EnumCodeGenData(..data, required_helpers: NeedsEncoderAndDecoder)
-
-        Some(EnumCodeGenData(NeedsEncoder, _, _) as data)
-        | Some(EnumCodeGenData(NeedsEncoderAndDecoder, _, _) as data) -> data
+        Some(EnumCodeGenData(required_helpers:, ..) as data) ->
+          EnumCodeGenData(
+            ..data,
+            required_helpers: merge_helpers(required_helpers, NeedsEncoder),
+          )
 
         None ->
           EnumCodeGenData(
@@ -943,6 +1228,33 @@ fn enum_needs_encoder(
   CodeGenState(..state, enums:)
 }
 
+fn custom_type_needs_encoder(
+  state: CodeGenState,
+  original_name: String,
+  name: TypeIdentifier,
+  fields: List(#(ValueIdentifier, Type)),
+) {
+  let custom_types =
+    dict.upsert(state.custom_types, name, fn(value) {
+      case value {
+        Some(CustomTypeCodeGenData(required_helpers:, ..) as data) ->
+          CustomTypeCodeGenData(
+            ..data,
+            required_helpers: merge_helpers(required_helpers, NeedsEncoder),
+          )
+
+        None ->
+          CustomTypeCodeGenData(
+            required_helpers: NeedsEncoder,
+            fields:,
+            original_name:,
+          )
+      }
+    })
+
+  CodeGenState(..state, custom_types:)
+}
+
 fn enum_needs_decoder(
   state: CodeGenState,
   original_name: String,
@@ -952,14 +1264,11 @@ fn enum_needs_decoder(
   let enums =
     dict.upsert(state.enums, name, fn(value) {
       case value {
-        Some(EnumCodeGenData(NoHelpers, ..) as data) ->
-          EnumCodeGenData(..data, required_helpers: NeedsDecoder)
-
-        Some(EnumCodeGenData(NeedsEncoder, _, _) as data) ->
-          EnumCodeGenData(..data, required_helpers: NeedsEncoderAndDecoder)
-
-        Some(EnumCodeGenData(NeedsDecoder, ..) as data)
-        | Some(EnumCodeGenData(NeedsEncoderAndDecoder, _, _) as data) -> data
+        Some(EnumCodeGenData(required_helpers:, ..) as data) ->
+          EnumCodeGenData(
+            ..data,
+            required_helpers: merge_helpers(required_helpers, NeedsDecoder),
+          )
 
         None ->
           EnumCodeGenData(
@@ -971,6 +1280,33 @@ fn enum_needs_decoder(
     })
 
   CodeGenState(..state, enums:)
+}
+
+fn custom_type_needs_decoder(
+  state: CodeGenState,
+  original_name: String,
+  name: TypeIdentifier,
+  fields: List(#(ValueIdentifier, Type)),
+) -> CodeGenState {
+  let custom_types =
+    dict.upsert(state.custom_types, name, fn(value) {
+      case value {
+        Some(CustomTypeCodeGenData(required_helpers:, ..) as data) ->
+          CustomTypeCodeGenData(
+            ..data,
+            required_helpers: merge_helpers(required_helpers, NeedsDecoder),
+          )
+
+        None ->
+          CustomTypeCodeGenData(
+            required_helpers: NeedsDecoder,
+            original_name:,
+            fields:,
+          )
+      }
+    })
+
+  CodeGenState(..state, custom_types:)
 }
 
 // --- MISC UTILS --------------------------------------------------------------

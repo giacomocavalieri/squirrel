@@ -4,8 +4,9 @@ import gleam/string
 import justin
 import non_empty_list.{type NonEmptyList}
 import squirrel/internal/error.{
-  type EnumError, type TypeIdentifierError, type ValueIdentifierError,
-  EnumWithNoVariants, InvalidEnumName, InvalidEnumVariants,
+  type CustomTypeError, type EnumError, type TypeIdentifierError,
+  type ValueIdentifierError, EnumWithNoVariants, InvalidCustomTypeColumns,
+  InvalidCustomTypeName, InvalidEnumName, InvalidEnumVariants,
   TypeContainsInvalidGrapheme, TypeIsEmpty, ValueContainsInvalidGrapheme,
   ValueIsEmpty,
 }
@@ -41,6 +42,26 @@ pub type Type {
     original_name: String,
     name: TypeIdentifier,
     variants: NonEmptyList(EnumVariant),
+  )
+
+  /// A custom type with a single variant. For example:
+  ///
+  /// ```gleam
+  /// pub type Squirrel {
+  ///   Squirrel(name: String, acorns: Int)
+  /// }
+  /// ```
+  ///
+  /// Technically both enums and custom types with a single variants are just
+  /// custom types in Gleam and could be unified into a single variant here.
+  /// However, we keep those two separate and we limit our code to this very
+  /// specific cases as they're the only ones that can be represented with
+  /// Postgres types.
+  ///
+  CustomType(
+    original_name: String,
+    name: TypeIdentifier,
+    columns: List(#(ValueIdentifier, Type)),
   )
 }
 
@@ -255,6 +276,46 @@ pub fn try_make_enum(
         Error(_) -> Error(EnumWithNoVariants)
       }
     _ -> Error(InvalidEnumVariants(errors))
+  }
+}
+
+/// Tries to build a custom type from the given name and fields list.
+/// This will try its best to convert the custom type raw name into a valid
+/// PascalCase name before failing!
+///
+/// > ⚠️ Note how this won't try and convert columns though! If a column is not
+/// > valid we do not try and make a best effort into translating it into
+/// > snake_case. The function would just fail in that case, reporting all
+/// > invalid column names.
+///
+pub fn try_make_custom_type(
+  raw_name: String,
+  columns: List(#(String, Type)),
+) -> Result(Type, CustomTypeError) {
+  use name <- result.try(
+    // We first try converting the name to pascal case since SQL's standard is
+    // to use snake_case for types and we don't want to fail for that.
+    justin.pascal_case(raw_name)
+    |> type_identifier
+    |> result.replace_error(InvalidCustomTypeName(raw_name)),
+  )
+
+  let #(columns, invalid_column_names) =
+    result.partition({
+      use #(column_name, column_type) <- list.map(columns)
+      // We then apply the same conversion to all the variants accumulating
+      // the invalid ones.
+      case value_identifier(column_name) {
+        Ok(column_name) -> Ok(#(column_name, column_type))
+        Error(_) -> Error(column_name)
+      }
+    })
+
+  case invalid_column_names {
+    // If any of the columns is not a valid gleam identifier, we fail reporting
+    // the error, otherwise we can finally build the custom type!
+    [] -> Ok(CustomType(original_name: raw_name, name:, columns:))
+    _ -> Error(InvalidCustomTypeColumns(invalid_column_names))
   }
 }
 

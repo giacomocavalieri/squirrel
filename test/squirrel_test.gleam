@@ -97,6 +97,39 @@ end $$;"
     |> pog.query
     |> pog.execute(db)
 
+  let assert Ok(_) =
+    "
+  do $$ begin
+    if not exists (select * from pg_type where typname = '1 invalid type') then
+      create type \"1 invalid type\" as (field text);
+    end if;
+  end $$;"
+    |> pog.query
+    |> pog.execute(db)
+
+  let assert Ok(_) =
+    "
+  do $$ begin
+    if not exists (select * from pg_type where typname = 'invalid_type') then
+      create type invalid_type as (\"invalid field\" text);
+    end if;
+  end $$;"
+    |> pog.query
+    |> pog.execute(db)
+
+  let assert Ok(_) =
+    "
+  do $$ begin
+    if not exists (select * from pg_type where typname = 'custom_type') then
+      create type custom_type as (
+        colour squirrel_colour,
+        name text
+      );
+    end if;
+  end $$;"
+    |> pog.query
+    |> pog.execute(db)
+
   // https://github.com/giacomocavalieri/squirrel/issues/41
   let assert Ok(_) =
     "
@@ -465,6 +498,24 @@ pub fn enum_array_decoding_test() {
   |> birdie.snap(title: "enum array decoding")
 }
 
+pub fn custom_type_decoding_test() {
+  "select ('red', 'wibble')::custom_type"
+  |> should_codegen
+  |> birdie.snap(title: "custom type decoding")
+}
+
+pub fn custom_type_encoding_test() {
+  "select 1 as res where $1::custom_type = ('red', 'wibble')::custom_type"
+  |> should_codegen
+  |> birdie.snap(title: "custom type encoding")
+}
+
+pub fn custom_type_array_decoding_test() {
+  "select array[('red', 'wibble')::custom_type] as res"
+  |> should_codegen
+  |> birdie.snap(title: "custom type array decoding")
+}
+
 // --- CODEGEN STRUCTURE TESTS -------------------------------------------------
 // This is a group of tests to ensure the generated code has some specific
 // structure (e.g. the names and comments are what we expect...)
@@ -620,6 +671,18 @@ pub fn enum_with_no_variants_is_rejected_test() {
   "select $1::no_variants as res"
   |> should_error
   |> birdie.snap(title: "enum with no variants is rejected")
+}
+
+pub fn custom_type_with_invalid_name_test() {
+  "select row('wibble')::\"1 invalid type\" as res"
+  |> should_error
+  |> birdie.snap(title: "custom type with invalid name")
+}
+
+pub fn custom_type_with_invalid_field_test() {
+  "select row('wibble')::invalid_type as res"
+  |> should_error
+  |> birdie.snap(title: "custom type with invalid variant")
 }
 
 pub fn query_returning_columns_with_same_name_test() {

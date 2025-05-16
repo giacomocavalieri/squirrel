@@ -1,0 +1,77 @@
+---
+version: 1.2.6
+title: custom type array decoding
+file: ./test/squirrel_test.gleam
+test_name: custom_type_array_decoding_test
+---
+import gleam/dynamic/decode
+import gleam/option.{type Option}
+import pog
+
+/// A row you get from running the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type QueryRow {
+  QueryRow(res: List(CustomType))
+}
+
+/// Runs the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This function was generated automatically using v-test of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn query(db) {
+  let decoder = {
+    use res <- decode.field(0, decode.list(custom_type_decoder()))
+    decode.success(QueryRow(res:))
+  }
+
+  "select array[('red', 'wibble')::custom_type] as res"
+  |> pog.query
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+// --- Enums -------------------------------------------------------------------
+
+/// Corresponds to the Postgres `squirrel_colour` enum.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type SquirrelColour {
+  LightBrown
+  Grey
+  Red
+}
+
+fn squirrel_colour_decoder() {
+  use variant <- decode.then(decode.string)
+  case variant {
+    "light brown" -> decode.success(LightBrown)
+    "grey" -> decode.success(Grey)
+    "red" -> decode.success(Red)
+    _ -> decode.failure(LightBrown, "SquirrelColour")
+  }
+}
+
+// --- Custom types ------------------------------------------------------------
+
+/// Corresponds to the Postgres `custom_type` type.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type CustomType {
+  CustomType(name: Option(String), colour: Option(SquirrelColour))
+}
+
+fn custom_type_decoder() {
+  use name <- decode.field(0, decode.optional(decode.string))
+  use colour <- decode.field(1, decode.optional(squirrel_colour_decoder()))
+  decode.success(CustomType(name:, colour:))
+}
