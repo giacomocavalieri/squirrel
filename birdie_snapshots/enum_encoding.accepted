@@ -1,5 +1,5 @@
 ---
-version: 1.2.5
+version: 1.2.6
 title: enum encoding
 file: ./test/squirrel_test.gleam
 test_name: enum_encoding_test
@@ -49,8 +49,8 @@ pub type SquirrelColour {
   Red
 }
 
-fn squirrel_colour_encoder(variant) {
-  case variant {
+fn squirrel_colour_encoder(squirrel_colour) {
+  case squirrel_colour {
     LightBrown -> "light brown"
     Grey -> "grey"
     Red -> "red"

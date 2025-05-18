@@ -1,5 +1,5 @@
 ---
-version: 1.2.5
+version: 1.2.6
 title: query that needs utils and enums has two sections
 file: ./test/squirrel_test.gleam
 test_name: query_that_needs_utils_and_enums_has_two_sections_test
@@ -50,8 +50,8 @@ pub type SquirrelColour {
 }
 
 fn squirrel_colour_decoder() {
-  use variant <- decode.then(decode.string)
-  case variant {
+  use squirrel_colour <- decode.then(decode.string)
+  case squirrel_colour {
     "light brown" -> decode.success(LightBrown)
     "grey" -> decode.success(Grey)
     "red" -> decode.success(Red)

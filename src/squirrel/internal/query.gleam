@@ -659,15 +659,20 @@ fn enum_encoder_doc(
     |> doc.concat
   }
 
+  let var_name =
+    name
+    |> gleam.type_identifier_to_value_identifier
+    |> gleam.value_identifier_to_string
+
   let case_ =
     doc.concat([
-      doc.from_string("case variant "),
+      doc.from_string("case " <> var_name <> " "),
       block(non_empty_list.to_list(case_lines)),
     ])
 
   let case_ = pipe_call_doc("pog.text", case_, [])
 
-  fun_doc(Private, enum_encoder_name(name), ["variant"], [case_])
+  fun_doc(Private, enum_encoder_name(name), [var_name], [case_])
 }
 
 fn enum_decoder_doc(
@@ -696,9 +701,14 @@ fn enum_decoder_doc(
     ]
     |> doc.concat
 
+  let var_name =
+    name
+    |> gleam.type_identifier_to_value_identifier
+    |> gleam.value_identifier_to_string
+
   let case_ =
     doc.concat([
-      doc.from_string("case variant "),
+      doc.from_string("case " <> var_name <> " "),
       success_case_lines
         |> non_empty_list.to_list
         |> list.append([failure_case_line])
@@ -706,7 +716,7 @@ fn enum_decoder_doc(
     ])
 
   fun_doc(Private, enum_decoder_name(name), [], [
-    doc.from_string("use variant <- decode.then(decode.string)"),
+    doc.from_string("use " <> var_name <> " <- decode.then(decode.string)"),
     case_,
   ])
 }
