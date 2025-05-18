@@ -463,20 +463,19 @@ fn query_doc(
   let #(state, decoder) = decoder_doc(state, constructor_name, returns)
 
   let code =
-    [
+    doc.concat([
       record,
       doc.from_string(function_doc(version, query)),
       doc.line,
-      fun_doc(gleam.value_identifier_to_string(name), ["db", ..inputs], [
-        let_var("decoder", decoder),
+      fun_doc(Public, gleam.value_identifier_to_string(name), ["db", ..inputs], [
+        let_var("decoder", decoder) |> doc.append(doc.from_string("\n")),
         string_doc(content)
           |> pipe_call_doc("pog.query", _, [])
           |> pipe_all_encoders(encoders)
           |> pipe_call_doc("pog.returning", _, [doc.from_string("decoder")])
           |> pipe_call_doc("pog.execute", _, [doc.from_string("db")]),
       ]),
-    ]
-    |> doc.concat
+    ])
 
   #(state, code)
 }
@@ -623,16 +622,12 @@ fn enum_type_definition_doc(
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///"
 
-  [
+  doc.concat([
     doc.from_string(enum_doc),
     doc.line,
     doc.from_string("pub type " <> string_enum_name <> " "),
-    variants
-      |> non_empty_list.to_list
-      |> list.intersperse(doc.line)
-      |> block,
-  ]
-  |> doc.concat
+    block(non_empty_list.to_list(variants)),
+  ])
 }
 
 fn enum_encoder_doc(
@@ -649,15 +644,15 @@ fn enum_encoder_doc(
     |> doc.concat
   }
 
-  let body = [
-    doc.from_string("case variant "),
-    case_lines |> non_empty_list.to_list |> list.intersperse(doc.line) |> block,
-    doc.line,
-    doc.from_string("|> pog.text"),
-  ]
+  let case_ =
+    doc.concat([
+      doc.from_string("case variant "),
+      block(non_empty_list.to_list(case_lines)),
+    ])
 
-  doc.from_string("fn " <> enum_encoder_name(name) <> "(variant) ")
-  |> doc.append(block(body))
+  let case_ = pipe_call_doc("pog.text", case_, [])
+
+  fun_doc(Private, enum_encoder_name(name), ["variant"], [case_])
 }
 
 fn enum_decoder_doc(
@@ -686,21 +681,19 @@ fn enum_decoder_doc(
     ]
     |> doc.concat
 
-  let body =
-    [
-      doc.from_string("use variant <- decode.then(decode.string)"),
-      doc.line,
+  let case_ =
+    doc.concat([
       doc.from_string("case variant "),
       success_case_lines
         |> non_empty_list.to_list
         |> list.append([failure_case_line])
-        |> list.intersperse(doc.line)
         |> block,
-    ]
-    |> doc.concat
+    ])
 
-  doc.from_string("fn " <> enum_decoder_name(name) <> "() ")
-  |> doc.append(block([body]))
+  fun_doc(Private, enum_decoder_name(name), [], [
+    doc.from_string("use variant <- decode.then(decode.string)"),
+    case_,
+  ])
 }
 
 const uuid_decoder = "/// A decoder to decode `Uuid`s coming from a Postgres query.
@@ -747,13 +740,9 @@ fn decoder_doc(
   let parameters = list.reverse(parameters)
   let labelled_names = list.reverse(labelled_names)
 
-  let doc =
-    block([
-      doc.join(parameters, with: doc.line),
-      doc.line,
-      call_doc("decode.success", [call_doc(constructor, labelled_names)]),
-    ])
-
+  let success_line =
+    call_doc("decode.success", [call_doc(constructor, labelled_names)])
+  let doc = block(list.append(parameters, [success_line]))
   #(state, doc)
 }
 
@@ -787,8 +776,9 @@ fn call_doc(function: String, args: List(Document)) -> Document {
 fn block(body: List(Document)) -> Document {
   [
     doc.from_string("{"),
-    [doc.line, ..body]
-      |> doc.concat
+    doc.line |> doc.nest(by: indent),
+    body
+      |> doc.join(with: doc.line)
       |> doc.nest(by: indent),
     doc.line,
     doc.from_string("}"),
@@ -796,15 +786,29 @@ fn block(body: List(Document)) -> Document {
   |> doc.concat
 }
 
+type Publicity {
+  Public
+  Private
+}
+
 /// A pretty printed public function definition.
 ///
-fn fun_doc(name: String, args: List(String), body: List(Document)) -> Document {
+fn fun_doc(
+  publicity: Publicity,
+  name: String,
+  args: List(String),
+  body: List(Document),
+) -> Document {
   let args = list.map(args, doc.from_string)
+  let publicity = case publicity {
+    Private -> ""
+    Public -> "pub "
+  }
 
   [
-    doc.from_string("pub fn " <> name),
+    doc.from_string(publicity <> "fn " <> name),
     comma_list("(", args, ") "),
-    block([body |> doc.join(with: doc.lines(2))]),
+    block(body),
   ]
   |> doc.concat
   |> doc.group
