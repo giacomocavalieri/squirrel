@@ -551,6 +551,12 @@ pub fn query_that_needs_utils_and_enums_has_two_sections_test() {
   |> birdie.snap(title: "query that needs utils and enums has two sections")
 }
 
+pub fn query_with_quoted_string_is_properly_escaped_test() {
+  "select 1 as \"result\""
+  |> should_codegen
+  |> birdie.snap(title: "query with quoted string is properly escaped")
+}
+
 // --- ERRROR TESTS ------------------------------------------------------------
 // This is a group of tests to ensure that the errors look good when something
 // goes wrong.
