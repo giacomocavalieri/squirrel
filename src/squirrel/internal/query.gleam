@@ -172,7 +172,7 @@ type EnumCodeGenData {
   EnumCodeGenData(
     /// Needed to know what kind of functions to generate for the specific case.
     ///
-    required_helpers: EnumRequiredHelpers,
+    required_helpers: RequiredHelpers,
     /// The original name used to define the enum in postgres to generate a
     /// useful comment.
     ///
@@ -183,11 +183,26 @@ type EnumCodeGenData {
   )
 }
 
-type EnumRequiredHelpers {
+type RequiredHelpers {
   NeedsEncoderAndDecoder
   NeedsDecoder
   NeedsEncoder
   NoHelpers
+}
+
+fn merge_helpers(
+  one: RequiredHelpers,
+  other: RequiredHelpers,
+) -> RequiredHelpers {
+  case one, other {
+    NoHelpers, other | other, NoHelpers -> other
+    NeedsEncoderAndDecoder, _ | _, NeedsEncoderAndDecoder ->
+      NeedsEncoderAndDecoder
+    NeedsDecoder, NeedsEncoder | NeedsEncoder, NeedsDecoder ->
+      NeedsEncoderAndDecoder
+    NeedsEncoder, NeedsEncoder -> NeedsEncoder
+    NeedsDecoder, NeedsDecoder -> NeedsDecoder
+  }
 }
 
 fn default_codegen_state() {
@@ -228,7 +243,7 @@ fn gleam_type_to_decoder(
     gleam.BitArray -> #(state, doc.from_string("decode.bit_array"))
     gleam.Json -> #(state, doc.from_string("decode.string"))
     gleam.Enum(original_name:, name: enum_name, variants:) -> #(
-      state |> enum_needs_decoder(original_name, enum_name, variants),
+      add_enum_helpers(state, original_name, enum_name, variants, NeedsDecoder),
       doc.from_string(enum_decoder_name(enum_name) <> "()"),
     )
   }
@@ -277,7 +292,7 @@ fn gleam_type_to_encoder(
     gleam.String -> #(state, call_doc("pog.text", [name]))
     gleam.BitArray -> #(state, call_doc("pog.bytea", [name]))
     gleam.Enum(original_name:, name: enum_name, variants:) -> #(
-      state |> enum_needs_encoder(original_name, enum_name, variants),
+      add_enum_helpers(state, original_name, enum_name, variants, NeedsEncoder),
       call_doc(enum_encoder_name(enum_name), [name]),
     )
   }
@@ -316,7 +331,7 @@ fn gleam_type_to_field_type(
     gleam.Json -> #(state, doc.from_string("String"))
     gleam.BitArray -> #(state, doc.from_string("BitArray"))
     gleam.Enum(original_name:, name:, variants:) -> #(
-      state |> register_enum_type(original_name, name, variants),
+      add_enum_helpers(state, original_name, name, variants, NoHelpers),
       gleam.type_identifier_to_string(name) |> doc.from_string,
     )
   }
@@ -898,83 +913,23 @@ fn import_qualified(
   CodeGenState(..state, imports:)
 }
 
-fn register_enum_type(
+fn add_enum_helpers(
   state: CodeGenState,
   original_name: String,
   name: TypeIdentifier,
   variants: NonEmptyList(EnumVariant),
+  required_helpers: RequiredHelpers,
 ) -> CodeGenState {
-  let enums = case dict.has_key(state.enums, name) {
-    True -> state.enums
-    False ->
-      dict.insert(
-        state.enums,
-        name,
-        EnumCodeGenData(NoHelpers, variants:, original_name:),
-      )
-  }
-
-  CodeGenState(..state, enums:)
-}
-
-fn enum_needs_encoder(
-  state: CodeGenState,
-  original_name: String,
-  name: TypeIdentifier,
-  variants: NonEmptyList(EnumVariant),
-) -> CodeGenState {
-  let enums =
-    dict.upsert(state.enums, name, fn(value) {
-      case value {
-        Some(EnumCodeGenData(NoHelpers, ..) as data) ->
-          EnumCodeGenData(..data, required_helpers: NeedsEncoder)
-
-        Some(EnumCodeGenData(NeedsDecoder, ..) as data) ->
-          EnumCodeGenData(..data, required_helpers: NeedsEncoderAndDecoder)
-
-        Some(EnumCodeGenData(NeedsEncoder, _, _) as data)
-        | Some(EnumCodeGenData(NeedsEncoderAndDecoder, _, _) as data) -> data
-
-        None ->
-          EnumCodeGenData(
-            required_helpers: NeedsEncoder,
-            variants:,
-            original_name:,
-          )
+  CodeGenState(..state, enums: {
+    use value <- dict.upsert(state.enums, name)
+    case value {
+      None -> EnumCodeGenData(required_helpers:, variants:, original_name:)
+      Some(EnumCodeGenData(required_helpers: helpers, ..) as data) -> {
+        let required_helpers = merge_helpers(required_helpers, helpers)
+        EnumCodeGenData(..data, required_helpers:)
       }
-    })
-
-  CodeGenState(..state, enums:)
-}
-
-fn enum_needs_decoder(
-  state: CodeGenState,
-  original_name: String,
-  name: TypeIdentifier,
-  variants: NonEmptyList(EnumVariant),
-) -> CodeGenState {
-  let enums =
-    dict.upsert(state.enums, name, fn(value) {
-      case value {
-        Some(EnumCodeGenData(NoHelpers, ..) as data) ->
-          EnumCodeGenData(..data, required_helpers: NeedsDecoder)
-
-        Some(EnumCodeGenData(NeedsEncoder, _, _) as data) ->
-          EnumCodeGenData(..data, required_helpers: NeedsEncoderAndDecoder)
-
-        Some(EnumCodeGenData(NeedsDecoder, ..) as data)
-        | Some(EnumCodeGenData(NeedsEncoderAndDecoder, _, _) as data) -> data
-
-        None ->
-          EnumCodeGenData(
-            required_helpers: NeedsDecoder,
-            variants:,
-            original_name:,
-          )
-      }
-    })
-
-  CodeGenState(..state, enums:)
+    }
+  })
 }
 
 // --- MISC UTILS --------------------------------------------------------------
