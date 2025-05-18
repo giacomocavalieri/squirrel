@@ -522,9 +522,7 @@ pub fn insert_with_no_returned_values_returns_just_nil_and_doesnt_define_a_type_
 }
 
 pub fn fields_appear_in_the_order_they_have_in_the_select_list_test() {
-  "
-select true as first, 1 as second, 'wibble' as third
-"
+  "select true as first, 1 as second, 'wibble' as third"
   |> should_codegen
   |> birdie.snap(
     title: "fields appear in the order they have in the select list",
