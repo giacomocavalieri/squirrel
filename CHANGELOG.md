@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v3.0.4 - 2025-05-19
+
+- Relaxed the constraint on the `gleam_json` dependency.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v3.0.3 - 2025-04-28
 
 - Fixed a bug where Squirrel would not be able to generate code for queries with
