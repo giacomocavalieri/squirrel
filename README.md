@@ -80,12 +80,12 @@ function `find_squirrel` you can use just as you'd expect:
 
 ```gleam
 import pog
-import squirrels/sql
+import squirrels/squirrels_sql
 
 pub fn main() {
   let db = todo as "the pog connection"
   // And it just works as you'd expect:
-  let assert Ok(pog.Returned(_rows_count, rows)) = sql.find_squirrel("sandy")
+  let assert Ok(pog.Returned(_rows_count, rows)) = squirrels_sql.find_squirrel("sandy")
   let assert [FindSquirrelRow(name: "sandy", owned_acorns: 11_111)] = rows
 }
 ```
@@ -125,8 +125,9 @@ work:
   project's `src` directory.
 - Each `sql` directory will be turned into a single Gleam module containing a
   function for each `*.sql` file inside it. The generated Gleam module is going
-  to be located in the same directory as the corresponding `sql` directory and
-  it's name is `sql.gleam`.
+  to be located in the same directory as the corresponding `sql` directory. It
+  will be named based on its parent directory, giving it the name
+  `<parent_directory>_sql.gleam`.
 - Each `*.sql` file _must contain a single SQL query._ And the name of the file
   is going to be the name of the corresponding Gleam function to run that query.
 
@@ -143,7 +144,7 @@ work:
 >     └── squirrels_test.gleam
 > ```
 >
-> Running `gleam run -m squirrel` will create a `src/squirrels/sql.gleam` file
+> Running `gleam run -m squirrel` will create a `src/squirrels/squirrels_sql.gleam` file
 > defining two functions `find_squirrel` and `list_squirrels` you can then
 > import and use in your code.
 

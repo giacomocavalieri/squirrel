@@ -674,6 +674,24 @@ pub fn query_returning_columns_with_same_names_test() {
   |> birdie.snap(title: "query returning columns with same names")
 }
 
+// --- FILE GENERATION ---------------------------------------------------------
+// Tests for code related to generating files
+//
+
+pub fn directory_to_output_file_generated_correct_filepaths_test() {
+  let inputs = [
+    "./src/admin/secret/sql", "./src/sql", "./src/src/sql",
+    "./src/some/thing/src/sql", "./src/users/sql",
+    "./src/models/post/comment/sql",
+  ]
+
+  list.map(inputs, squirrel.directory_to_output_file)
+  |> string.inspect
+  |> birdie.snap(
+    title: "directory_to_output_file generates filepaths with correct names",
+  )
+}
+
 // --- CHECKING ----------------------------------------------------------------
 // Tests for the `check` command.
 //
