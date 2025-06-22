@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Generated `sql.gleam` files now include in the name of their parent directory
+- Generated `sql.gleam` files now include the name of their parent directory
   in the name. For example if you have `src/user/sql/*.sql`, the generated file
   will now be `src/user/user_sql.gleam`. If the `sql` directory is located in
   the root `src/` folder, the generate file will still be called `sql.gleam`.
