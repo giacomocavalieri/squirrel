@@ -1,0 +1,61 @@
+---
+version: 1.3.0
+title: decode.success with long builder is properly formatted not breaking it on a different line
+file: ./test/squirrel_test.gleam
+test_name: decode_success_with_long_builder_is_properly_formatted_not_breaking_it_on_a_different_line_test
+---
+import gleam/dynamic/decode
+import pog
+
+/// A row you get from running the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type QueryRow {
+  QueryRow(
+    first_column: Int,
+    second_column: Int,
+    third_column: Int,
+    fourth_column: Int,
+    fifth_column: Int,
+    sixth_column: Int,
+  )
+}
+
+/// Runs the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This function was generated automatically using v-test of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn query(db) {
+  let decoder = {
+    use first_column <- decode.field(0, decode.int)
+    use second_column <- decode.field(1, decode.int)
+    use third_column <- decode.field(2, decode.int)
+    use fourth_column <- decode.field(3, decode.int)
+    use fifth_column <- decode.field(4, decode.int)
+    use sixth_column <- decode.field(5, decode.int)
+    decode.success(QueryRow(
+      first_column:,
+      second_column:,
+      third_column:,
+      fourth_column:,
+      fifth_column:,
+      sixth_column:,
+    ))
+  }
+
+  "select
+  1 as first_column,
+  2 as second_column,
+  3 as third_column,
+  4 as fourth_column,
+  5 as fifth_column,
+  6 as sixth_column;"
+  |> pog.query
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}

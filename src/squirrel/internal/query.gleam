@@ -735,8 +735,11 @@ fn uuid_decoder() {
 ///
 const nil_decoder = "decode.map(decode.dynamic, fn(_) { Nil })"
 
-/// A pretty printed decoder that decodes an n-item dynamic tuple using the
-/// `decode` package.
+/// A pretty printed decoder that decodes an n-item dynamic tuple with the given
+/// constructor wrapping the returned rows from a query.
+///
+/// If the query returns no columns (that is `returns == []`), then we default
+/// to building decoder that always returns `Nil`.
 ///
 fn decoder_doc(
   state: CodeGenState,
@@ -766,7 +769,8 @@ fn decoder_doc(
   let labelled_names = list.reverse(labelled_names)
 
   let success_line =
-    call_doc("decode.success", [call_doc(constructor, labelled_names)])
+    nested_calls_doc("decode.success", constructor, labelled_names)
+
   let doc = block(list.append(parameters, [success_line]))
   #(state, doc)
 }
@@ -792,6 +796,48 @@ fn pipe_call_doc(
 ///
 fn call_doc(function: String, args: List(Document)) -> Document {
   [doc.from_string(function), comma_list("(", args, ")")]
+  |> doc.concat
+  |> doc.group
+}
+
+/// This is a special case of a call document. To accomodate for a special rule
+/// of the Gleam formatter: when we have a function call that has a single other
+/// function as its one and only argument.
+///
+/// ```gleam
+/// first(second(arg_1, arg_2, arg_3, ..., arg_n))
+/// ```
+///
+/// When this needs to be broken, the formatter will only split the arguments of
+/// the second call like this:
+///
+/// ```gleam
+/// first(second(
+///   arg_1,
+///   ...,
+///   arg_n
+/// ))
+/// ```
+///
+/// Given the first and second function, and the arguments of the second
+/// function, this function builds a document that behaves like that.
+///
+fn nested_calls_doc(
+  first: String,
+  second: String,
+  arguments: List(Document),
+) -> Document {
+  [
+    doc.from_string(first),
+    doc.from_string("("),
+    // ^^ For the first call we don't add any breakable space after the `(`, so
+    //    that the only thing that can get broken on multiple lines are the
+    //    arguments of the second function
+    call_doc(second, arguments),
+    // ^^ And the second call is broken and behaves as usual, with its arguments
+    //    being nested
+    doc.from_string(")"),
+  ]
   |> doc.concat
   |> doc.group
 }

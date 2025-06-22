@@ -555,6 +555,21 @@ pub fn query_with_quoted_string_is_properly_escaped_test() {
   |> birdie.snap(title: "query with quoted string is properly escaped")
 }
 
+// https://github.com/giacomocavalieri/squirrel/issues/77
+pub fn decode_success_with_long_builder_is_properly_formatted_not_breaking_it_on_a_different_line_test() {
+  "select
+  1 as first_column,
+  2 as second_column,
+  3 as third_column,
+  4 as fourth_column,
+  5 as fifth_column,
+  6 as sixth_column;"
+  |> should_codegen
+  |> birdie.snap(
+    title: "decode.success with long builder is properly formatted not breaking it on a different line",
+  )
+}
+
 // --- ERRROR TESTS ------------------------------------------------------------
 // This is a group of tests to ensure that the errors look good when something
 // goes wrong.

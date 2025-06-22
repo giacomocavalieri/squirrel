@@ -1,5 +1,5 @@
 ---
-version: 1.2.3
+version: 1.3.0
 title: when a constraint doesn't exist there should be an error message
 file: ./test/squirrel_test.gleam
 test_name: non_existing_constraint_error_message_test

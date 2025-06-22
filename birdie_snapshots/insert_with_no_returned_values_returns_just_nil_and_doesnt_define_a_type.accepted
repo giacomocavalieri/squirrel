@@ -1,5 +1,5 @@
 ---
-version: 1.2.5
+version: 1.3.0
 title: insert with no returned values returns just nil and doesnt define a type
 file: ./test/squirrel_test.gleam
 test_name: insert_with_no_returned_values_returns_just_nil_and_doesnt_define_a_type_test
