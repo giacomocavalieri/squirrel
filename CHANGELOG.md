@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## Unreleased
+
+- Generated `sql.gleam` files now include in the name of their parent directory
+  in the name. For example if you have `src/user/sql/*.sql`, the generated file
+  will now be `src/user/user_sql.gleam`. If the `sql` directory is located in
+  the root `src/` folder, the generate file will still be called `sql.gleam`.
+
 ## v3.0.6 - 2025-06-24
 
 - Updated the `mug` dependency to `>= 2.0.0 and < 3.0.0`
