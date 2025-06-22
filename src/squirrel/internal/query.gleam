@@ -839,7 +839,6 @@ fn nested_calls_doc(
     doc.from_string(")"),
   ]
   |> doc.concat
-  |> doc.group
 }
 
 /// A pretty printed Gleam block.
@@ -934,7 +933,6 @@ fn comma_list(open: String, content: List(Document), close: String) -> Document 
       doc.join(content, doc.break(", ", ",")),
     ]
       |> doc.concat
-      |> doc.group
       |> doc.nest(by: indent),
     doc.break("", ","),
     doc.from_string(close),

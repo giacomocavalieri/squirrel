@@ -570,6 +570,19 @@ pub fn decode_success_with_long_builder_is_properly_formatted_not_breaking_it_on
   )
 }
 
+// https://github.com/giacomocavalieri/squirrel/pull/87#issuecomment-2994056542
+pub fn decode_success_with_long_builder_close_to_80_chars_is_properly_formatted_not_breaking_it_on_a_different_line_test() {
+  "select
+  1 as aaaaaaaa,
+  2 as bbbbbbbbbbbbbbb,
+  3 as ccc,
+  4 as dddddddddddddddd;"
+  |> should_codegen
+  |> birdie.snap(
+    title: "decode.success with long builder close to 80 chars is properly formatted not breaking it on a different line",
+  )
+}
+
 // --- ERRROR TESTS ------------------------------------------------------------
 // This is a group of tests to ensure that the errors look good when something
 // goes wrong.

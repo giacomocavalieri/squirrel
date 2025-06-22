@@ -1,0 +1,48 @@
+---
+version: 1.3.0
+title: decode.success with long builder close to 80 chars is properly formatted not breaking it on a different line
+file: ./test/squirrel_test.gleam
+test_name: decode_success_with_long_builder_close_to_80_chars_is_properly_formatted_not_breaking_it_on_a_different_line_test
+---
+import gleam/dynamic/decode
+import pog
+
+/// A row you get from running the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type QueryRow {
+  QueryRow(aaaaaaaa: Int, bbbbbbbbbbbbbbb: Int, ccc: Int, dddddddddddddddd: Int)
+}
+
+/// Runs the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This function was generated automatically using v-test of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn query(db) {
+  let decoder = {
+    use aaaaaaaa <- decode.field(0, decode.int)
+    use bbbbbbbbbbbbbbb <- decode.field(1, decode.int)
+    use ccc <- decode.field(2, decode.int)
+    use dddddddddddddddd <- decode.field(3, decode.int)
+    decode.success(QueryRow(
+      aaaaaaaa:,
+      bbbbbbbbbbbbbbb:,
+      ccc:,
+      dddddddddddddddd:,
+    ))
+  }
+
+  "select
+  1 as aaaaaaaa,
+  2 as bbbbbbbbbbbbbbb,
+  3 as ccc,
+  4 as dddddddddddddddd;"
+  |> pog.query
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
