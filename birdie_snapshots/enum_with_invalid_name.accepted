@@ -1,5 +1,5 @@
 ---
-version: 1.2.3
+version: 1.3.0
 title: enum with invalid name
 file: ./test/squirrel_test.gleam
 test_name: enum_with_invalid_name_test

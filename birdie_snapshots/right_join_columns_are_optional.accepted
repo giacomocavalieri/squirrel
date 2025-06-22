@@ -1,5 +1,5 @@
 ---
-version: 1.2.5
+version: 1.3.0
 title: right join columns are optional
 file: ./test/squirrel_test.gleam
 test_name: right_join_columns_are_optional_test

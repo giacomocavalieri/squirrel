@@ -1,5 +1,5 @@
 ---
-version: 1.2.5
+version: 1.3.0
 title: generated type has the same name as the function but in pascal case
 file: ./test/squirrel_test.gleam
 test_name: generated_type_has_the_same_name_as_the_function_but_in_pascal_case_test

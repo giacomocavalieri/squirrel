@@ -1,5 +1,5 @@
 ---
-version: 1.2.6
+version: 1.3.0
 title: query that needs utils and enums has two sections
 file: ./test/squirrel_test.gleam
 test_name: query_that_needs_utils_and_enums_has_two_sections_test
