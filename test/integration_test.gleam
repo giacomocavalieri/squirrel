@@ -2,7 +2,6 @@ import argv
 import envoy
 import filepath
 import gleam/bool
-import gleam/erlang
 import gleam/erlang/atom
 import gleam/io
 import gleam/list
@@ -111,7 +110,7 @@ squirrel = { path = \"../..\" }
 "
 
 fn with_timeout(seconds seconds: Int, run fun: fn() -> a) {
-  #(atom.create_from_string("timeout"), seconds, [fun])
+  #(atom.create("timeout"), seconds, [fun])
 }
 
 pub fn integration_test_() {
@@ -154,8 +153,6 @@ fn run_integration_tests(
     code <> "\n\n" <> assertions
   }
   write_main(code, to: dir)
-
-  let _ = erlang.get_line(">")
   test_project(dir)
 }
 
