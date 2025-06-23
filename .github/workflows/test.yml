@@ -43,7 +43,7 @@ jobs:
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ matrix.erlang }}
-          gleam-version: "1.10.0"
+          gleam-version: "1.11.0"
           rebar3-version: "3"
       - run: gleam deps download
       - run: ./integration_test
