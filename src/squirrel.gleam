@@ -36,8 +36,9 @@ const squirrel_version = "v3.0.6"
 /// - Each `*.sql` file _must contain a single query_ as it is turned into a
 ///   Gleam function with the same name.
 /// - All functions coming from the same `sql` directory will be grouped under
-///   a Gleam file called `sql.gleam` at the same level: given a `src/$PATH/sql`
-///   directory, you'll end up with a generated `src/$PATH/sql.gleam` file.
+///   a Gleam file called `<parent_directory>_sql.gleam` at the same level: given a `src/$PATH/user/sql`
+///   directory, you'll end up with a generated `src/$PATH/user_sql.gleam` file.
+///   If the `sql` directory is located in the root `src/` directory, it will simply be called `src/sql.gleam`.
 ///
 /// > ⚠️ In order to generate type safe code, `squirrel` has to connect
 /// > to your Postgres database. To know what host, user, etc. values to use
@@ -348,9 +349,21 @@ fn write_queries_to_file(
   Ok(list.length(queries))
 }
 
-fn directory_to_output_file(directory: String) -> String {
-  filepath.directory_name(directory)
-  |> filepath.join("sql.gleam")
+@internal
+pub fn directory_to_output_file(directory: String) -> String {
+  let directory_name = filepath.directory_name(directory)
+  let depth = filepath.split(directory_name) |> list.length
+  let base_name = filepath.base_name(directory_name)
+
+  // Check depth of filepath to allow ./src/mything/src/sql/get_src.sql
+  // Note: assumes param directory is a relative path
+  let file_name = case base_name {
+    "src" if depth <= 2 -> "sql.gleam"
+    name -> name <> "_sql.gleam"
+  }
+
+  directory_name
+  |> filepath.join(file_name)
 }
 
 // --- MODE: CHECK GENERATED CODE ----------------------------------------------

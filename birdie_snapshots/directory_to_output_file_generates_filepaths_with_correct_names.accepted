@@ -1,0 +1,7 @@
+---
+version: 1.3.0
+title: directory_to_output_file generates filepaths with correct names
+file: ./test/squirrel_test.gleam
+test_name: directory_to_output_file_generated_correct_filepaths_test
+---
+["./src/admin/secret/secret_sql.gleam", "./src/sql.gleam", "./src/src/src_sql.gleam", "./src/some/thing/src/src_sql.gleam", "./src/users/users_sql.gleam", "./src/models/post/comment/comment_sql.gleam"]
