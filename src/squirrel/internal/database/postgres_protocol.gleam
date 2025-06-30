@@ -25,7 +25,7 @@ pub type Connection {
 }
 
 pub fn connect(host, port, timeout) {
-  let options = mug.ConnectionOptions(host: host, port: port, timeout: timeout)
+  let options = mug.ConnectionOptions(host: host, port: port, timeout: timeout, ip_version_preference: mug.Ipv4Preferred)
   use socket <- result.try(mug.connect(options))
   Ok(Connection(socket: socket, buffer: <<>>, timeout: timeout))
 }

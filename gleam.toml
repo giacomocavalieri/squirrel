@@ -1,5 +1,5 @@
 name = "squirrel"
-version = "3.0.6"
+version = "3.0.7"
 description = "🐿️ Type safe SQL in Gleam"
 licences = ["Apache-2.0"]
 repository = { type = "github", user = "giacomocavalieri", repo = "squirrel" }
@@ -17,7 +17,7 @@ gleam_json = ">= 1.0.0 and < 4.0.0"
 gleam_regexp = ">= 1.0.0 and < 2.0.0"
 gleam_stdlib = ">= 0.51.0 and < 2.0.0"
 justin = ">= 1.0.1 and < 2.0.0"
-mug = ">= 2.0.0 and < 3.0.0"
+mug = ">= 3.0.0 and < 4.0.0"
 non_empty_list = ">= 2.1.0 and < 3.0.0"
 pog = ">= 3.1.0 and < 4.0.0"
 simplifile = ">= 2.0.1 and < 3.0.0"
