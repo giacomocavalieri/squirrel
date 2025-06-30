@@ -13,6 +13,7 @@
 //// > that is a bug! Please do reach out, I'd love to hear your feedback.
 ////
 
+import mug
 import eval
 import gleam/bit_array
 import gleam/bool
@@ -307,11 +308,18 @@ pub fn main(
 ) -> Result(#(List(TypedQuery), List(Error)), Error) {
   use db <- result.try(
     pg.connect(connection.host, connection.port, connection.timeout)
-    |> result.map_error(error.PgCannotEstablishTcpConnection(
-      host: connection.host,
-      port: connection.port,
-      reason: _,
-    )),
+    |> result.map_error(fn(e) {
+      let reason = case e {
+        mug.ConnectFailedBoth(ipv4:, ipv6: _) -> ipv4
+        mug.ConnectFailedIpv4(ipv4:) -> ipv4
+        mug.ConnectFailedIpv6(ipv6:) -> ipv6
+      }
+      error.PgCannotEstablishTcpConnection(
+        host: connection.host,
+        port: connection.port,
+        reason:,
+      )
+    }),
   )
 
   let context =
