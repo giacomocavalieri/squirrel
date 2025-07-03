@@ -396,7 +396,7 @@ fn ensure_postgres_version() -> Db(Nil) {
   let assert [[version, ..], ..] = version
     as "select version should always return at least one row"
 
-  case bit_array.to_string(version) |> result.then(int.parse) {
+  case bit_array.to_string(version) |> result.try(int.parse) {
     Error(_) -> eval.throw(error.PostgresVersionHasInvalidFormat(version))
     Ok(version) if version >= minimum_required_version -> eval.return(Nil)
     Ok(_) -> eval.throw(error.PostgresVersionIsTooOld)

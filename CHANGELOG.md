@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## Unreleased
+
+- Updated `result.then` to `result.try` to resolve deprecation warnings.
+
 ## v3.0.6 - 2025-06-24
 
 - Updated the `mug` dependency to `>= 2.0.0 and < 3.0.0`
