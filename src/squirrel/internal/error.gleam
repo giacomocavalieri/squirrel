@@ -752,7 +752,7 @@ fn code_doc(
 ) {
   let pointer =
     option.to_result(pointer, Nil)
-    |> result.then(pointer_doc(_, content))
+    |> result.try(pointer_doc(_, content))
 
   let content = syntax_highlight(content)
   let lines = string.split(content, on: "\n")
