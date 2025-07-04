@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## 3.1.0 - 2025-07-04
 
 - You can now use the `PGCONNECT_TIMEOUT` variable to set the maximum time in
   seconds to wait while connecting:

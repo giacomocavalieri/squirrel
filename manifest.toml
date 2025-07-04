@@ -13,7 +13,7 @@ packages = [
   { name = "glam", version = "2.0.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "glam", source = "hex", outer_checksum = "4932A2D139AB0389E149396407F89654928D7B815E212BB02F13C66F53B1BBA1" },
   { name = "glance", version = "5.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "glexer"], otp_app = "glance", source = "hex", outer_checksum = "FAA3DAC74AF71D47C67D88EB32CE629075169F878D148BB1FF225439BE30070A" },
   { name = "gleam_community_ansi", version = "1.4.3", build_tools = ["gleam"], requirements = ["gleam_community_colour", "gleam_regexp", "gleam_stdlib"], otp_app = "gleam_community_ansi", source = "hex", outer_checksum = "8A62AE9CC6EA65BEA630D95016D6C07E4F9973565FA3D0DE68DC4200D8E0DD27" },
-  { name = "gleam_community_colour", version = "2.0.1", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib"], otp_app = "gleam_community_colour", source = "hex", outer_checksum = "F0ACE69E3A47E913B03D3D0BB23A5563A91A4A7D20956916286068F4A9F817FE" },
+  { name = "gleam_community_colour", version = "2.0.2", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib"], otp_app = "gleam_community_colour", source = "hex", outer_checksum = "E34DD2C896AC3792151EDA939DA435FF3B69922F33415ED3C4406C932FBE9634" },
   { name = "gleam_crypto", version = "1.5.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_crypto", source = "hex", outer_checksum = "50774BAFFF1144E7872814C566C5D653D83A3EBF23ACC3156B757A1B6819086E" },
   { name = "gleam_erlang", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_erlang", source = "hex", outer_checksum = "F91CE62A2D011FA13341F3723DB7DB118541AAA5FE7311BD2716D018F01EF9E3" },
   { name = "gleam_json", version = "3.0.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_json", source = "hex", outer_checksum = "874FA3C3BB6E22DD2BB111966BD40B3759E9094E05257899A7C08F5DE77EC049" },
@@ -36,7 +36,7 @@ packages = [
   { name = "term_size", version = "1.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "term_size", source = "hex", outer_checksum = "D00BD2BC8FB3EBB7E6AE076F3F1FF2AC9D5ED1805F004D0896C784D06C6645F1" },
   { name = "tom", version = "2.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "gleam_time"], otp_app = "tom", source = "hex", outer_checksum = "74D0C5A3761F7A7D06994755D4D5AD854122EF8E9F9F76A3E7547606D8C77091" },
   { name = "tote", version = "1.0.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "tote", source = "hex", outer_checksum = "A249892E26A53C668897F8D47845B0007EEE07707A1A03437487F0CD5A452CA5" },
-  { name = "trie_again", version = "1.1.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "trie_again", source = "hex", outer_checksum = "5B19176F52B1BD98831B57FDC97BD1F88C8A403D6D8C63471407E78598E27184" },
+  { name = "trie_again", version = "1.1.3", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "trie_again", source = "hex", outer_checksum = "365FE609649F3A098D1D7FC7EA5222EE422F0B3745587BF2AB03352357CA70BB" },
   { name = "youid", version = "1.5.1", build_tools = ["gleam"], requirements = ["gleam_crypto", "gleam_stdlib", "gleam_time"], otp_app = "youid", source = "hex", outer_checksum = "580E909FD704DB16416D5CB080618EDC2DA0F1BE4D21B490C0683335E3FFC5AF" },
 ]
 
