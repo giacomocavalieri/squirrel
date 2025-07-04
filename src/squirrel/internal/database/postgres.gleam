@@ -305,11 +305,14 @@ pub fn main(
   queries: List(UntypedQuery),
   connection: ConnectionOptions,
 ) -> Result(#(List(TypedQuery), List(Error)), Error) {
+  let ConnectionOptions(host:, port:, timeout:, user:, password:, database:) =
+    connection
+
   use db <- result.try(
-    pg.connect(connection.host, connection.port, connection.timeout)
+    pg.connect(host, port, timeout)
     |> result.map_error(error.PgCannotEstablishTcpConnection(
-      host: connection.host,
-      port: connection.port,
+      host: host,
+      port: port,
       reason: _,
     )),
   )
@@ -326,7 +329,7 @@ pub fn main(
   //
 
   let setup_script = {
-    use _ <- eval.try(authenticate(connection))
+    use _ <- eval.try(authenticate(user:, database:, password:))
     use _ <- eval.try(ensure_postgres_version())
     eval.return(Nil)
   }
@@ -341,9 +344,11 @@ pub fn main(
   |> Ok
 }
 
-fn authenticate(connection: ConnectionOptions) -> Db(Nil) {
-  let ConnectionOptions(user:, database:, password:, ..) = connection
-
+fn authenticate(
+  user user: String,
+  database database: String,
+  password password: String,
+) -> Db(Nil) {
   let params = [#("user", user), #("database", database)]
   use _ <- eval.try(send(pg.FeStartupMessage(params)))
 
@@ -381,10 +386,7 @@ fn authenticate(connection: ConnectionOptions) -> Db(Nil) {
     // In case there's a receive error while waiting for the server to be ready
     // we want to display a more helpful error message because the problem here
     // must be with an invalid username/database combination.
-    |> eval.replace_error(error.PgInvalidUserDatabase(
-      user: connection.user,
-      database: connection.database,
-    )),
+    |> eval.replace_error(error.PgInvalidUserDatabase(user:, database:)),
   )
 
   eval.return(Nil)

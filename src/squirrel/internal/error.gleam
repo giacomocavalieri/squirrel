@@ -15,7 +15,11 @@ pub type Error {
   // --- POSTGRES RELATED ERRORS -----------------------------------------------
   /// When we can't establish a TCP connection to the server.
   ///
-  PgCannotEstablishTcpConnection(host: String, port: Int, reason: mug.Error)
+  PgCannotEstablishTcpConnection(
+    host: String,
+    port: Int,
+    reason: mug.ConnectError,
+  )
 
   /// When the server immediately closes the connection right after we try to
   /// connect using the given username and database.
@@ -245,9 +249,15 @@ pub fn to_doc(error: Error) -> Document {
   // that is actually printed and we do not have to make any effort to add and
   // print new errors.
   let printable_error = case error {
-    PgCannotEstablishTcpConnection(host:, port:, reason:) ->
+    PgCannotEstablishTcpConnection(host:, port:, reason:) -> {
+      let mug_error = case reason {
+        mug.ConnectFailedBoth(ipv4: error, ipv6: _)
+        | mug.ConnectFailedIpv4(ipv4: error)
+        | mug.ConnectFailedIpv6(ipv6: error) -> error
+      }
+
       printable_error("Cannot establish TCP connection")
-      |> add_paragraph(case reason {
+      |> add_paragraph(case mug_error {
         mug.Econnrefused ->
           "I couldn't connect to the database because "
           <> style_inline_code(host)
@@ -280,6 +290,7 @@ problem while trying to establish a TCP connection to
 " <> style_inline_code(host) <> " at port " <> int.to_string(port) <> ":
 " <> string.inspect(reason)
       })
+    }
 
     PgInvalidUserDatabase(user:, database:) ->
       printable_error("Cannot connect")
