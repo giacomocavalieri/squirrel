@@ -180,7 +180,7 @@ const default_password = ""
 
 const default_port = 5432
 
-const default_timeout = 1000
+const default_timeout = 5
 
 /// Creates a `ConnectionOptions` reading values from env variables and falling
 /// back to some defaults if any required one is not set.
@@ -197,6 +197,10 @@ fn connection_options_from_variables() -> postgres.ConnectionOptions {
     envoy.get("PGPORT")
     |> result.try(int.parse)
     |> result.unwrap(default_port)
+  let timeout_seconds =
+    envoy.get("PGCONNECT_TIMEOUT")
+    |> result.try(int.parse)
+    |> result.unwrap(default_timeout)
 
   postgres.ConnectionOptions(
     host:,
@@ -204,7 +208,7 @@ fn connection_options_from_variables() -> postgres.ConnectionOptions {
     user:,
     password:,
     database:,
-    timeout: default_timeout,
+    timeout_seconds:,
   )
 }
 
@@ -213,10 +217,19 @@ fn connection_options_from_variables() -> postgres.ConnectionOptions {
 ///
 fn parse_connection_url(raw: String) -> Result(postgres.ConnectionOptions, Nil) {
   use uri <- result.try(uri.parse(raw))
-  let Uri(scheme:, userinfo:, host:, port:, path:, ..) = uri
+  let Uri(scheme:, userinfo:, host:, port:, path:, query:, ..) = uri
+
+  use parameters <- result.try(case query {
+    None -> Ok([])
+    Some(parameters) -> uri.parse_query(parameters)
+  })
   use _ <- result.try(check_scheme(scheme))
   let #(user, password) = parse_user_and_password_from_userinfo(userinfo)
   let database = parse_database_from_path(path)
+  use timeout <- result.try(case list.key_find(parameters, "connect_timeout") {
+    Error(_) -> Ok(default_timeout)
+    Ok(timeout) -> int.parse(timeout)
+  })
 
   Ok(postgres.ConnectionOptions(
     host: host |> option.unwrap(default_host),
@@ -224,7 +237,7 @@ fn parse_connection_url(raw: String) -> Result(postgres.ConnectionOptions, Nil) 
     user: user |> option.unwrap(default_user),
     password: password |> option.unwrap(default_password),
     database: database |> option.unwrap(default_database),
-    timeout: default_timeout,
+    timeout_seconds: timeout,
   ))
 }
 

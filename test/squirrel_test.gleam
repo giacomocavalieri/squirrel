@@ -233,7 +233,7 @@ fn type_queries(
         user: user,
         database: database,
         password: "",
-        timeout: 1000,
+        timeout_seconds: 1,
       ),
     )
   }
