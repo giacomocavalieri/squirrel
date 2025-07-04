@@ -195,7 +195,7 @@ fn connection_options_from_variables() -> postgres.ConnectionOptions {
     |> result.unwrap(default_database)
   let port =
     envoy.get("PGPORT")
-    |> result.then(int.parse)
+    |> result.try(int.parse)
     |> result.unwrap(default_port)
 
   postgres.ConnectionOptions(

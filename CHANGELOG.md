@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## Unreleased
+
+- Updated code for `gleam_stdlib` `>= 0.61.0 and < 1.0.0`.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## v3.0.6 - 2025-06-24
 
 - Updated the `mug` dependency to `>= 2.0.0 and < 3.0.0`
