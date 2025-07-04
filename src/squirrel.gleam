@@ -45,7 +45,7 @@ const squirrel_version = "v3.1.0"
 /// > be a valid connection string with the following format:
 /// >
 /// > ```txt
-/// > postgres://user:password@host:port/database
+/// > postgres://user:password@host:port/database?connect_timeout=seconds
 /// > ```
 /// >
 /// > If a `DATABASE_URL` variable is not set, Squirrel will instead read your
@@ -56,10 +56,11 @@ const squirrel_version = "v3.1.0"
 /// > - `PGUSER`: `"postgres"`
 /// > - `PGDATABASE`: the name of your Gleam project
 /// > - `PGPASSWORD`: `""`
+/// > - `PGCONNECT_TIMEOUT`: `5` seconds
 ///
 /// > ⚠️ The generated code relies on the
-/// > [`pog`](https://hexdocs.pm/pog/) package to work, so make sure to
-/// > add that dependency to your project.
+/// > [`pog`](https://hexdocs.pm/pog/) package to work, so make sure to add
+/// > that dependency to your project.
 ///
 pub fn main() {
   case parse_cli_args(), connection_options() {
