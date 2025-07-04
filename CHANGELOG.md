@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- You can now use the `PGCONNECT_TIMEOUT` variable to set the maximum time in
+  seconds to wait while connecting:
+
+  ```bash
+  # Wait at most 5 seconds before timing out when connecting to the database.
+  export PGCONNECT_TIMEOUT=5
+  gleam run -m squirrel
+  ```
+
+  You can also change the timeout value when using a connection string, by
+  setting the `connect_timeout` query parameter:
+
+  ```bash
+  export DATABASE_URL="postgres://user@host:5432/my_db?connect_timeout=5"
+  gleam run -m squirrel
+  ```
+
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 - Updated code for `gleam_stdlib` `>= 0.61.0 and < 1.0.0`.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 

@@ -165,7 +165,7 @@ the Postgres server where the database is defined. To connect, it will read the
 following format:
 
 ```txt
-postgres://user:password@host:port/database
+postgres://user:password@host:port/database?connect_timeout=seconds
 ```
 
 If a `DATABASE_URL` variable is not set, Squirrel will instead read your
@@ -177,6 +177,7 @@ and use the following defaults if one is not set:
 - `PGUSER`: `"postgres"`
 - `PGDATABASE`: the name of your Gleam project
 - `PGPASSWORD`: `""`
+- `PGCONNECT_TIMEOUT`: `5` seconds
 
 ## Supported types
 

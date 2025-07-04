@@ -249,7 +249,7 @@ pub type ConnectionOptions {
     user: String,
     password: String,
     database: String,
-    timeout: Int,
+    timeout_seconds: Int,
   )
 }
 
@@ -305,11 +305,17 @@ pub fn main(
   queries: List(UntypedQuery),
   connection: ConnectionOptions,
 ) -> Result(#(List(TypedQuery), List(Error)), Error) {
-  let ConnectionOptions(host:, port:, timeout:, user:, password:, database:) =
-    connection
+  let ConnectionOptions(
+    host:,
+    port:,
+    timeout_seconds:,
+    user:,
+    password:,
+    database:,
+  ) = connection
 
   use db <- result.try(
-    pg.connect(host, port, timeout)
+    pg.connect(host, port, timeout_seconds * 1000)
     |> result.map_error(error.PgCannotEstablishTcpConnection(
       host: host,
       port: port,
