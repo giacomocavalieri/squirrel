@@ -25,9 +25,15 @@ pub type Connection {
 }
 
 pub fn connect(host, port, timeout) {
-  let options = mug.ConnectionOptions(host: host, port: port, timeout: timeout)
+  let options =
+    mug.ConnectionOptions(
+      host:,
+      port:,
+      timeout:,
+      ip_version_preference: mug.Ipv4Preferred,
+    )
   use socket <- result.try(mug.connect(options))
-  Ok(Connection(socket: socket, buffer: <<>>, timeout: timeout))
+  Ok(Connection(socket:, buffer: <<>>, timeout:))
 }
 
 pub type StateInitial {
@@ -66,18 +72,18 @@ pub fn start(conn, params) {
 fn receive_startup_rec(conn: Connection, state: StateInitial) {
   case receive(conn) {
     Ok(#(conn, BeAuthenticationOk)) -> receive_startup_rec(conn, state)
-    Ok(#(conn, BeParameterStatus(name: name, value: value))) ->
+    Ok(#(conn, BeParameterStatus(name:, value:))) ->
       receive_startup_rec(
         conn,
         StateInitial(parameters: dict.insert(state.parameters, name, value)),
       )
-    Ok(#(conn, BeBackendKeyData(secret_key: secret_key, process_id: process_id))) ->
+    Ok(#(conn, BeBackendKeyData(secret_key:, process_id:))) ->
       receive_startup_1(
         conn,
         State(
           parameters: state.parameters,
-          secret_key: secret_key,
-          process_id: process_id,
+          secret_key:,
+          process_id:,
           oids: default_oids(),
         ),
       )
@@ -88,7 +94,7 @@ fn receive_startup_rec(conn: Connection, state: StateInitial) {
 
 fn receive_startup_1(conn: Connection, state: State) {
   case receive(conn) {
-    Ok(#(conn, BeParameterStatus(name: name, value: value))) ->
+    Ok(#(conn, BeParameterStatus(name:, value:))) ->
       receive_startup_1(
         conn,
         State(..state, parameters: dict.insert(state.parameters, name, value)),
@@ -449,13 +455,13 @@ pub fn encode_backend_message(message: BackendMessage) -> BitArray {
     BeAuthenticationOk -> encode("R", <<0:32>>)
     BeAuthenticationKerberosV5 -> encode("R", <<2:32>>)
     BeAuthenticationCleartextPassword -> encode("R", <<3:32>>)
-    BeAuthenticationMD5Password(salt: salt) -> encode("R", <<5:32, salt:bits>>)
+    BeAuthenticationMD5Password(salt:) -> encode("R", <<5:32, salt:bits>>)
     BeAuthenticationGSS -> encode("R", <<7:32>>)
     BeAuthenticationGSSContinue(data) -> encode("R", <<8:32, data:bits>>)
     BeAuthenticationSSPI -> encode("R", <<9:32>>)
     BeAuthenticationSASL(a) -> encode_authentication_sasl(a)
     BeAuthenticationSASLContinue(data) -> encode("R", <<11:32, data:bits>>)
-    BeAuthenticationSASLFinal(data: data) -> encode("R", <<12:32, data:bits>>)
+    BeAuthenticationSASLFinal(data:) -> encode("R", <<12:32, data:bits>>)
     BeBackendKeyData(pid, sk) -> encode("K", <<pid:32, sk:32>>)
     BeBindComplete -> encode("2", <<>>)
     BeCloseComplete -> encode("3", <<>>)
@@ -481,12 +487,8 @@ pub fn encode_backend_message(message: BackendMessage) -> BitArray {
 pub fn encode_frontend_message(message: FrontendMessage) {
   case message {
     FeBind(a, b, c, d, e) -> encode_bind(a, b, c, d, e)
-    FeCancelRequest(process_id: process_id, secret_key: secret_key) -> <<
-      16:32,
-      1234:16,
-      5678:16,
-      process_id:32,
-      secret_key:32,
+    FeCancelRequest(process_id:, secret_key:) -> <<
+      16:32, 1234:16, 5678:16, process_id:32, secret_key:32,
     >>
     FeClose(what, name) ->
       encode("C", <<wire_what(what):bits, encode_string(name):bits>>)
@@ -534,8 +536,7 @@ pub const protocol_version_major = <<3:16>>
 pub const protocol_version_minor = <<0:16>>
 
 pub const protocol_version = <<
-  protocol_version_major:bits,
-  protocol_version_minor:bits,
+  protocol_version_major:bits, protocol_version_minor:bits,
 >>
 
 fn encode_startup_message(params) {
@@ -634,7 +635,7 @@ pub fn receive(
 }
 
 fn with_buffer(conn: Connection, buffer: BitArray) {
-  Connection(..conn, buffer: buffer)
+  Connection(..conn, buffer:)
 }
 
 // decode a single message from the packet
@@ -667,16 +668,14 @@ pub fn decode_backend_message(binary) {
     <<"R":utf8, 0:32>> -> Ok(BeAuthenticationOk)
     <<"R":utf8, 2:32>> -> Ok(BeAuthenticationKerberosV5)
     <<"R":utf8, 3:32>> -> Ok(BeAuthenticationCleartextPassword)
-    <<"R":utf8, 5:32, salt:bytes>> ->
-      Ok(BeAuthenticationMD5Password(salt: salt))
+    <<"R":utf8, 5:32, salt:bytes>> -> Ok(BeAuthenticationMD5Password(salt:))
     <<"R":utf8, 7:32>> -> Ok(BeAuthenticationGSS)
     <<"R":utf8, 8:32, auth_data:bytes>> ->
-      Ok(BeAuthenticationGSSContinue(auth_data: auth_data))
+      Ok(BeAuthenticationGSSContinue(auth_data:))
     <<"R":utf8, 9:32>> -> Ok(BeAuthenticationSSPI)
     <<"R":utf8, 10:32, data:bytes>> -> decode_authentication_sasl(data)
-    <<"R":utf8, 11:32, data:bytes>> ->
-      Ok(BeAuthenticationSASLContinue(data: data))
-    <<"R":utf8, 12:32, data:bytes>> -> Ok(BeAuthenticationSASLFinal(data: data))
+    <<"R":utf8, 11:32, data:bytes>> -> Ok(BeAuthenticationSASLContinue(data:))
+    <<"R":utf8, 12:32, data:bytes>> -> Ok(BeAuthenticationSASLFinal(data:))
     <<"K":utf8, pid:32, sk:32>> ->
       Ok(BeBackendKeyData(process_id: pid, secret_key: sk))
     <<"2":utf8>> -> Ok(BeBindComplete)
@@ -719,10 +718,7 @@ pub fn decode_frontend_packet(
 ) -> Result(#(FrontendMessage, BitArray), MessageDecodingError) {
   case packet {
     <<16:32, 1234:16, 5678:16, process_id:32, secret_key:32, next:bytes>> ->
-      Ok(#(
-        FeCancelRequest(process_id: process_id, secret_key: secret_key),
-        next,
-      ))
+      Ok(#(FeCancelRequest(process_id:, secret_key:), next))
     <<8:32, 1234:16, 5679:16, next:bytes>> -> Ok(#(FeSslRequest, next))
     <<8:32, 1234:16, 5680:16, next:bytes>> -> Ok(#(FeGssEncRequest, next))
     // not sure if there's a way to use the `protocol_version` constant here
@@ -800,11 +796,7 @@ fn decode_parse(binary) -> Result(FrontendMessage, MessageDecodingError) {
   use #(name, binary) <- try(decode_string(binary))
   use #(query, binary) <- try(decode_string(binary))
   use parameter_object_ids <- try(decode_parameter_object_ids(binary))
-  Ok(FeParse(
-    name: name,
-    query: query,
-    parameter_object_ids: parameter_object_ids,
-  ))
+  Ok(FeParse(name:, query:, parameter_object_ids:))
 }
 
 fn decode_parameter_object_ids(binary) {
@@ -832,10 +824,10 @@ fn decode_function_call(binary) -> Result(FrontendMessage, MessageDecodingError)
       case rest {
         <<>> ->
           Ok(FeFunctionCall(
-            argument_format: argument_format,
-            arguments: arguments,
-            object_id: object_id,
-            result_format: result_format,
+            argument_format:,
+            arguments:,
+            object_id:,
+            result_format:,
           ))
         _ -> dec_err("invalid function call, data remains", rest)
       }
@@ -890,11 +882,11 @@ fn decode_bind(binary) -> Result(FrontendMessage, MessageDecodingError) {
   case binary {
     <<>> ->
       Ok(FeBind(
-        portal: portal,
-        statement_name: statement_name,
-        parameter_format: parameter_format,
-        parameters: parameters,
-        result_format: result_format,
+        portal:,
+        statement_name:,
+        parameter_format:,
+        parameters:,
+        result_format:,
       ))
     _ -> dec_err("Bind message too long", binary)
   }
@@ -1060,11 +1052,7 @@ fn decode_notification_response(
   use strings <- try(read_strings(binary, 2, []))
   case strings {
     [channel, payload] ->
-      Ok(BeNotificationResponse(
-        process_id: process_id,
-        channel: channel,
-        payload: payload,
-      ))
+      Ok(BeNotificationResponse(process_id:, channel:, payload:))
     _ -> dec_err("invalid notification response encoding", binary)
   }
 }
@@ -1082,7 +1070,7 @@ fn decode_row_descriptions(count, binary) {
 fn decode_parameter_status(binary) {
   use strings <- try(decode_strings(binary))
   case strings {
-    [name, value] -> Ok(BeParameterStatus(name: name, value: value))
+    [name, value] -> Ok(BeParameterStatus(name:, value:))
     _ -> dec_err("invalid parameter status", binary)
   }
 }
@@ -1238,13 +1226,13 @@ fn read_row_description_field(binary) {
     )) ->
       Ok(#(
         RowDescriptionField(
-          name: name,
-          table_oid: table_oid,
-          attr_number: attr_number,
-          data_type_oid: data_type_oid,
-          data_type_size: data_type_size,
-          type_modifier: type_modifier,
-          format_code: format_code,
+          name:,
+          table_oid:,
+          attr_number:,
+          data_type_oid:,
+          data_type_size:,
+          type_modifier:,
+          format_code:,
         ),
         tail,
       ))
