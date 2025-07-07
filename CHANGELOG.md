@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## 4.0.0 - 2025-07-07
 
 - Squirrel now supports the `time` type decoded and encoded as a
   [`calendar.TimeOfDay`](https://hexdocs.pm/gleam_time/gleam/time/calendar.html#TimeOfDay).
