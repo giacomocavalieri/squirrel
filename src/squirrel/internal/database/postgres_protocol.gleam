@@ -488,7 +488,11 @@ pub fn encode_frontend_message(message: FrontendMessage) {
   case message {
     FeBind(a, b, c, d, e) -> encode_bind(a, b, c, d, e)
     FeCancelRequest(process_id:, secret_key:) -> <<
-      16:32, 1234:16, 5678:16, process_id:32, secret_key:32,
+      16:32,
+      1234:16,
+      5678:16,
+      process_id:32,
+      secret_key:32,
     >>
     FeClose(what, name) ->
       encode("C", <<wire_what(what):bits, encode_string(name):bits>>)
@@ -536,7 +540,8 @@ pub const protocol_version_major = <<3:16>>
 pub const protocol_version_minor = <<0:16>>
 
 pub const protocol_version = <<
-  protocol_version_major:bits, protocol_version_minor:bits,
+  protocol_version_major:bits,
+  protocol_version_minor:bits,
 >>
 
 fn encode_startup_message(params) {
