@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## Unreleased
+
+- Squirrel now uses the `gleam_time` time types for `time`, `date` and
+  `timestamp`s.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
+- Updated the `pog` dependency to `>= 4.0.0 and < 5.0.0`.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## 3.1.0 - 2025-07-04
 
 - You can now use the `PGCONNECT_TIMEOUT` variable to set the maximum time in
