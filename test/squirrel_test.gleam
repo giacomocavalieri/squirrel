@@ -439,6 +439,18 @@ pub fn date_encoding_test() {
   |> birdie.snap(title: "date encoding")
 }
 
+pub fn time_of_day_decoding_test() {
+  "select '11:10:01'::time as res"
+  |> should_codegen
+  |> birdie.snap(title: "time decoding")
+}
+
+pub fn time_of_day_encoding_test() {
+  "select true as res where $1 = '11:10:00'::time"
+  |> should_codegen
+  |> birdie.snap(title: "time encoding")
+}
+
 pub fn timestamp_decoding_test() {
   "select 'Jan-2-1970 12:34:56'::timestamp as res"
   |> should_codegen

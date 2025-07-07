@@ -235,6 +235,9 @@ fn gleam_type_to_decoder(
       #(state, call_doc("decode.optional", [inner_decoder]))
     }
     gleam.Date -> #(state, doc.from_string("pog.calendar_date_decoder()"))
+    gleam.TimeOfDay -> {
+      #(state, doc.from_string("pog.calendar_time_of_day_decoder()"))
+    }
     gleam.Timestamp -> #(state, doc.from_string("pog.timestamp_decoder()"))
     gleam.Int -> #(state, doc.from_string("decode.int"))
     gleam.Float -> #(state, doc.from_string("decode.float"))
@@ -285,6 +288,7 @@ fn gleam_type_to_encoder(
       #(state, doc)
     }
     gleam.Date -> #(state, call_doc("pog.calendar_date", [name]))
+    gleam.TimeOfDay -> #(state, call_doc("pog.calendar_time_of_day", [name]))
     gleam.Timestamp -> #(state, call_doc("pog.timestamp", [name]))
     gleam.Int -> #(state, call_doc("pog.int", [name]))
     gleam.Float -> #(state, call_doc("pog.float", [name]))
@@ -325,6 +329,11 @@ fn gleam_type_to_field_type(
     gleam.Date -> {
       let state = state |> import_qualified("gleam/time/calendar", "type Date")
       #(state, doc.from_string("Date"))
+    }
+    gleam.TimeOfDay -> {
+      let state =
+        state |> import_qualified("gleam/time/calendar", "type TimeOfDay")
+      #(state, doc.from_string("TimeOfDay"))
     }
     gleam.Timestamp -> {
       let state =

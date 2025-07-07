@@ -1,0 +1,37 @@
+---
+version: 1.3.1
+title: time encoding
+file: ./test/squirrel_test.gleam
+test_name: time_of_day_encoding_test
+---
+import gleam/dynamic/decode
+import pog
+
+/// A row you get from running the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type QueryRow {
+  QueryRow(res: Bool)
+}
+
+/// Runs the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This function was generated automatically using v-test of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn query(db, arg_1) {
+  let decoder = {
+    use res <- decode.field(0, decode.bool)
+    decode.success(QueryRow(res:))
+  }
+
+  "select true as res where $1 = '11:10:00'::time"
+  |> pog.query
+  |> pog.parameter(pog.calendar_time_of_day(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
