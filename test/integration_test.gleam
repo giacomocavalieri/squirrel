@@ -67,12 +67,9 @@ const integration_tests = [
   // Bytea
   TestType("bytea", [TestValue("<<1, 2, 3>>")]),
   // Date
-  TestType("date", [TestValue("pog.Date(1998, 10, 11)")]),
+  TestType("date", [TestValue("calendar.Date(1998, calendar.October, 11)")]),
   // Timestamp
-  TestType(
-    "timestamp",
-    [TestValue("pog.Timestamp(pog.Date(1998, 10, 11), pog.Time(22, 10, 0, 0))")],
-  ),
+  TestType("timestamp", [TestValue("timestamp.from_unix_seconds(1000)")]),
   // Array
   TestType("int[]", [TestValue("[1, 2, 3]")]),
   TestType("squirrel_colour[]", [TestValue("[sql.Red, sql.Grey]")]),
@@ -274,23 +271,28 @@ let assert Ok(pog.Returned(1, [])) = sql.<delete>(db)
 ///
 fn write_main(assertions: String, to dir: String) -> Nil {
   let main = "
+import gleam/erlang/process
 import gleam/io
-import gleam/string
-import pog
 import gleam/json
-import youid/uuid
+import gleam/string
+import gleam/time/calendar
+import gleam/time/timestamp
+import pog
 import sql
+import youid/uuid
 
 pub fn main() {
-let config =
-  pog.Config(
-    ..pog.default_config(),
-    port: 5432,
-    user: \"squirrel_test\",
-    host: \"localhost\",
-    database: \"squirrel_test\",
-  )
-let db = pog.connect(config)
+  let name = process.new_name(\"test\")
+  let config =
+    pog.Config(
+      ..pog.default_config(name),
+      port: 5432,
+      user: \"squirrel_test\",
+      host: \"localhost\",
+      database: \"squirrel_test\",
+    )
+  let assert Ok(actor) = pog.start(config)
+  let db = actor.data
 
 " <> assertions <> "
 }"

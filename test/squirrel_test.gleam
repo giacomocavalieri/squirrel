@@ -1,6 +1,7 @@
 import birdie
 import filepath
 import glam/doc
+import gleam/erlang/process
 import gleam/list
 import gleam/string
 import gleeunit
@@ -28,7 +29,9 @@ const database = "squirrel_test"
 const port = 5432
 
 pub fn test_config() -> pog.Config {
-  pog.default_config()
+  let name = process.new_name("test")
+
+  pog.default_config(name)
   |> pog.port(port)
   |> pog.user(user)
   |> pog.host(host)
@@ -36,7 +39,8 @@ pub fn test_config() -> pog.Config {
 }
 
 fn setup_database() {
-  let db = pog.connect(test_config())
+  let assert Ok(actor) = pog.start(test_config())
+  let db = actor.data
 
   let assert Ok(_) =
     "
@@ -176,7 +180,7 @@ create table if not exists items_categories_issue75 (
     |> pog.query
     |> pog.execute(db)
 
-  pog.disconnect(db)
+  Nil
 }
 
 // --- ASSERTION HELPERS -------------------------------------------------------
