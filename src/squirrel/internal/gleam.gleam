@@ -18,6 +18,7 @@ pub type Type {
   List(Type)
   Option(Type)
   Date
+  TimeOfDay
   Timestamp
   BitArray
   Int

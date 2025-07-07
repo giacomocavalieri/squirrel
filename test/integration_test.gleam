@@ -68,6 +68,8 @@ const integration_tests = [
   TestType("bytea", [TestValue("<<1, 2, 3>>")]),
   // Date
   TestType("date", [TestValue("calendar.Date(1998, calendar.October, 11)")]),
+  // TimeOfDay
+  TestType("time", [TestValue("calendar.TimeOfDay(1, 11, 10, 0)")]),
   // Timestamp
   TestType("timestamp", [TestValue("timestamp.from_unix_seconds(1000)")]),
   // Array

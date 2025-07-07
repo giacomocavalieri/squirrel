@@ -2,8 +2,18 @@
 
 ## Unreleased
 
-- Squirrel now uses the `gleam_time` time types for `time`, `date` and
-  `timestamp`s.
+- Squirrel now supports the `time` type decoded and encoded as a
+  [`calendar.TimeOfDay`](https://hexdocs.pm/gleam_time/gleam/time/calendar.html#TimeOfDay).
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
+- Squirrel now uses the
+  [`calendar.Date`](https://hexdocs.pm/gleam_time/gleam/time/calendar.html#Date)
+  type to encode and decode `date`s.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
+- Squirrel now uses the
+  [`timestamp.Timestamp`](https://hexdocs.pm/gleam_time/gleam/time/timestamp.html#Timestamp)
+  type to encode and decode `timestamp`s.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
 - Updated the `pog` dependency to `>= 4.0.0 and < 5.0.0`.

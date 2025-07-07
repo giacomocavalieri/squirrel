@@ -281,6 +281,7 @@ fn pg_to_gleam_type(
         "uuid" -> Ok(gleam.Uuid)
         "bytea" -> Ok(gleam.BitArray)
         "date" -> Ok(gleam.Date)
+        "time" -> Ok(gleam.TimeOfDay)
         "timestamp" -> Ok(gleam.Timestamp)
         _ -> Error(unsupported_type_error(query, name))
       }
