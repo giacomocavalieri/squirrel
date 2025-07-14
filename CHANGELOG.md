@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## Unreleased
+
+- Fixed a bug where using numeric types in a query would result in runtime
+  decoding errors.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## 4.0.0 - 2025-07-07
 
 - Squirrel now supports the `time` type decoded and encoded as a

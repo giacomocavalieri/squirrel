@@ -275,7 +275,8 @@ fn pg_to_gleam_type(
       case name {
         "bool" -> Ok(gleam.Bool)
         "text" | "char" | "bpchar" | "varchar" -> Ok(gleam.String)
-        "float4" | "float8" | "numeric" -> Ok(gleam.Float)
+        "float4" | "float8" -> Ok(gleam.Float)
+        "numeric" -> Ok(gleam.Numeric)
         "int2" | "int4" | "int8" -> Ok(gleam.Int)
         "json" | "jsonb" -> Ok(gleam.Json)
         "uuid" -> Ok(gleam.Uuid)
