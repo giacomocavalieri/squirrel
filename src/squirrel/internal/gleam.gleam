@@ -23,6 +23,7 @@ pub type Type {
   BitArray
   Int
   Float
+  Numeric
   Bool
   String
   Json

@@ -768,7 +768,7 @@ fn code_doc(
   let content = syntax_highlight(content)
   let lines = string.split(content, on: "\n")
   let lines_count = list.length(lines)
-  let assert Ok(digits) = int.digits(lines_count + starting_line, 10)
+  let digits = digits(lines_count + starting_line)
   let max_digits = list.length(digits)
 
   let code_lines = {
@@ -811,6 +811,17 @@ fn code_doc(
   |> doc.append(doc.line)
   |> doc.append(doc.from_string(padding <> ansi.dim("┆")))
   |> doc.group
+}
+
+fn digits(int: Int) -> List(Int) {
+  digits_loop(int.absolute_value(int), [])
+}
+
+fn digits_loop(int: Int, acc: List(Int)) -> List(Int) {
+  case int < 10 {
+    True -> [int, ..acc]
+    False -> digits_loop(int / 10, [int % 10, ..acc])
+  }
 }
 
 fn pointer_doc(

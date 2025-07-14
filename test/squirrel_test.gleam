@@ -262,16 +262,40 @@ pub fn int_encoding_test() {
   |> birdie.snap(title: "int encoding")
 }
 
-pub fn float_decoding_test() {
-  "select 1.1 as res"
+pub fn numeric_decoding_test() {
+  "select 1.1::numeric as res"
   |> should_codegen
-  |> birdie.snap(title: "float decoding")
+  |> birdie.snap(title: "numeric decoding")
 }
 
-pub fn float_encoding_test() {
-  "select true as res where $1 = 1.1"
+pub fn numeric_encoding_test() {
+  "select true as res where $1 = 1.1::numeric"
   |> should_codegen
-  |> birdie.snap(title: "float encoding")
+  |> birdie.snap(title: "numeric encoding")
+}
+
+pub fn float4_decoding_test() {
+  "select 1.1::float4 as res"
+  |> should_codegen
+  |> birdie.snap(title: "float4 decoding")
+}
+
+pub fn float4_encoding_test() {
+  "select true as res where $1 = 1.1::float4"
+  |> should_codegen
+  |> birdie.snap(title: "float4 encoding")
+}
+
+pub fn float8_decoding_test() {
+  "select 1.1::float8 as res"
+  |> should_codegen
+  |> birdie.snap(title: "float8 decoding")
+}
+
+pub fn float8_encoding_test() {
+  "select true as res where $1 = 1.1::float8"
+  |> should_codegen
+  |> birdie.snap(title: "float8 encoding")
 }
 
 pub fn string_decoding_test() {
