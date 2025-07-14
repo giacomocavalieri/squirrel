@@ -3,6 +3,7 @@ import envoy
 import filepath
 import gleam/bool
 import gleam/erlang/atom
+import gleam/int
 import gleam/io
 import gleam/list
 import gleam/regexp
@@ -13,8 +14,18 @@ import temporary
 
 /// An integration test for a specific postgres type.
 ///
-type TestType {
+type TestCase {
+  /// This tests squirrel on a fixed set of parametrised queries doing
+  /// insertions and selects. To do so it creates some Gleam code that uses
+  /// Gleam values as parameters to the query.
+  ///
   TestType(postgres_type: String, values: List(TestValue))
+
+  /// This tests squirrel running a fixed query with no parameters. And it
+  /// checks the value you get back from the query to match the given
+  /// `expected_value`.
+  ///
+  TestQuery(query: String)
 }
 
 /// How a tested value looks in gleam code when it is fed into a query or
@@ -62,6 +73,7 @@ const integration_tests = [
   TestType("float4", [TestValue("1.0")]),
   TestType("float8", [TestValue("1.0")]),
   TestType("numeric", [TestValue("1.0")]),
+  TestQuery("select 1::numeric"),
   // Uuid
   TestType("uuid", [TestValue("uuid.v7()")]),
   // Bytea
@@ -134,7 +146,7 @@ pub fn integration_test_() {
 }
 
 fn run_integration_tests(
-  values: List(TestType),
+  values: List(TestCase),
 ) -> Result(Result(String, #(Int, String)), simplifile.FileError) {
   let integration_test_project = filepath.join(".", "integration_test_project")
   let _ = simplifile.create_directory(integration_test_project)
@@ -144,15 +156,23 @@ fn run_integration_tests(
 
   scaffold_gleam_project(dir)
   let code = {
-    use code, TestType(postgres_type, values) <- list.fold(values, "")
-    let table_name = safe_name(postgres_type) <> "_table"
-    create_database_table(table_name, postgres_type)
-    let assertions =
-      create_query_files_and_assertions(postgres_type, table_name, values, dir)
+    use code, test_case <- list.fold(values, "")
+    let assertions = setup_and_generate_code(for: test_case, in: dir)
     code <> "\n\n" <> assertions
   }
   write_main(code, to: dir)
   test_project(dir)
+}
+
+fn setup_and_generate_code(for test_case: TestCase, in dir: String) -> String {
+  case test_case {
+    TestQuery(query:) -> create_query_files_and_assertions_for_query(query, dir)
+    TestType(postgres_type:, values:) -> {
+      let table_name = safe_name(postgres_type) <> "_table"
+      create_database_table(table_name, postgres_type)
+      create_query_files_and_assertions(postgres_type, table_name, values, dir)
+    }
+  }
 }
 
 fn create_database_table(table_name: String, postgres_type: String) -> Nil {
@@ -267,6 +287,23 @@ let assert Ok(pog.Returned(1, [])) = sql.<delete>(db)
 
   string.join(assertions, with: "\n")
 }
+
+fn create_query_files_and_assertions_for_query(
+  query: String,
+  dir: String,
+) -> String {
+  let src_dir = filepath.join(dir, "src")
+  let sql_dir = filepath.join(src_dir, "sql")
+  let query_name = "query_" <> int.to_string(unique_integer())
+  let assert Ok(_) =
+    simplifile.write(query, to: filepath.join(sql_dir, query_name <> ".sql"))
+
+  "let assert Ok(_) = sql.<query>(db)"
+  |> string.replace(each: "<query>", with: query_name)
+}
+
+@external(erlang, "squirrel_ffi", "unique")
+fn unique_integer() -> Int
 
 /// Writes the entry point of the Gleam project that will connect to the
 /// database and run all the assertions testing the generated squirrel code.
