@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## 4.0.1 - 2025-07-14
 
 - Fixed a bug where using numeric types in a query would result in runtime
   decoding errors.
