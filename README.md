@@ -64,7 +64,7 @@ Instead of the hand written example shown earlier you can instead just write the
 following query:
 
 ```sql
--- we're in file `src/squirrels/sql/find_squirrel.sql`
+-- we're in file `src/my_app/sql/find_squirrel.sql`
 -- Find a squirrel and its owned acorns given its name.
 select
   name,
@@ -80,7 +80,7 @@ function `find_squirrel` you can use just as you'd expect:
 
 ```gleam
 import pog
-import squirrels/sql
+import my_app/sql
 
 pub fn main() {
   let db = todo as "the pog connection"
@@ -134,16 +134,16 @@ work:
 >
 > ```txt
 > ├── src
-> │   ├── squirrels
+> │   ├── my_app
 > │   │   └── sql
 > │   │       ├── find_squirrel.sql
 > │   │       └── list_squirrels.sql
-> │   └── squirrels.gleam
+> │   └── my_app.gleam
 > └── test
->     └── squirrels_test.gleam
+>     └── my_app_test.gleam
 > ```
 >
-> Running `gleam run -m squirrel` will create a `src/squirrels/sql.gleam` file
+> Running `gleam run -m squirrel` will create a `src/my_app/sql.gleam` file
 > defining two functions `find_squirrel` and `list_squirrels` you can then
 > import and use in your code.
 
