@@ -5,6 +5,10 @@
 - Squirrel will now pick files under a project's `test` and `dev` directories.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
+- Fixed a bug where Squirrel wouldn't be able to generate code for `.sql` files
+  with a `do` block.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## 4.0.1 - 2025-07-14
 
 - Fixed a bug where using numeric types in a query would result in runtime
