@@ -86,6 +86,8 @@ pub fn main() {
     Ok(mode), Ok(options) -> {
       let generated_queries =
         walk(project.src())
+        |> dict.merge(walk(project.test_()))
+        |> dict.merge(walk(project.dev()))
         |> generate_queries(options)
 
       let #(report, status_code) = case mode {
@@ -291,7 +293,11 @@ fn walk(from: String) -> Dict(String, List(String)) {
     }
 
     _ -> {
-      let assert Ok(files) = simplifile.read_directory(from)
+      let files = case simplifile.read_directory(from) {
+        Ok(files) -> files
+        Error(simplifile.Enoent) -> []
+        Error(_) -> panic as { "couldn't read directory: " <> from }
+      }
       let directories = {
         use file <- list.filter_map(files)
         let file_name = filepath.join(from, file)

@@ -32,6 +32,22 @@ pub fn src() -> String {
   filepath.join(root(), "src")
 }
 
+/// Finds the path of the project's `test` directory.
+/// This recursively walks up from the current directory until it finds a
+/// `gleam.toml` and builds it from there.
+///
+pub fn test_() -> String {
+  filepath.join(root(), "test")
+}
+
+/// Finds the path of the project's `dev` directory.
+/// This recursively walks up from the current directory until it finds a
+/// `gleam.toml` and builds it from there.
+///
+pub fn dev() -> String {
+  filepath.join(root(), "dev")
+}
+
 /// Finds the path leading to the project's root folder. This recursively walks
 /// up from the current directory until it finds a `gleam.toml`.
 ///
