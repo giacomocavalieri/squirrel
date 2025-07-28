@@ -12,7 +12,7 @@ this:
 
 ```gleam
 import pog
-import decode/zero
+import gleam/dynamic/decode
 
 pub type FindSquirrelRow {
   FindSquirrelRow(name: String, owned_acorns: Int)
@@ -22,9 +22,9 @@ pub type FindSquirrelRow {
 ///
 pub fn find_squirrel(db: pog.Connection, name: String) {
   let squirrel_row_decoder = {
-    use name <- zero.field(0, zero.string)
-    use owned_acorns <- zero.field(1, zero.int)
-    zero.success(FindSquirrelRow(name:, owned_acorns:))
+    use name <- decode.field(0, decode.string)
+    use owned_acorns <- decode.field(1, decode.int)
+    decode.success(FindSquirrelRow(name:, owned_acorns:))
   }
 
   "
