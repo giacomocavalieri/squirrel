@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## 4.1.0 - 2025-07-28
 
 - Squirrel will now pick files under a project's `test` and `dev` directories.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))

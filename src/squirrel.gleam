@@ -24,7 +24,7 @@ import squirrel/internal/project
 import squirrel/internal/query.{type TypedQuery}
 import term_size
 
-const squirrel_version = "v4.0.1"
+const squirrel_version = "v4.1.0"
 
 /// 🐿️ Performs code generation for your Gleam project.
 ///
