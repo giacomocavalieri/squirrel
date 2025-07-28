@@ -9,6 +9,10 @@
   with a `do` block.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
+- Fixed a bug where queries would not be generated in a reproducible order,
+  causing `squirrel check` to fail unexpectedly.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## 4.0.1 - 2025-07-14
 
 - Fixed a bug where using numeric types in a query would result in runtime
