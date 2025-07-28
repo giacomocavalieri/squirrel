@@ -559,8 +559,17 @@ fn infer_types(query: UntypedQuery) -> Db(TypedQuery) {
   //   - But this is not enough! If a returned column comes from a left/right
   //     join it will be nullable even if it is not in the original table.
   //     To work around this we'll have to inspect the query plan.
-  use plan <- eval.try(query_plan(query))
-  let nullables = nullables_from_plan(plan)
+  //
+  use nullables <- eval.try(
+    // For some special queries (like `do` blocks), it's not actually possible
+    // to run an `explain` query and the `query_plan` function will just fail.
+    // Instead of returning an error (since we want to support `do` blocks as
+    // well) we will have to make do with slightly imprecise inferred types!
+    eval.attempt(
+      eval.map(query_plan(query), nullables_from_plan),
+      fn(_context, _error) { eval.return(set.new()) },
+    ),
+  )
   use returns <- eval.try(resolve_returns(query, returns, nullables))
 
   query

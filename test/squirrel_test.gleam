@@ -773,11 +773,9 @@ on conflict on constraint wobble do nothing;
 }
 
 // https://github.com/giacomocavalieri/squirrel/issues/24
-pub fn query_starting_with_a_semicolon_produces_syntax_error_instead_of_crashing_test() {
-  should_error(";select 1")
-  |> birdie.snap(
-    title: "query starting with a semicolon produces syntax error instead of crashing",
-  )
+pub fn query_starting_with_a_semicolon_does_not_crash_test() {
+  should_codegen(";select 1 as result")
+  |> birdie.snap(title: "query starting with a semicolon does not crash")
 }
 
 // https://github.com/giacomocavalieri/squirrel/issues/29
@@ -804,7 +802,7 @@ pub fn a_query_failing_does_not_change_the_other_query_error_test() {
 
 pub fn a_query_failing_does_not_change_the_other_query_error_2_test() {
   should_error_queries([
-    #("wibble", "; select 1 as res"),
+    #("wibble", "error! select 1 as res"),
     #("wobble", "select wobble from wobble"),
   ])
   |> birdie.snap(
@@ -863,4 +861,14 @@ left join items_categories_issue75 ic on ic.item_id = i.id
 where ic.category_id in (select id from subcategories);"
   |> should_codegen
   |> birdie.snap(title: "recursive common table query with semi join")
+}
+
+pub fn squirrel_supports_do_blocks_test() {
+  "
+  do $$ begin
+    select 1;
+  end $$;
+  "
+  |> should_codegen
+  |> birdie.snap(title: "squirrel supports do blocks")
 }

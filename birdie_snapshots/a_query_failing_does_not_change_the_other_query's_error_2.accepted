@@ -1,5 +1,5 @@
 ---
-version: 1.3.0
+version: 1.3.2
 title: a query failing does not change the other query's error 2
 file: ./test/squirrel_test.gleam
 test_name: a_query_failing_does_not_change_the_other_query_error_2_test
@@ -8,9 +8,9 @@ test_name: a_query_failing_does_not_change_the_other_query_error_2_test
 
     [2m╭─ wibble.sql[22m
     [2m│[22m
-[2m  1 │ [22m; [36mselect[39m [32m1[39m [36mas[39m res
+[2m  1 │ [22merror! [36mselect[39m [32m1[39m [36mas[39m res
       [31m┬
-      ╰─ syntax error at or near ";"[0m
+      ╰─ syntax error at or near "error"[0m
     [2m┆[22m
 
 [31m[1mError: [22mInvalid query [42P01][39m
