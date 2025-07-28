@@ -623,6 +623,14 @@ pub fn decode_success_with_long_builder_close_to_80_chars_is_properly_formatted_
   )
 }
 
+pub fn queries_are_sorted_alphabetically_test() {
+  should_codegen_queries([
+    #("last", "select 1 as wibble"),
+    #("first", "select 1 as wibble"),
+  ])
+  |> birdie.snap(title: "queries are sorted alphabetically")
+}
+
 // --- ERRROR TESTS ------------------------------------------------------------
 // This is a group of tests to ensure that the errors look good when something
 // goes wrong.

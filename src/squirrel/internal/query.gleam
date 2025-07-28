@@ -357,6 +357,13 @@ fn gleam_type_to_field_type(
 /// Generates the code for a single file containing a bunch of typed queries.
 ///
 pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
+  // We need to sort the queries before generating any code, otherwise the order
+  // with which they will appear in the generated file won't be reproducible!
+  // That could cause CI checks like `gleam run -m squirrel check` to fail.
+  //
+  let queries =
+    list.sort(queries, fn(one, other) { string.compare(one.file, other.file) })
+
   let #(state, queries_docs) = {
     let state = default_codegen_state()
     use #(state, docs), query <- list.fold(over: queries, from: #(state, []))
