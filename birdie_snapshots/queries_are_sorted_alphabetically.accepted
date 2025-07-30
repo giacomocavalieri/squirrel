@@ -4,6 +4,13 @@ title: queries are sorted alphabetically
 file: ./test/squirrel_test.gleam
 test_name: queries_are_sorted_alphabetically_test
 ---
+
+//// This module contains the code to run the sql queries defined in
+//// `./test-directory`.
+//// > 🐿️ This module was generated automatically using v-test of
+//// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+////
+
 import gleam/dynamic/decode
 import pog
 
