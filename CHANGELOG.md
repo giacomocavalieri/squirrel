@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## Unreleased
+
+- Squirrel will now include a doc comment at the beginning of each generated
+  module, explaining where the queries come from and what version of squirrel
+  was used to generate the code.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## 4.1.0 - 2025-07-28
 
 - Squirrel will now pick files under a project's `test` and `dev` directories.

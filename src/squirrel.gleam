@@ -345,7 +345,7 @@ fn write_queries(
 ) -> Dict(String, #(Int, List(Error))) {
   use directory, #(queries, errors) <- dict.map_values(queries)
   let output_file = directory_to_output_file(directory)
-  case write_queries_to_file(queries, to: output_file) {
+  case write_queries_to_file(queries, from: directory, to: output_file) {
     Ok(n) -> #(n, errors)
     Error(error) -> #(list.length(queries), [error, ..errors])
   }
@@ -353,13 +353,15 @@ fn write_queries(
 
 fn write_queries_to_file(
   queries: List(TypedQuery),
+  from queries_directory: String,
   to file: String,
 ) -> Result(Int, Error) {
   use <- bool.guard(when: queries == [], return: Ok(0))
   let directory = filepath.directory_name(file)
   let _ = simplifile.create_directory_all(directory)
 
-  let code = query.generate_code(queries, squirrel_version)
+  let code =
+    query.generate_code(squirrel_version, for: queries, from: queries_directory)
   let try_write =
     simplifile.write(code, to: file)
     |> result.map_error(CannotWriteToFile(file, _))
@@ -417,7 +419,11 @@ fn check_queries_code(
   queries: List(TypedQuery),
   actual_code: String,
 ) -> CheckResult {
-  let expected_code = query.generate_code(queries, squirrel_version)
+  // The code is compared ignoring any comments, so we have no need to know
+  // what actual directory the queries come from: that information is only used
+  // to generate better comments!
+  let expected_code =
+    query.generate_code(squirrel_version, for: queries, from: "check-queries")
   compare_code_snippets(actual_code, expected_code)
 }
 

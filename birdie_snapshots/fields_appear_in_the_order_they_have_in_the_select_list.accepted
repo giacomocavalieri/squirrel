@@ -1,9 +1,15 @@
 ---
-version: 1.3.0
+version: 1.3.2
 title: fields appear in the order they have in the select list
 file: ./test/squirrel_test.gleam
 test_name: fields_appear_in_the_order_they_have_in_the_select_list_test
 ---
+//// This module contains the code to run the sql queries defined in
+//// `./test-directory`.
+//// > 🐿️ This module was generated automatically using v-test of
+//// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+////
+
 import gleam/dynamic/decode
 import pog
 

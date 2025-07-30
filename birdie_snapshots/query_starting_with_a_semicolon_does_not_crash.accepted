@@ -4,6 +4,12 @@ title: query starting with a semicolon does not crash
 file: ./test/squirrel_test.gleam
 test_name: query_starting_with_a_semicolon_does_not_crash_test
 ---
+//// This module contains the code to run the sql queries defined in
+//// `./test-directory`.
+//// > 🐿️ This module was generated automatically using v-test of
+//// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+////
+
 import gleam/dynamic/decode
 import pog
 

@@ -1,9 +1,15 @@
 ---
-version: 1.3.0
+version: 1.3.2
 title: recursive common table query with semi join
 file: ./test/squirrel_test.gleam
 test_name: recursive_common_table_query_with_semi_join_test
 ---
+//// This module contains the code to run the sql queries defined in
+//// `./test-directory`.
+//// > 🐿️ This module was generated automatically using v-test of
+//// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+////
+
 import gleam/dynamic/decode
 import pog
 import youid/uuid.{type Uuid}

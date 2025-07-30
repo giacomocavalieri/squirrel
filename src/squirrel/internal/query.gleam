@@ -356,7 +356,12 @@ fn gleam_type_to_field_type(
 
 /// Generates the code for a single file containing a bunch of typed queries.
 ///
-pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
+pub fn generate_code(
+  version version: String,
+  // The directory all the queries come from.
+  for queries: List(TypedQuery),
+  from directory: String,
+) -> String {
   // We need to sort the queries before generating any code, otherwise the order
   // with which they will appear in the generated file won't be reproducible!
   // That could cause CI checks like `gleam run -m squirrel check` to fail.
@@ -416,8 +421,12 @@ pub fn generate_code(queries: List(TypedQuery), version: String) -> String {
     }
   }
 
-  code
-  |> doc.append(doc.line)
+  doc.concat([
+    doc.from_string(module_doc(version, directory)),
+    doc.lines(2),
+    code,
+    doc.line,
+  ])
   |> doc.to_string(80)
 }
 
@@ -522,6 +531,14 @@ fn query_doc(
 fn pipe_all_encoders(doc: Document, decoders: List(Document)) -> Document {
   use doc, decoder <- list.fold(over: decoders, from: doc)
   doc |> pipe_call_doc("pog.parameter", _, [decoder])
+}
+
+fn module_doc(version: String, directory: String) -> String {
+  "//// This module contains the code to run the sql queries defined in
+//// `" <> directory <> "`.
+//// > 🐿️ This module was generated automatically using " <> version <> " of
+//// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+////"
 }
 
 fn function_doc(version: String, query: TypedQuery) -> String {

@@ -204,7 +204,7 @@ fn should_codegen(query: String) -> String {
 fn should_codegen_queries(queries: List(#(String, String))) -> String {
   // We assert everything went smoothly and we have no errors in the query.
   let assert Ok(#(queries, [])) = type_queries(queries)
-  query.generate_code(queries, "v-test")
+  query.generate_code("v-test", for: queries, from: "./test-directory")
 }
 
 fn type_queries(
