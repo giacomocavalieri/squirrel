@@ -880,3 +880,22 @@ pub fn squirrel_supports_do_blocks_test() {
   |> should_codegen
   |> birdie.snap(title: "squirrel supports do blocks")
 }
+
+pub fn file_with_squirrel_module_comment_is_considered_as_generated_test() {
+  assert squirrel.LikelyGenerated
+    == "select 1 as wibble"
+    |> should_codegen
+    |> squirrel.classify_file_content
+}
+
+pub fn file_with_squirrel_function_comment_is_considered_as_generated_test() {
+  assert squirrel.LikelyGenerated
+    == "select 1 as wibble"
+    |> should_codegen
+    // We remove the starting module comment, since we want to make sure
+    // squirrel can pick up a generated file even if that bit is missing!
+    |> string.split(on: "\n")
+    |> list.filter(fn(line) { !string.starts_with(line, "////") })
+    |> string.join(with: "\n")
+    |> squirrel.classify_file_content
+}
