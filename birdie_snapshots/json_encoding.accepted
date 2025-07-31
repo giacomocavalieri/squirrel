@@ -4,22 +4,11 @@ title: json encoding
 file: ./test/squirrel_test.gleam
 test_name: json_encoding_test
 ---
-//// This module contains the code to run the sql queries defined in
-//// `./test-directory`.
-//// > 🐿️ This module was generated automatically using v-test of
-//// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-////
 
 import gleam/dynamic/decode
 import gleam/json
 import pog
 
-/// Runs the `query` query
-/// defined in `query.sql`.
-///
-/// > 🐿️ This function was generated automatically using v-test of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
 pub fn query(db, arg_1) {
   let decoder = decode.map(decode.dynamic, fn(_) { Nil })
 

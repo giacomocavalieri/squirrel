@@ -4,31 +4,14 @@ title: queries are sorted alphabetically
 file: ./test/squirrel_test.gleam
 test_name: queries_are_sorted_alphabetically_test
 ---
-//// This module contains the code to run the sql queries defined in
-//// `./test-directory`.
-//// > 🐿️ This module was generated automatically using v-test of
-//// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-////
 
 import gleam/dynamic/decode
 import pog
 
-/// A row you get from running the `first` query
-/// defined in `first.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v-test of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
 pub type FirstRow {
   FirstRow(wibble: Int)
 }
 
-/// Runs the `first` query
-/// defined in `first.sql`.
-///
-/// > 🐿️ This function was generated automatically using v-test of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
 pub fn first(db) {
   let decoder = {
     use wibble <- decode.field(0, decode.int)
@@ -41,22 +24,10 @@ pub fn first(db) {
   |> pog.execute(db)
 }
 
-/// A row you get from running the `last` query
-/// defined in `last.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v-test of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
 pub type LastRow {
   LastRow(wibble: Int)
 }
 
-/// Runs the `last` query
-/// defined in `last.sql`.
-///
-/// > 🐿️ This function was generated automatically using v-test of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
 pub fn last(db) {
   let decoder = {
     use wibble <- decode.field(0, decode.int)

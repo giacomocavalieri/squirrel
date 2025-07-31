@@ -4,32 +4,15 @@ title: using uuids more than once results in a single uuid decoder helper
 file: ./test/squirrel_test.gleam
 test_name: using_uuids_more_than_once_results_in_a_single_uuid_decoder_helper_test
 ---
-//// This module contains the code to run the sql queries defined in
-//// `./test-directory`.
-//// > 🐿️ This module was generated automatically using v-test of
-//// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-////
 
 import gleam/dynamic/decode
 import pog
 import youid/uuid.{type Uuid}
 
-/// A row you get from running the `one` query
-/// defined in `one.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v-test of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
 pub type OneRow {
   OneRow(gen_random_uuid: Uuid)
 }
 
-/// Runs the `one` query
-/// defined in `one.sql`.
-///
-/// > 🐿️ This function was generated automatically using v-test of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
 pub fn one(db) {
   let decoder = {
     use gen_random_uuid <- decode.field(0, uuid_decoder())
@@ -42,22 +25,10 @@ pub fn one(db) {
   |> pog.execute(db)
 }
 
-/// A row you get from running the `other` query
-/// defined in `other.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v-test of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
 pub type OtherRow {
   OtherRow(gen_random_uuid: Uuid)
 }
 
-/// Runs the `other` query
-/// defined in `other.sql`.
-///
-/// > 🐿️ This function was generated automatically using v-test of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
 pub fn other(db) {
   let decoder = {
     use gen_random_uuid <- decode.field(0, uuid_decoder())
@@ -70,10 +41,7 @@ pub fn other(db) {
   |> pog.execute(db)
 }
 
-// --- Encoding/decoding utils -------------------------------------------------
 
-/// A decoder to decode `Uuid`s coming from a Postgres query.
-///
 fn uuid_decoder() {
   use bit_array <- decode.then(decode.bit_array)
   case uuid.from_bit_array(bit_array) {

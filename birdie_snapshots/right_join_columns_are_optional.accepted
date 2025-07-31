@@ -4,32 +4,15 @@ title: right join columns are optional
 file: ./test/squirrel_test.gleam
 test_name: right_join_columns_are_optional_test
 ---
-//// This module contains the code to run the sql queries defined in
-//// `./test-directory`.
-//// > 🐿️ This module was generated automatically using v-test of
-//// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-////
 
 import gleam/dynamic/decode
 import gleam/option.{type Option}
 import pog
 
-/// A row you get from running the `query` query
-/// defined in `query.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v-test of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
 pub type QueryRow {
   QueryRow(optional: Option(String), not_optional: String)
 }
 
-/// Runs the `query` query
-/// defined in `query.sql`.
-///
-/// > 🐿️ This function was generated automatically using v-test of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
 pub fn query(db) {
   let decoder = {
     use optional <- decode.field(0, decode.optional(decode.string))

@@ -201,10 +201,47 @@ fn should_codegen(query: String) -> String {
   should_codegen_queries([#("query", query)])
 }
 
+fn should_codegen_with_comments(query: String) {
+  should_codegen_queries_options(
+    [#("query", query)],
+    CodegenOptions(strip_comments: False),
+  )
+}
+
 fn should_codegen_queries(queries: List(#(String, String))) -> String {
+  should_codegen_queries_options(queries, CodegenOptions(strip_comments: True))
+}
+
+fn should_codegen_queries_with_comments(
+  queries: List(#(String, String)),
+) -> String {
+  should_codegen_queries_options(queries, CodegenOptions(strip_comments: False))
+}
+
+fn should_codegen_queries_options(
+  queries: List(#(String, String)),
+  options: CodegenOptions,
+) {
   // We assert everything went smoothly and we have no errors in the query.
   let assert Ok(#(queries, [])) = type_queries(queries)
-  query.generate_code("v-test", for: queries, from: "./test-directory")
+  let code =
+    query.generate_code("v-test", for: queries, from: "./test-directory")
+
+  let CodegenOptions(strip_comments:) = options
+  case strip_comments {
+    False -> code
+    True ->
+      string.split(code, on: "\n")
+      |> list.filter(keeping: fn(line) { !string.starts_with(line, "//") })
+      |> string.join(with: "\n")
+  }
+}
+
+type CodegenOptions {
+  CodegenOptions(
+    /// Removes all lines starting with `//` from the generated code.
+    strip_comments: Bool,
+  )
 }
 
 fn type_queries(
@@ -515,7 +552,7 @@ pub fn query_with_comment_test() {
 -- This is a comment
 select true as res
 "
-  |> should_codegen
+  |> should_codegen_with_comments
   |> birdie.snap(title: "query with comment")
 }
 
@@ -525,7 +562,7 @@ pub fn query_with_multiline_comment_test() {
 -- that goes over multiple lines!
 select true as res
 "
-  |> should_codegen
+  |> should_codegen_with_comments
   |> birdie.snap(title: "query with multiline comment")
 }
 
@@ -727,27 +764,27 @@ pub fn query_returning_columns_with_same_names_test() {
 //
 
 pub fn checking_two_identical_snippets_of_code_test() {
-  let code = should_codegen("select 1 as number")
+  let code = should_codegen_with_comments("select 1 as number")
   let assert squirrel.Same = squirrel.compare_code_snippets(code, code)
 }
 
 pub fn if_code_snippets_differ_by_formatting_they_are_the_same_test() {
-  let expected_code = should_codegen("select 1 as number")
+  let expected_code = should_codegen_with_comments("select 1 as number")
   let actual_code = expected_code |> string.replace(each: "\n", with: "\n ")
   let assert squirrel.Same =
     squirrel.compare_code_snippets(expected_code, actual_code)
 }
 
 pub fn if_code_snippets_differ_by_comments_they_are_the_same_test() {
-  let expected_code = should_codegen("select 1 as number")
+  let expected_code = should_codegen_with_comments("select 1 as number")
   let actual_code = "// Comment!\n" <> expected_code
   let assert squirrel.Same =
     squirrel.compare_code_snippets(expected_code, actual_code)
 }
 
 pub fn comparing_different_snippets_of_code_test() {
-  let expected_code = should_codegen("select 1 as number")
-  let actual_code = should_codegen("select 2 as number")
+  let expected_code = should_codegen_with_comments("select 1 as number")
+  let actual_code = should_codegen_with_comments("select 2 as number")
   let assert squirrel.Different =
     squirrel.compare_code_snippets(expected_code, actual_code)
 }
@@ -788,7 +825,7 @@ pub fn query_starting_with_a_semicolon_does_not_crash_test() {
 
 // https://github.com/giacomocavalieri/squirrel/issues/29
 pub fn there_is_only_one_empty_line_between_code_generated_for_different_queries_test() {
-  should_codegen_queries([
+  should_codegen_queries_with_comments([
     #("one", "select 1 as res"),
     #("two", "select 2 as res"),
   ])
@@ -884,14 +921,14 @@ pub fn squirrel_supports_do_blocks_test() {
 pub fn file_with_squirrel_module_comment_is_considered_as_generated_test() {
   assert squirrel.LikelyGenerated
     == "select 1 as wibble"
-    |> should_codegen
+    |> should_codegen_with_comments
     |> squirrel.classify_file_content
 }
 
 pub fn file_with_squirrel_function_comment_is_considered_as_generated_test() {
   assert squirrel.LikelyGenerated
     == "select 1 as wibble"
-    |> should_codegen
+    |> should_codegen_with_comments
     // We remove the starting module comment, since we want to make sure
     // squirrel can pick up a generated file even if that bit is missing!
     |> string.split(on: "\n")

@@ -4,32 +4,15 @@ title: recursive common table query with semi join
 file: ./test/squirrel_test.gleam
 test_name: recursive_common_table_query_with_semi_join_test
 ---
-//// This module contains the code to run the sql queries defined in
-//// `./test-directory`.
-//// > 🐿️ This module was generated automatically using v-test of
-//// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-////
 
 import gleam/dynamic/decode
 import pog
 import youid/uuid.{type Uuid}
 
-/// A row you get from running the `query` query
-/// defined in `query.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v-test of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
 pub type QueryRow {
   QueryRow(id: Uuid, name: String)
 }
 
-/// Runs the `query` query
-/// defined in `query.sql`.
-///
-/// > 🐿️ This function was generated automatically using v-test of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
 pub fn query(db, arg_1) {
   let decoder = {
     use id <- decode.field(0, uuid_decoder())
@@ -59,10 +42,7 @@ where ic.category_id in (select id from subcategories);"
   |> pog.execute(db)
 }
 
-// --- Encoding/decoding utils -------------------------------------------------
 
-/// A decoder to decode `Uuid`s coming from a Postgres query.
-///
 fn uuid_decoder() {
   use bit_array <- decode.then(decode.bit_array)
   case uuid.from_bit_array(bit_array) {

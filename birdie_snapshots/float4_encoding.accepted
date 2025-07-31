@@ -4,31 +4,14 @@ title: float4 encoding
 file: ./test/squirrel_test.gleam
 test_name: float4_encoding_test
 ---
-//// This module contains the code to run the sql queries defined in
-//// `./test-directory`.
-//// > 🐿️ This module was generated automatically using v-test of
-//// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-////
 
 import gleam/dynamic/decode
 import pog
 
-/// A row you get from running the `query` query
-/// defined in `query.sql`.
-///
-/// > 🐿️ This type definition was generated automatically using v-test of the
-/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
 pub type QueryRow {
   QueryRow(res: Bool)
 }
 
-/// Runs the `query` query
-/// defined in `query.sql`.
-///
-/// > 🐿️ This function was generated automatically using v-test of
-/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
-///
 pub fn query(db, arg_1) {
   let decoder = {
     use res <- decode.field(0, decode.bool)
