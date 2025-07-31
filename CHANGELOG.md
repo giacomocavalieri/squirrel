@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Before writing the generated queries, Squirrel will make sure to not overwrite
+  any file that was not automatically generated.
+  In case a file with the same name already exists, Squirrel will refuse to
+  overwrite it and prompt the used to first rename the existing file.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 - Squirrel will now include a doc comment at the beginning of each generated
   module, explaining where the queries come from and what version of squirrel
   was used to generate the code.
