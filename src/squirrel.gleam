@@ -501,7 +501,7 @@ fn report_written_queries(
         doc.lines(2),
         flexible_string(
           "Hint: I look for all `*.sql` files in any directory called `sql`
-under your project's `src` directory.",
+under your project's `src`, `test`, and `dev` directories.",
         ),
       ]
       |> doc.concat
