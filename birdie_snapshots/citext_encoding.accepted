@@ -1,0 +1,26 @@
+---
+version: 1.3.2
+title: citext encoding
+file: ./test/squirrel_test.gleam
+test_name: citext_encoding_test
+---
+
+import gleam/dynamic/decode
+import pog
+
+pub type QueryRow {
+  QueryRow(res: Bool)
+}
+
+pub fn query(db, arg_1) {
+  let decoder = {
+    use res <- decode.field(0, decode.bool)
+    decode.success(QueryRow(res:))
+  }
+
+  "select true as res where $1 = 'wibble'::citext"
+  |> pog.query
+  |> pog.parameter(pog.text(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}

@@ -65,6 +65,7 @@ const integration_tests = [
   TestType("char(1)", [TestValue("\"j\"")]),
   TestType("bpchar", [TestValue("\"j\"")]),
   TestType("varchar(3)", [TestValue("\"jak\"")]),
+  TestType("citext", [TestValue("\"Jak\"")]),
   // Integers
   TestType("int2", [TestValue("1")]),
   TestType("int4", [TestValue("1")]),
