@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## Unreleased
+
+- Added support for the `citext` type.
+  ([Leah Ulmschneider](https://github.com/leah-u))
+
 ## 4.2.0 - 2025-07-31
 
 - Before writing the generated queries, Squirrel will make sure to not overwrite
