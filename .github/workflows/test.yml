@@ -4,7 +4,13 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "**/README.md"
+      - "**/CHANGELOG.md"
   pull_request:
+    paths-ignore:
+      - "**/README.md"
+      - "**/CHANGELOG.md"
   workflow_call:
 
 jobs:
