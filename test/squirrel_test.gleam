@@ -180,6 +180,11 @@ create table if not exists items_categories_issue75 (
     |> pog.query
     |> pog.execute(db)
 
+  let assert Ok(_) =
+    "create extension if not exists citext;"
+    |> pog.query
+    |> pog.execute(db)
+
   Nil
 }
 
@@ -393,6 +398,18 @@ pub fn varchar_encoding_test() {
   "select true as res where $1 = 'wibble'::varchar(6)"
   |> should_codegen
   |> birdie.snap(title: "varchar encoding")
+}
+
+pub fn citext_decoding_test() {
+  "select 'wibble'::citext as res"
+  |> should_codegen
+  |> birdie.snap(title: "citext decoding")
+}
+
+pub fn citext_encoding_test() {
+  "select true as res where $1 = 'wibble'::citext"
+  |> should_codegen
+  |> birdie.snap(title: "citext encoding")
 }
 
 pub fn bool_decoding_test() {

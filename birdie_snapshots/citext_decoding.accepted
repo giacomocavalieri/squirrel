@@ -1,0 +1,25 @@
+---
+version: 1.3.2
+title: citext decoding
+file: ./test/squirrel_test.gleam
+test_name: citext_decoding_test
+---
+
+import gleam/dynamic/decode
+import pog
+
+pub type QueryRow {
+  QueryRow(res: String)
+}
+
+pub fn query(db) {
+  let decoder = {
+    use res <- decode.field(0, decode.string)
+    decode.success(QueryRow(res:))
+  }
+
+  "select 'wibble'::citext as res"
+  |> pog.query
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
