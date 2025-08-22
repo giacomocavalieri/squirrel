@@ -944,6 +944,7 @@ fn fn_doc(args: List(String), body: Document) -> Document {
 fn let_var(name: String, body: Document) -> Document {
   [doc.from_string("let " <> name <> " ="), doc.space, body]
   |> doc.concat
+  |> doc.group
 }
 
 /// A pretty printed Gleam string.

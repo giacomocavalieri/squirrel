@@ -5,6 +5,10 @@
 - Added support for the `citext` type.
   ([Leah Ulmschneider](https://github.com/leah-u))
 
+- Fixed a bug where Squirrel would generate code that is not formatted for
+  queries with many arguments.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## 4.2.0 - 2025-07-31
 
 - Before writing the generated queries, Squirrel will make sure to not overwrite

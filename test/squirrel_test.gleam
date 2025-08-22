@@ -685,6 +685,27 @@ pub fn queries_are_sorted_alphabetically_test() {
   |> birdie.snap(title: "queries are sorted alphabetically")
 }
 
+pub fn query_with_many_arguments_returning_nil_comment_test() {
+  "
+with a as (
+  select $1, *
+  from unnest(
+    $2::text[],
+    $3::text[],
+    $4::text[],
+    $5::text[],
+    $6::text[],
+    $7::text[],
+    $8::text[],
+    $9::text[]
+  )
+)
+select
+"
+  |> should_codegen_with_comments
+  |> birdie.snap(title: "query with many arguments returning nil")
+}
+
 // --- ERRROR TESTS ------------------------------------------------------------
 // This is a group of tests to ensure that the errors look good when something
 // goes wrong.

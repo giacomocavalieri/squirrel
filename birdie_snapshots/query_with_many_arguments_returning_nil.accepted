@@ -1,0 +1,53 @@
+---
+version: 1.3.2
+title: query with many arguments returning nil
+file: ./test/squirrel_test.gleam
+test_name: query_with_many_arguments_returning_nil_comment_test
+---
+//// This module contains the code to run the sql queries defined in
+//// `./test-directory`.
+//// > 🐿️ This module was generated automatically using v-test of
+//// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+////
+
+import gleam/dynamic/decode
+import pog
+
+/// Runs the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This function was generated automatically using v-test of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn query(db, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6, arg_7, arg_8, arg_9) {
+  let decoder = decode.map(decode.dynamic, fn(_) { Nil })
+
+  "
+with a as (
+  select $1, *
+  from unnest(
+    $2::text[],
+    $3::text[],
+    $4::text[],
+    $5::text[],
+    $6::text[],
+    $7::text[],
+    $8::text[],
+    $9::text[]
+  )
+)
+select
+"
+  |> pog.query
+  |> pog.parameter(pog.text(arg_1))
+  |> pog.parameter(pog.array(fn(value) { pog.text(value) }, arg_2))
+  |> pog.parameter(pog.array(fn(value) { pog.text(value) }, arg_3))
+  |> pog.parameter(pog.array(fn(value) { pog.text(value) }, arg_4))
+  |> pog.parameter(pog.array(fn(value) { pog.text(value) }, arg_5))
+  |> pog.parameter(pog.array(fn(value) { pog.text(value) }, arg_6))
+  |> pog.parameter(pog.array(fn(value) { pog.text(value) }, arg_7))
+  |> pog.parameter(pog.array(fn(value) { pog.text(value) }, arg_8))
+  |> pog.parameter(pog.array(fn(value) { pog.text(value) }, arg_9))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
