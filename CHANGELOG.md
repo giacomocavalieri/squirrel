@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## 4.3.0 - 2025-08-22
 
 - Added support for the `citext` type.
   ([Leah Ulmschneider](https://github.com/leah-u))
