@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## 4.4.0 - 2025-08-25
 
 - Squirrel now adds type annotations to the generated code.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
