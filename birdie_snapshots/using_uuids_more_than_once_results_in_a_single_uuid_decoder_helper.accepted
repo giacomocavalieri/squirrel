@@ -6,14 +6,14 @@ test_name: using_uuids_more_than_once_results_in_a_single_uuid_decoder_helper_te
 ---
 
 import gleam/dynamic/decode
-import pog.{type Connection}
+import pog
 import youid/uuid.{type Uuid}
 
 pub type OneRow {
   OneRow(gen_random_uuid: Uuid)
 }
 
-pub fn one(db: Connection) {
+pub fn one(db: pog.Connection) -> Result(pog.Returned(OneRow), pog.QueryError) {
   let decoder = {
     use gen_random_uuid <- decode.field(0, uuid_decoder())
     decode.success(OneRow(gen_random_uuid:))
@@ -29,7 +29,9 @@ pub type OtherRow {
   OtherRow(gen_random_uuid: Uuid)
 }
 
-pub fn other(db: Connection) {
+pub fn other(
+  db: pog.Connection,
+) -> Result(pog.Returned(OtherRow), pog.QueryError) {
   let decoder = {
     use gen_random_uuid <- decode.field(0, uuid_decoder())
     decode.success(OtherRow(gen_random_uuid:))

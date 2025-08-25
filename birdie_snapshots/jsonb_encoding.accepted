@@ -7,9 +7,12 @@ test_name: jsonb_encoding_test
 
 import gleam/dynamic/decode
 import gleam/json.{type Json}
-import pog.{type Connection}
+import pog
 
-pub fn query(db: Connection, arg_1: Json) {
+pub fn query(
+  db: pog.Connection,
+  arg_1: Json,
+) -> Result(pog.Returned(Nil), pog.QueryError) {
   let decoder = decode.map(decode.dynamic, fn(_) { Nil })
 
   "insert into jsons(jsonb) values($1)"

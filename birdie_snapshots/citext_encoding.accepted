@@ -6,13 +6,16 @@ test_name: citext_encoding_test
 ---
 
 import gleam/dynamic/decode
-import pog.{type Connection}
+import pog
 
 pub type QueryRow {
   QueryRow(res: Bool)
 }
 
-pub fn query(db: Connection, arg_1: String) {
+pub fn query(
+  db: pog.Connection,
+  arg_1: String,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use res <- decode.field(0, decode.bool)
     decode.success(QueryRow(res:))

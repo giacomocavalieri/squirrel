@@ -6,13 +6,16 @@ test_name: enum_encoding_test
 ---
 
 import gleam/dynamic/decode
-import pog.{type Connection}
+import pog
 
 pub type QueryRow {
   QueryRow(res: Int)
 }
 
-pub fn query(db: Connection, arg_1: SquirrelColour) {
+pub fn query(
+  db: pog.Connection,
+  arg_1: SquirrelColour,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use res <- decode.field(0, decode.int)
     decode.success(QueryRow(res:))
@@ -32,7 +35,7 @@ pub type SquirrelColour {
   Red
 }
 
-fn squirrel_colour_encoder(squirrel_colour) {
+fn squirrel_colour_encoder(squirrel_colour) -> pog.Value {
   case squirrel_colour {
     LightBrown -> "light brown"
     Grey -> "grey"

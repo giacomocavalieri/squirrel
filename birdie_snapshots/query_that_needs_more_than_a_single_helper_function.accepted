@@ -7,14 +7,16 @@ test_name: query_that_needs_more_than_a_single_helper_function_test
 
 import gleam/dynamic/decode
 import gleam/time/calendar.{type Date}
-import pog.{type Connection}
+import pog
 import youid/uuid.{type Uuid}
 
 pub type QueryRow {
   QueryRow(gen_random_uuid: Uuid, date: Date)
 }
 
-pub fn query(db: Connection) {
+pub fn query(
+  db: pog.Connection,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use gen_random_uuid <- decode.field(0, uuid_decoder())
     use date <- decode.field(1, pog.calendar_date_decoder())

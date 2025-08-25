@@ -7,13 +7,16 @@ test_name: nullability_with_foreign_key_condition_test
 
 import gleam/dynamic/decode
 import gleam/option.{type Option}
-import pog.{type Connection}
+import pog
 
 pub type QueryRow {
   QueryRow(item_id: Int, name: Option(String))
 }
 
-pub fn query(db: Connection, arg_1: Int) {
+pub fn query(
+  db: pog.Connection,
+  arg_1: Int,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use item_id <- decode.field(0, decode.int)
     use name <- decode.field(1, decode.optional(decode.string))

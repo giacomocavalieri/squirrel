@@ -6,13 +6,15 @@ test_name: decode_success_with_long_builder_close_to_80_chars_is_properly_format
 ---
 
 import gleam/dynamic/decode
-import pog.{type Connection}
+import pog
 
 pub type QueryRow {
   QueryRow(aaaaaaaa: Int, bbbbbbbbbbbbbbb: Int, ccc: Int, dddddddddddddddd: Int)
 }
 
-pub fn query(db: Connection) {
+pub fn query(
+  db: pog.Connection,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use aaaaaaaa <- decode.field(0, decode.int)
     use bbbbbbbbbbbbbbb <- decode.field(1, decode.int)

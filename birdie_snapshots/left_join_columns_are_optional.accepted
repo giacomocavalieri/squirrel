@@ -7,13 +7,15 @@ test_name: left_join_columns_are_optional_test
 
 import gleam/dynamic/decode
 import gleam/option.{type Option}
-import pog.{type Connection}
+import pog
 
 pub type QueryRow {
   QueryRow(not_optional: String, optional: Option(String))
 }
 
-pub fn query(db: Connection) {
+pub fn query(
+  db: pog.Connection,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use not_optional <- decode.field(0, decode.string)
     use optional <- decode.field(1, decode.optional(decode.string))

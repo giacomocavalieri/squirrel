@@ -6,13 +6,15 @@ test_name: query_with_quoted_string_is_properly_escaped_test
 ---
 
 import gleam/dynamic/decode
-import pog.{type Connection}
+import pog
 
 pub type QueryRow {
   QueryRow(result: Int)
 }
 
-pub fn query(db: Connection) {
+pub fn query(
+  db: pog.Connection,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use result <- decode.field(0, decode.int)
     decode.success(QueryRow(result:))

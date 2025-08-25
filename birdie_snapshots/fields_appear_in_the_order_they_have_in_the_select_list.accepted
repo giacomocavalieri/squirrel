@@ -6,13 +6,15 @@ test_name: fields_appear_in_the_order_they_have_in_the_select_list_test
 ---
 
 import gleam/dynamic/decode
-import pog.{type Connection}
+import pog
 
 pub type QueryRow {
   QueryRow(first: Bool, second: Int, third: String)
 }
 
-pub fn query(db: Connection) {
+pub fn query(
+  db: pog.Connection,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use first <- decode.field(0, decode.bool)
     use second <- decode.field(1, decode.int)

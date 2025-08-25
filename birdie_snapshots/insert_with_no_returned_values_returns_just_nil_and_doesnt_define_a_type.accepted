@@ -6,9 +6,9 @@ test_name: insert_with_no_returned_values_returns_just_nil_and_doesnt_define_a_t
 ---
 
 import gleam/dynamic/decode
-import pog.{type Connection}
+import pog
 
-pub fn query(db: Connection) {
+pub fn query(db: pog.Connection) -> Result(pog.Returned(Nil), pog.QueryError) {
   let decoder = decode.map(decode.dynamic, fn(_) { Nil })
 
   "insert into squirrel values ('sandy', 1000)"

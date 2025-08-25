@@ -11,7 +11,7 @@ test_name: there_is_only_one_empty_line_between_code_generated_for_different_que
 ////
 
 import gleam/dynamic/decode
-import pog.{type Connection}
+import pog
 
 /// A row you get from running the `one` query
 /// defined in `one.sql`.
@@ -29,7 +29,7 @@ pub type OneRow {
 /// > 🐿️ This function was generated automatically using v-test of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn one(db: Connection) {
+pub fn one(db: pog.Connection) -> Result(pog.Returned(OneRow), pog.QueryError) {
   let decoder = {
     use res <- decode.field(0, decode.int)
     decode.success(OneRow(res:))
@@ -57,7 +57,7 @@ pub type TwoRow {
 /// > 🐿️ This function was generated automatically using v-test of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn two(db: Connection) {
+pub fn two(db: pog.Connection) -> Result(pog.Returned(TwoRow), pog.QueryError) {
   let decoder = {
     use res <- decode.field(0, decode.int)
     decode.success(TwoRow(res:))

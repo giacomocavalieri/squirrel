@@ -213,7 +213,6 @@ fn default_codegen_state() {
   )
   |> import_module("gleam/dynamic/decode")
   |> import_module("pog")
-  |> import_qualified("pog", "type Connection")
 }
 
 fn gleam_type_to_decoder(
@@ -528,14 +527,20 @@ fn query_doc(
   let encoders = list.reverse(encoders)
 
   let #(state, decoder) = decoder_doc(state, constructor_name, returns)
-  let args = [doc.from_string("db: Connection"), ..args]
+  let args = [doc.from_string("db: pog.Connection"), ..args]
+
+  let returned = case returns {
+    [] -> doc.from_string("pog.Returned(Nil)")
+    _ -> call_doc("pog.Returned", [doc.from_string(constructor_name)])
+  }
+  let return = call_doc("Result", [returned, doc.from_string("pog.QueryError")])
 
   let code =
     doc.concat([
       record,
       doc.from_string(function_doc(version, query)),
       doc.line,
-      fun_doc(Public, gleam.value_identifier_to_string(name), args, [
+      fun_doc(Public, gleam.value_identifier_to_string(name), args, return, [
         let_var("decoder", decoder) |> doc.append(doc.from_string("\n")),
         string_doc(content)
           |> pipe_call_doc("pog.query", _, [])
@@ -734,7 +739,13 @@ fn enum_encoder_doc(
 
   let case_ = pipe_call_doc("pog.text", case_, [])
 
-  fun_doc(Private, enum_encoder_name(name), [doc.from_string(var_name)], [case_])
+  fun_doc(
+    Private,
+    enum_encoder_name(name),
+    [doc.from_string(var_name)],
+    doc.from_string("pog.Value"),
+    [case_],
+  )
 }
 
 fn enum_decoder_doc(
@@ -777,7 +788,12 @@ fn enum_decoder_doc(
         |> block,
     ])
 
-  fun_doc(Private, enum_decoder_name(name), [], [
+  let enum_decoder_type =
+    doc.from_string(
+      "decode.Decoder(" <> gleam.type_identifier_to_string(name) <> ")",
+    )
+
+  fun_doc(Private, enum_decoder_name(name), [], enum_decoder_type, [
     doc.from_string("use " <> var_name <> " <- decode.then(decode.string)"),
     case_,
   ])
@@ -857,7 +873,7 @@ fn pipe_call_doc(
 /// A pretty printed function call.
 ///
 fn call_doc(function: String, args: List(Document)) -> Document {
-  [doc.from_string(function), comma_list("(", args, ")")]
+  [doc.from_string(function), comma_list("(", args, ")") |> doc.group]
   |> doc.concat
   |> doc.group
 }
@@ -929,6 +945,7 @@ fn fun_doc(
   publicity: Publicity,
   name: String,
   args: List(Document),
+  return_type: Document,
   body: List(Document),
 ) -> Document {
   let publicity = case publicity {
@@ -937,8 +954,15 @@ fn fun_doc(
   }
 
   [
-    doc.from_string(publicity <> "fn " <> name),
-    comma_list("(", args, ") "),
+    [
+      doc.from_string(publicity <> "fn " <> name),
+      comma_list("(", args, ")"),
+      doc.from_string(" -> "),
+      return_type,
+      doc.from_string(" "),
+    ]
+      |> doc.concat
+      |> doc.group,
     block(body),
   ]
   |> doc.concat
@@ -948,7 +972,8 @@ fn fun_doc(
 fn fn_doc(args: List(String), body: Document) -> Document {
   [
     doc.from_string("fn"),
-    comma_list("(", list.map(args, doc.from_string), ") {"),
+    comma_list("(", list.map(args, doc.from_string), ") {")
+      |> doc.group,
     [doc.space, body]
       |> doc.concat
       |> doc.nest(by: indent),
@@ -1000,7 +1025,6 @@ fn comma_list(open: String, content: List(Document), close: String) -> Document 
     doc.from_string(close),
   ]
   |> doc.concat
-  |> doc.group
 }
 
 // --- UTILS TO WORK WITH STATE ------------------------------------------------

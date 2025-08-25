@@ -6,13 +6,15 @@ test_name: char_decoding_test
 ---
 
 import gleam/dynamic/decode
-import pog.{type Connection}
+import pog
 
 pub type QueryRow {
   QueryRow(res: String)
 }
 
-pub fn query(db: Connection) {
+pub fn query(
+  db: pog.Connection,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use res <- decode.field(0, decode.string)
     decode.success(QueryRow(res:))

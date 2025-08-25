@@ -7,13 +7,15 @@ test_name: generated_type_fields_are_labelled_with_their_name_in_the_select_list
 
 import gleam/dynamic/decode
 import gleam/option.{type Option}
-import pog.{type Connection}
+import pog
 
 pub type QueryRow {
   QueryRow(acorns: Option(Int), squirrel_name: String)
 }
 
-pub fn query(db: Connection) {
+pub fn query(
+  db: pog.Connection,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use acorns <- decode.field(0, decode.optional(decode.int))
     use squirrel_name <- decode.field(1, decode.string)

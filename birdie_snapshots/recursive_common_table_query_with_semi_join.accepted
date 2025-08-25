@@ -6,14 +6,17 @@ test_name: recursive_common_table_query_with_semi_join_test
 ---
 
 import gleam/dynamic/decode
-import pog.{type Connection}
+import pog
 import youid/uuid.{type Uuid}
 
 pub type QueryRow {
   QueryRow(id: Uuid, name: String)
 }
 
-pub fn query(db: Connection, arg_1: Uuid) {
+pub fn query(
+  db: pog.Connection,
+  arg_1: Uuid,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, uuid_decoder())
     use name <- decode.field(1, decode.string)

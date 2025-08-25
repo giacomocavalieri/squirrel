@@ -7,13 +7,15 @@ test_name: time_of_day_decoding_test
 
 import gleam/dynamic/decode
 import gleam/time/calendar.{type TimeOfDay}
-import pog.{type Connection}
+import pog
 
 pub type QueryRow {
   QueryRow(res: TimeOfDay)
 }
 
-pub fn query(db: Connection) {
+pub fn query(
+  db: pog.Connection,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use res <- decode.field(0, pog.calendar_time_of_day_decoder())
     decode.success(QueryRow(res:))

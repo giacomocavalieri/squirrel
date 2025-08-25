@@ -7,13 +7,15 @@ test_name: timestamp_decoding_test
 
 import gleam/dynamic/decode
 import gleam/time/timestamp.{type Timestamp}
-import pog.{type Connection}
+import pog
 
 pub type QueryRow {
   QueryRow(res: Timestamp)
 }
 
-pub fn query(db: Connection) {
+pub fn query(
+  db: pog.Connection,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use res <- decode.field(0, pog.timestamp_decoder())
     decode.success(QueryRow(res:))

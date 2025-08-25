@@ -11,7 +11,7 @@ test_name: query_with_many_arguments_returning_nil_comment_test
 ////
 
 import gleam/dynamic/decode
-import pog.{type Connection}
+import pog
 
 /// Runs the `query` query
 /// defined in `query.sql`.
@@ -20,7 +20,7 @@ import pog.{type Connection}
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub fn query(
-  db: Connection,
+  db: pog.Connection,
   arg_1: String,
   arg_2: List(String),
   arg_3: List(String),
@@ -30,7 +30,7 @@ pub fn query(
   arg_7: List(String),
   arg_8: List(String),
   arg_9: List(String),
-) {
+) -> Result(pog.Returned(Nil), pog.QueryError) {
   let decoder = decode.map(decode.dynamic, fn(_) { Nil })
 
   "

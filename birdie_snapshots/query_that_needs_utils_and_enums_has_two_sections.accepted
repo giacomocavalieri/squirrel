@@ -7,13 +7,15 @@ test_name: query_that_needs_utils_and_enums_has_two_sections_test
 
 import gleam/dynamic/decode
 import gleam/time/calendar.{type Date}
-import pog.{type Connection}
+import pog
 
 pub type QueryRow {
   QueryRow(squirrel_colour: SquirrelColour, date: Date)
 }
 
-pub fn query(db: Connection) {
+pub fn query(
+  db: pog.Connection,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use squirrel_colour <- decode.field(0, squirrel_colour_decoder())
     use date <- decode.field(1, pog.calendar_date_decoder())
@@ -33,7 +35,7 @@ pub type SquirrelColour {
   Red
 }
 
-fn squirrel_colour_decoder() {
+fn squirrel_colour_decoder() -> decode.Decoder(SquirrelColour) {
   use squirrel_colour <- decode.then(decode.string)
   case squirrel_colour {
     "light brown" -> decode.success(LightBrown)

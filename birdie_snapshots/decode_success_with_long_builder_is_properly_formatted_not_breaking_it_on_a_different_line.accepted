@@ -6,7 +6,7 @@ test_name: decode_success_with_long_builder_is_properly_formatted_not_breaking_i
 ---
 
 import gleam/dynamic/decode
-import pog.{type Connection}
+import pog
 
 pub type QueryRow {
   QueryRow(
@@ -19,7 +19,9 @@ pub type QueryRow {
   )
 }
 
-pub fn query(db: Connection) {
+pub fn query(
+  db: pog.Connection,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use first_column <- decode.field(0, decode.int)
     use second_column <- decode.field(1, decode.int)
