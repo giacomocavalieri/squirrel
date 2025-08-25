@@ -1,5 +1,5 @@
 ---
-version: 1.3.2
+version: 1.4.0
 title: nullability with foreign key
 file: ./test/squirrel_test.gleam
 test_name: nullability_with_foreign_key_condition_test
@@ -7,13 +7,13 @@ test_name: nullability_with_foreign_key_condition_test
 
 import gleam/dynamic/decode
 import gleam/option.{type Option}
-import pog
+import pog.{type Connection}
 
 pub type QueryRow {
   QueryRow(item_id: Int, name: Option(String))
 }
 
-pub fn query(db, arg_1) {
+pub fn query(db: Connection, arg_1: Int) {
   let decoder = {
     use item_id <- decode.field(0, decode.int)
     use name <- decode.field(1, decode.optional(decode.string))
@@ -35,3 +35,4 @@ where
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
+

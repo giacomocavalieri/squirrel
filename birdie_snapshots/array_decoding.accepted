@@ -1,18 +1,18 @@
 ---
-version: 1.3.2
+version: 1.4.0
 title: array decoding
 file: ./test/squirrel_test.gleam
 test_name: array_decoding_test
 ---
 
 import gleam/dynamic/decode
-import pog
+import pog.{type Connection}
 
 pub type QueryRow {
   QueryRow(res: List(Int))
 }
 
-pub fn query(db) {
+pub fn query(db: Connection) {
   let decoder = {
     use res <- decode.field(0, decode.list(decode.int))
     decode.success(QueryRow(res:))
@@ -23,3 +23,4 @@ pub fn query(db) {
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
+

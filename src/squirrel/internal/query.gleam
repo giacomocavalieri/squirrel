@@ -213,6 +213,7 @@ fn default_codegen_state() {
   )
   |> import_module("gleam/dynamic/decode")
   |> import_module("pog")
+  |> import_qualified("pog", "type Connection")
 }
 
 fn gleam_type_to_decoder(
@@ -309,18 +310,26 @@ fn enum_encoder_name(enum_name: TypeIdentifier) -> String {
   |> string.append("_encoder")
 }
 
+type TypePosition {
+  EnumField
+  FunctionArgument
+}
+
 fn gleam_type_to_field_type(
   state: CodeGenState,
   type_: gleam.Type,
+  position: TypePosition,
 ) -> #(CodeGenState, Document) {
   case type_ {
     gleam.List(type_) -> {
-      let #(state, inner_type) = gleam_type_to_field_type(state, type_)
+      let #(state, inner_type) =
+        gleam_type_to_field_type(state, type_, position)
       #(state, call_doc("List", [inner_type]))
     }
     gleam.Option(type_) -> {
       let state = state |> import_qualified("gleam/option", "type Option")
-      let #(state, inner_type) = gleam_type_to_field_type(state, type_)
+      let #(state, inner_type) =
+        gleam_type_to_field_type(state, type_, position)
       #(state, call_doc("Option", [inner_type]))
     }
     gleam.Uuid -> #(
@@ -345,7 +354,14 @@ fn gleam_type_to_field_type(
     gleam.Float | gleam.Numeric -> #(state, doc.from_string("Float"))
     gleam.Bool -> #(state, doc.from_string("Bool"))
     gleam.String -> #(state, doc.from_string("String"))
-    gleam.Json -> #(state, doc.from_string("String"))
+    gleam.Json ->
+      case position {
+        EnumField -> #(state, doc.from_string("String"))
+        FunctionArgument -> {
+          let state = state |> import_qualified("gleam/json", "type Json")
+          #(state, doc.from_string("Json"))
+        }
+      }
     gleam.BitArray -> #(state, doc.from_string("BitArray"))
     gleam.Enum(original_name:, name:, variants:) -> #(
       add_enum_helpers(state, original_name, name, variants, NoHelpers),
@@ -496,26 +512,30 @@ fn query_doc(
     Error(_) -> #(state, doc.empty)
   }
 
-  let #(state, inputs, encoders) = {
+  let #(state, args, encoders) = {
     let acc = #(state, [], [])
-    use acc, param, i <- list.index_fold(params, acc)
-    let #(state, inputs, encoders) = acc
+    use #(state, args, encoders), param, i <- list.index_fold(params, acc)
 
-    let input = "arg_" <> int.to_string(i + 1)
-    let #(state, encoder) = gleam_type_to_encoder(state, param, input)
-    #(state, [input, ..inputs], [encoder, ..encoders])
+    let arg = "arg_" <> int.to_string(i + 1)
+    let #(state, arg_type) =
+      gleam_type_to_field_type(state, param, FunctionArgument)
+    let #(state, encoder) = gleam_type_to_encoder(state, param, arg)
+
+    let arg = doc.concat([doc.from_string(arg <> ": "), arg_type])
+    #(state, [arg, ..args], [encoder, ..encoders])
   }
-  let inputs = list.reverse(inputs)
+  let args = list.reverse(args)
   let encoders = list.reverse(encoders)
 
   let #(state, decoder) = decoder_doc(state, constructor_name, returns)
+  let args = [doc.from_string("db: Connection"), ..args]
 
   let code =
     doc.concat([
       record,
       doc.from_string(function_doc(version, query)),
       doc.line,
-      fun_doc(Public, gleam.value_identifier_to_string(name), ["db", ..inputs], [
+      fun_doc(Public, gleam.value_identifier_to_string(name), args, [
         let_var("decoder", decoder) |> doc.append(doc.from_string("\n")),
         string_doc(content)
           |> pipe_call_doc("pog.query", _, [])
@@ -589,7 +609,8 @@ fn record_doc(
     use #(state, fields), field <- list.fold(returns, from: #(state, []))
     let label =
       doc.from_string(gleam.value_identifier_to_string(field.label) <> ": ")
-    let #(state, field_type) = gleam_type_to_field_type(state, field.type_)
+    let #(state, field_type) =
+      gleam_type_to_field_type(state, field.type_, EnumField)
     let field = [label, field_type] |> doc.concat |> doc.group
 
     #(state, [field, ..fields])
@@ -713,7 +734,7 @@ fn enum_encoder_doc(
 
   let case_ = pipe_call_doc("pog.text", case_, [])
 
-  fun_doc(Private, enum_encoder_name(name), [var_name], [case_])
+  fun_doc(Private, enum_encoder_name(name), [doc.from_string(var_name)], [case_])
 }
 
 fn enum_decoder_doc(
@@ -907,10 +928,9 @@ type Publicity {
 fn fun_doc(
   publicity: Publicity,
   name: String,
-  args: List(String),
+  args: List(Document),
   body: List(Document),
 ) -> Document {
-  let args = list.map(args, doc.from_string)
   let publicity = case publicity {
     Private -> ""
     Public -> "pub "

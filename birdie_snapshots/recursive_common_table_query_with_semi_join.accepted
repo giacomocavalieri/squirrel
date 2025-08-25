@@ -1,19 +1,19 @@
 ---
-version: 1.3.2
+version: 1.4.0
 title: recursive common table query with semi join
 file: ./test/squirrel_test.gleam
 test_name: recursive_common_table_query_with_semi_join_test
 ---
 
 import gleam/dynamic/decode
-import pog
+import pog.{type Connection}
 import youid/uuid.{type Uuid}
 
 pub type QueryRow {
   QueryRow(id: Uuid, name: String)
 }
 
-pub fn query(db, arg_1) {
+pub fn query(db: Connection, arg_1: Uuid) {
   let decoder = {
     use id <- decode.field(0, uuid_decoder())
     use name <- decode.field(1, decode.string)
@@ -50,3 +50,4 @@ fn uuid_decoder() {
     Error(_) -> decode.failure(uuid.v7(), "Uuid")
   }
 }
+

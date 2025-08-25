@@ -1,5 +1,5 @@
 ---
-version: 1.3.2
+version: 1.4.0
 title: left join nullability inference
 file: ./test/squirrel_test.gleam
 test_name: left_join_nullability_inference_test
@@ -7,13 +7,13 @@ test_name: left_join_nullability_inference_test
 
 import gleam/dynamic/decode
 import gleam/option.{type Option}
-import pog
+import pog.{type Connection}
 
 pub type QueryRow {
   QueryRow(user_id: Int, roles: Option(String))
 }
 
-pub fn query(db) {
+pub fn query(db: Connection) {
   let decoder = {
     use user_id <- decode.field(0, decode.int)
     use roles <- decode.field(1, decode.optional(decode.string))
@@ -33,3 +33,4 @@ from
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
+
