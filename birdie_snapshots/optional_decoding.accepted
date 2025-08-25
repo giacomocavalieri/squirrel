@@ -1,5 +1,5 @@
 ---
-version: 1.3.2
+version: 1.4.0
 title: optional decoding
 file: ./test/squirrel_test.gleam
 test_name: optional_decoding_test
@@ -7,13 +7,13 @@ test_name: optional_decoding_test
 
 import gleam/dynamic/decode
 import gleam/option.{type Option}
-import pog
+import pog.{type Connection}
 
 pub type QueryRow {
   QueryRow(acorns: Option(Int))
 }
 
-pub fn query(db) {
+pub fn query(db: Connection) {
   let decoder = {
     use acorns <- decode.field(0, decode.optional(decode.int))
     decode.success(QueryRow(acorns:))
@@ -24,3 +24,4 @@ pub fn query(db) {
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
+

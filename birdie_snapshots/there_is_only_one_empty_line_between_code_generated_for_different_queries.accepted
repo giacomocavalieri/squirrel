@@ -1,5 +1,5 @@
 ---
-version: 1.3.2
+version: 1.4.0
 title: there is only one empty line between code generated for different queries
 file: ./test/squirrel_test.gleam
 test_name: there_is_only_one_empty_line_between_code_generated_for_different_queries_test
@@ -11,7 +11,7 @@ test_name: there_is_only_one_empty_line_between_code_generated_for_different_que
 ////
 
 import gleam/dynamic/decode
-import pog
+import pog.{type Connection}
 
 /// A row you get from running the `one` query
 /// defined in `one.sql`.
@@ -29,7 +29,7 @@ pub type OneRow {
 /// > 🐿️ This function was generated automatically using v-test of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn one(db) {
+pub fn one(db: Connection) {
   let decoder = {
     use res <- decode.field(0, decode.int)
     decode.success(OneRow(res:))
@@ -57,7 +57,7 @@ pub type TwoRow {
 /// > 🐿️ This function was generated automatically using v-test of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn two(db) {
+pub fn two(db: Connection) {
   let decoder = {
     use res <- decode.field(0, decode.int)
     decode.success(TwoRow(res:))
@@ -68,3 +68,4 @@ pub fn two(db) {
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
+

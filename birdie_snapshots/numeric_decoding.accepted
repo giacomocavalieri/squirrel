@@ -1,18 +1,18 @@
 ---
-version: 1.3.2
+version: 1.4.0
 title: numeric decoding
 file: ./test/squirrel_test.gleam
 test_name: numeric_decoding_test
 ---
 
 import gleam/dynamic/decode
-import pog
+import pog.{type Connection}
 
 pub type QueryRow {
   QueryRow(res: Float)
 }
 
-pub fn query(db) {
+pub fn query(db: Connection) {
   let decoder = {
     use res <- decode.field(0, pog.numeric_decoder())
     decode.success(QueryRow(res:))
@@ -23,3 +23,4 @@ pub fn query(db) {
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
+

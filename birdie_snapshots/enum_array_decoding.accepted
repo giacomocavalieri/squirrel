@@ -1,18 +1,18 @@
 ---
-version: 1.3.2
+version: 1.4.0
 title: enum array decoding
 file: ./test/squirrel_test.gleam
 test_name: enum_array_decoding_test
 ---
 
 import gleam/dynamic/decode
-import pog
+import pog.{type Connection}
 
 pub type QueryRow {
   QueryRow(res: List(SquirrelColour))
 }
 
-pub fn query(db) {
+pub fn query(db: Connection) {
   let decoder = {
     use res <- decode.field(0, decode.list(squirrel_colour_decoder()))
     decode.success(QueryRow(res:))
@@ -40,3 +40,4 @@ fn squirrel_colour_decoder() {
     _ -> decode.failure(LightBrown, "SquirrelColour")
   }
 }
+

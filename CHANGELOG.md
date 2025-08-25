@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## Unreleased
+
+- Squirrel now adds type annotations to the generated code.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## 4.3.0 - 2025-08-22
 
 - Added support for the `citext` type.

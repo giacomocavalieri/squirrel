@@ -1,5 +1,5 @@
 ---
-version: 1.3.2
+version: 1.4.0
 title: right join columns are optional
 file: ./test/squirrel_test.gleam
 test_name: right_join_columns_are_optional_test
@@ -7,13 +7,13 @@ test_name: right_join_columns_are_optional_test
 
 import gleam/dynamic/decode
 import gleam/option.{type Option}
-import pog
+import pog.{type Connection}
 
 pub type QueryRow {
   QueryRow(optional: Option(String), not_optional: String)
 }
 
-pub fn query(db) {
+pub fn query(db: Connection) {
   let decoder = {
     use optional <- decode.field(0, decode.optional(decode.string))
     use not_optional <- decode.field(1, decode.string)
@@ -32,3 +32,4 @@ from
   |> pog.returning(decoder)
   |> pog.execute(db)
 }
+
