@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## 4.4.1 - 2025-08-25
 
 - Squirrel now adds return type annotations to the generated code.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
