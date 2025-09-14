@@ -78,3 +78,22 @@ connect to a Postgres server at `localhost`'s port `5432`.
 mise run squirrel-db-start
 mise run squirrel-test
 ```
+
+## PostGIS Notes
+
+### EPSG:4326
+
+https://epsg.io/4326
+
+```
+WGS 84 -- WGS84 - World Geodetic System 1984, used in GPS
+```
+
+### PostGIS Links
+* https://hub.docker.com/r/postgis/postgis
+* https://postgis.gishub.org/chapters/geometries.html
+* https://bostongis.com/?content_name=postgis_tut01
+* https://www.postgis.net/workshops/postgis-intro/
+
+### PostgreSQL Lniks
+* https://hub.docker.com/_/postgres/
