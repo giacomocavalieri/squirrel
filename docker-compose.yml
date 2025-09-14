@@ -1,7 +1,7 @@
 services:
   postgres:
     container_name: squirrel-test
-    image: postgres:16
+    image: postgis/postgis:17-3.5
     environment:
       POSTGRES_HOST_AUTH_METHOD: trust
       POSTGRES_USER: squirrel_test
