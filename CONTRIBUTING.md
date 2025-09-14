@@ -71,3 +71,10 @@ connect to a Postgres server at `localhost`'s port `5432`.
   - Manually set up a Postgres server: you'll have to make sure you have a
     server running with a user called `squirrel_test` that must be able to read
     and write to a database called `squirrel_test`
+
+## Quickstart
+
+```bash
+mise run squirrel-db-start
+mise run squirrel-test
+```
