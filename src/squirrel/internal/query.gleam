@@ -250,6 +250,7 @@ fn gleam_type_to_decoder(
       add_enum_helpers(state, original_name, enum_name, variants, NeedsDecoder),
       doc.from_string(enum_decoder_name(enum_name) <> "()"),
     )
+    gleam.Point -> #(state, doc.from_string("decode.point"))
   }
 }
 
@@ -300,6 +301,7 @@ fn gleam_type_to_encoder(
       add_enum_helpers(state, original_name, enum_name, variants, NeedsEncoder),
       call_doc(enum_encoder_name(enum_name), [name]),
     )
+    gleam.Point -> #(state, call_doc("pog.point", [name]))
   }
 }
 
@@ -366,6 +368,7 @@ fn gleam_type_to_field_type(
       add_enum_helpers(state, original_name, name, variants, NoHelpers),
       gleam.type_identifier_to_string(name) |> doc.from_string,
     )
+    gleam.Point -> #(state, doc.from_string("Point"))
   }
 }
 

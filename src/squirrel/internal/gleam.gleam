@@ -29,6 +29,10 @@ pub type Type {
   Json
   Uuid
 
+  /// PostGIS
+//  Point(lat: Float, lng: Float)
+  Point
+
   /// A custom type whose variants have no fields. For example:
   ///
   /// ```gleam
