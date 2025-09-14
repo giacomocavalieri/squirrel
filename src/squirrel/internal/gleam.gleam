@@ -30,8 +30,12 @@ pub type Type {
   Uuid
 
   /// PostGIS
-//  Point(lat: Float, lng: Float)
-  Point
+  Geometry
+//  todo
+//  STPoint
+//  STLineSting
+//  STPolygon
+//  STCollection
 
   /// A custom type whose variants have no fields. For example:
   ///

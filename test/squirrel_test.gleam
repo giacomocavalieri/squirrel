@@ -185,6 +185,15 @@ create table if not exists items_categories_issue75 (
     |> pog.query
     |> pog.execute(db)
 
+  let assert Ok(_) =
+  "
+create table if not exists items_postgis (
+  id bigserial primary key,
+  geom geometry not null
+);"
+  |> pog.query
+  |> pog.execute(db)
+
   Nil
 }
 
@@ -290,6 +299,21 @@ fn type_queries(
 // --- ENCODING/DECODING CODEGEN TESTS -----------------------------------------
 // This is a group of tests to ensure the generated encoders/decoders are what
 // we expect for all the supported data types.
+//
+
+
+pub fn postgis_geom_decoding_test() {
+  "insert into items_postgis(geom) values ($1)"
+  |> should_codegen
+  |> birdie.snap(title: "postgis geom decoding")
+}
+
+////todo
+//pub fn postgis_point_json_encoding_test() {
+//  "insert into jsons(json) values ($1)"
+//  |> should_codegen
+//  |> birdie.snap(title: "json encoding")
+//}
 //
 
 pub fn int_decoding_test() {

@@ -3,11 +3,13 @@ erlang = "28.0.2"
 gleam = "1.12.0"
 rebar = "3.25.1"
 
+[env]
+DATABASE_URL = "postgresql://squirrel_test@127.0.0.1:5432/squirrel_test"
+
 [tasks.squirrel-test]
 description="test squirrel (start db in separate console)"
 run = "gleam test"
 dir = "{{config_root}}"
-env.DATABASE_URL = "postgresql://squirrel_test@127.0.0.1:5432/squirrel_test"
 
 [tasks.squirrel-db-start]
 description="docker compose up"
@@ -23,4 +25,9 @@ run=[
     "docker compose down",
     "docker ps",
 ]
+dir = "{{config_root}}"
+
+[tasks.squirrel-psql]
+description="launch the psql client to view the db"
+run="psql ${DATABASE_URL}"
 dir = "{{config_root}}"

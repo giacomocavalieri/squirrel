@@ -284,7 +284,7 @@ fn pg_to_gleam_type(
         "date" -> Ok(gleam.Date)
         "time" -> Ok(gleam.TimeOfDay)
         "timestamp" -> Ok(gleam.Timestamp)
-        "point" -> Ok(gleam.Point)
+        "geometry" -> Ok(gleam.Geometry)
         _ -> Error(unsupported_type_error(query, name))
       }
 

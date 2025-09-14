@@ -1,0 +1,21 @@
+---
+version: 1.4.0
+title: postgis geom decoding
+---
+
+import gleam/dynamic/decode
+import pog
+
+pub fn query(
+  db: pog.Connection,
+  arg_1: Geometry,
+) -> Result(pog.Returned(Nil), pog.QueryError) {
+  let decoder = decode.map(decode.dynamic, fn(_) { Nil })
+
+  "insert into items_postgis(geom) values ($1)"
+  |> pog.query
+  |> pog.parameter(pog.geometry(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
