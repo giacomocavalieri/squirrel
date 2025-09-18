@@ -1,0 +1,15 @@
+---
+version: 1.4.0
+title: record with no fields is rejected
+file: ./test/squirrel_test.gleam
+test_name: record_with_no_fields_is_rejected_test
+---
+[31m[1mError: [22mQuery with invalid record[39m
+
+    [2m╭─ query.sql[22m
+    [2m│[22m
+[2m  1 │ [22m[36mselect[39m [35m$1[39m::no_fields [36mas[39m res
+    [2m┆[22m
+
+One of the values in this query is the `no_fields` record, but I cannot turn it
+into a Gleam type definition because it has no fields.

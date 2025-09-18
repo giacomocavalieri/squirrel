@@ -1,0 +1,21 @@
+---
+version: 1.4.0
+title: record with invalid name
+file: ./test/squirrel_test.gleam
+test_name: record_with_invalid_name_test
+---
+[31m[1mError: [22mQuery with invalid record[39m
+
+    [2m╭─ query.sql[22m
+    [2m│[22m
+[2m  1 │ [22m[36mselect[39m ([33m'Bob', 'red'[39m)::"[32m1[39m invalid record" [36mas[39m res
+    [2m┆[22m
+
+One of the values in this query is the `1 invalid record` record, but I cannot
+turn it into a Gleam type definition because its name cannot be turned into a
+valid type name.
+
+Hint: A valid record name must start with a letter and can only contain letters,
+underscores and numbers. I will take care automatically of converting any
+snake_case name to PascalCase so that it can be used as the name of a Gleam
+type!

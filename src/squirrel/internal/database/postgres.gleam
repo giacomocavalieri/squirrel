@@ -27,8 +27,8 @@ import gleam/set.{type Set}
 import gleam/string
 import squirrel/internal/database/postgres_protocol as pg
 import squirrel/internal/error.{
-  type EnumError, type Error, type Pointer, type ValueIdentifierError, ByteIndex,
-  Pointer,
+  type EnumError, type Error, type Pointer, type RecordError,
+  type ValueIdentifierError, ByteIndex, Pointer,
 }
 
 import squirrel/internal/eval_extra
@@ -105,6 +105,30 @@ order by
   )
 }
 
+fn find_composite_fields_query() -> UntypedQuery {
+  let assert Ok(name) = gleam.value_identifier("find_composite_fields_query")
+
+  query.UntypedQuery(
+    file: "",
+    starting_line: 1,
+    name:,
+    comment: [],
+    content: "
+select
+  attname as field_name,
+  atttypid as field_type_oid
+from
+  pg_attribute
+where
+  attrelid = $1
+  and attnum > 0
+  and not attisdropped
+order by
+  attnum
+",
+  )
+}
+
 fn find_column_nullability_query() -> UntypedQuery {
   let assert Ok(name) = gleam.value_identifier("find_column_nullability_query")
 
@@ -169,6 +193,17 @@ type PgType {
   ///
   PEnum(name: String, variants: List(String))
 
+  /// A composite type (record), for example:
+  ///
+  /// ```sql
+  /// create type address as (
+  ///   street text,
+  ///   city text,
+  ///   postal_code text
+  /// );
+  /// ```
+  PComposite(name: String, fields: List(#(String, PgType)))
+
   /// A type that could also be `NULL`, this is particularly common for columns
   /// that do not have a `not null` constraint; or for those coming from partial
   /// joins.
@@ -184,7 +219,7 @@ type Context {
     /// a single connection to run all the queries.
     ///
     db: pg.Connection,
-    /// A cache from `oid` to corresponding Gleam type.
+    /// A cache from `oid` to corresponding pg type.
     /// We use this to avoid having to reach to the database every time we need
     /// to infer a type.
     ///
@@ -192,7 +227,7 @@ type Context {
     /// > uniquely identify types (and a lot of other various objects, see
     /// > [this documentation page](https://www.postgresql.org/docs/current/datatype-oid.html)).
     ///
-    gleam_types: Dict(Int, gleam.Type),
+    pg_types: Dict(Int, PgType),
     /// A cache from table `oid` and column index to its nullability.
     /// We use this to avoid having to reach to the database every time we need
     /// to type a column.
@@ -290,6 +325,19 @@ fn pg_to_gleam_type(
     PEnum(name:, variants:) ->
       gleam.try_make_enum(name, variants)
       |> result.map_error(invalid_enum_error(query, name, _))
+
+    PComposite(name:, fields:) -> {
+      let map_field = fn(field) {
+        let #(label, type_) = field
+        case pg_to_gleam_type(query, type_) {
+          Ok(type_) -> Ok(#(label, type_))
+          Error(e) -> Error(e)
+        }
+      }
+      use fields <- result.try(list.try_map(fields, map_field))
+      gleam.try_make_record(name, fields)
+      |> result.map_error(invalid_record_error(query, name, _))
+    }
   }
 }
 
@@ -326,7 +374,7 @@ pub fn main(
   )
 
   let context =
-    Context(db:, gleam_types: dict.new(), column_nullability: dict.new())
+    Context(db:, pg_types: dict.new(), column_nullability: dict.new())
 
   // Once the server has confirmed that it is ready to accept query requests we
   // can start gathering information about all the different queries.
@@ -706,16 +754,28 @@ fn resolve_parameters(
   find_gleam_type(query, oid)
 }
 
-/// Looks up a type with the given id in the Postgres registry.
+/// Looks up a type with the given id in the Postgres registry returning a Gleam type.
 ///
 /// > ⚠️ This function assumes that the oid is present in the database and
 /// > will crash otherwise. This should only be called with oids coming from
 /// > a database interrogation.
 ///
 fn find_gleam_type(query: UntypedQuery, oid: Int) -> Db(gleam.Type) {
-  // We first look for the Gleam type corresponding to this id in the cache to
+  use type_ <- eval.try(find_pg_type(oid))
+  pg_to_gleam_type(query, type_)
+  |> eval.from_result
+}
+
+/// Looks up a type with the given id in the Postgres registry returning a PgType.
+///
+/// > ⚠️ This function assumes that the oid is present in the database and
+/// > will crash otherwise. This should only be called with oids coming from
+/// > a database interrogation.
+///
+fn find_pg_type(oid: Int) -> Db(PgType) {
+  // We first look for the type corresponding to this id in the cache to
   // avoid hammering the db with needless queries.
-  use <- with_cached_gleam_type(oid)
+  use <- with_cached_type(oid)
 
   // The only parameter to this query is the oid of the type to lookup:
   // that's a 32bit integer (its oid needed to prepare the query is 23).
@@ -733,6 +793,7 @@ fn find_gleam_type(query: UntypedQuery, oid: Int) -> Db(gleam.Type) {
 
   use type_ <- eval.try(case kind {
     "e" -> resolve_enum_type(name, oid)
+    "c" -> resolve_composite_type(name, oid)
     _ -> eval.return(PBase(name))
   })
 
@@ -744,9 +805,7 @@ fn find_gleam_type(query: UntypedQuery, oid: Int) -> Db(gleam.Type) {
     True -> PArray(type_)
     False -> type_
   }
-
-  pg_to_gleam_type(query, type_)
-  |> eval.from_result
+  eval.return(type_)
 }
 
 fn resolve_enum_type(name: String, oid: Int) -> Db(PgType) {
@@ -762,6 +821,53 @@ fn resolve_enum_type(name: String, oid: Int) -> Db(PgType) {
     })
 
   eval.return(PEnum(name:, variants:))
+}
+
+fn resolve_composite_type(name: String, oid: Int) -> Db(PgType) {
+  // First, we need to get the typrelid from pg_type to find the corresponding pg_class entry
+  let params = [pg.Parameter(<<oid:32>>)]
+  let assert Ok(typrelid_name) =
+    gleam.value_identifier("get_composite_typrelid")
+
+  use typrelid_rows <- eval.try(
+    run_query(
+      query.UntypedQuery(
+        file: "",
+        starting_line: 1,
+        name: typrelid_name,
+        comment: [],
+        content: "select typrelid from pg_type where oid = $1",
+      ),
+      params,
+      [23],
+    ),
+  )
+
+  let assert [[typrelid_bytes]] = typrelid_rows
+  let assert <<typrelid:size(32)>> = typrelid_bytes
+
+  // Now get the fields using the typrelid
+  let field_params = [pg.Parameter(<<typrelid:32>>)]
+  use field_rows <- eval.try(
+    run_query(find_composite_fields_query(), field_params, [23]),
+  )
+
+  // Resolve the type of each field
+  use fields <- eval.try(
+    list.map(field_rows, fn(row) {
+      // Extract the name and oid from the row
+      let assert [name, oid] = row
+      let assert Ok(name) = bit_array.to_string(name)
+      let assert <<oid:size(32)>> = oid
+
+      // Find the pg type based on the oid
+      use type_ <- eval.try(find_pg_type(oid))
+      eval.return(#(name, type_))
+    })
+    |> eval.all(),
+  )
+
+  eval.return(PComposite(name:, fields:))
 }
 
 /// Returns the query plan for a given query.
@@ -1230,19 +1336,19 @@ fn unsupported_authentication(auth: String) -> Db(a) {
 /// Otherwise it runs the database action to fetch it and then caches it to be
 /// reused later.
 ///
-fn with_cached_gleam_type(
+fn with_cached_type(
   lookup oid: Int,
-  otherwise do: fn() -> Db(gleam.Type),
-) -> Db(gleam.Type) {
+  otherwise do: fn() -> Db(PgType),
+) -> Db(PgType) {
   use context: Context <- eval.from
-  case dict.get(context.gleam_types, oid) {
+  case dict.get(context.pg_types, oid) {
     Ok(type_) -> #(context, Ok(type_))
     Error(_) ->
       case eval.step(do(), context) {
         #(_, Error(_)) as result -> result
-        #(Context(gleam_types:, ..) as context, Ok(type_)) -> {
-          let gleam_types = dict.insert(gleam_types, oid, type_)
-          let new_context = Context(..context, gleam_types:)
+        #(Context(pg_types:, ..) as context, Ok(type_)) -> {
+          let pg_types = dict.insert(pg_types, oid, type_)
+          let new_context = Context(..context, pg_types:)
           #(new_context, Ok(type_))
         }
       }
@@ -1295,6 +1401,21 @@ fn invalid_enum_error(query: UntypedQuery, enum_name: String, reason: EnumError)
     content:,
     starting_line:,
     enum_name:,
+    reason:,
+  )
+}
+
+fn invalid_record_error(
+  query: UntypedQuery,
+  record_name: String,
+  reason: RecordError,
+) {
+  let UntypedQuery(content:, file:, name: _, starting_line:, comment: _) = query
+  error.QueryHasInvalidRecord(
+    file:,
+    content:,
+    starting_line:,
+    record_name:,
     reason:,
   )
 }

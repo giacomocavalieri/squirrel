@@ -14,7 +14,9 @@ import squirrel/internal/error.{
   type Error, CannotReadFile, QueryFileHasInvalidName,
   QueryReturnsMultipleValuesWithTheSameName,
 }
-import squirrel/internal/gleam.{type EnumVariant, type TypeIdentifier}
+import squirrel/internal/gleam.{
+  type EnumVariant, type Field, type TypeIdentifier,
+}
 import tote/bag
 
 /// A query that still needs to go through the type checking process.
@@ -159,10 +161,12 @@ type CodeGenState {
   CodeGenState(
     imports: Dict(String, Set(String)),
     needs_uuid_decoder: Bool,
+    needs_coerce_value: Bool,
     // All the enums used in the module, this maps from name of the enum to a
     // list of its variants and what kind of helpers need to be generated for
     // the enum encoding/decoding.
     enums: Dict(TypeIdentifier, EnumCodeGenData),
+    records: Dict(TypeIdentifier, RecordCodeGenData),
   )
 }
 
@@ -180,6 +184,23 @@ type EnumCodeGenData {
     /// The variants of the enum.
     ///
     variants: NonEmptyList(EnumVariant),
+  )
+}
+
+/// Data needed to perform codegen for record.
+///
+type RecordCodeGenData {
+  RecordCodeGenData(
+    /// Needed to know what kind of functions to generate for the specific case.
+    ///
+    required_helpers: RequiredHelpers,
+    /// The original name used to define the record in postgres to generate a
+    /// useful comment.
+    ///
+    original_name: String,
+    /// The fields of the record.
+    ///
+    fields: NonEmptyList(Field),
   )
 }
 
@@ -209,7 +230,9 @@ fn default_codegen_state() {
   CodeGenState(
     imports: dict.new(),
     needs_uuid_decoder: False,
+    needs_coerce_value: False,
     enums: dict.new(),
+    records: dict.new(),
   )
   |> import_module("gleam/dynamic/decode")
   |> import_module("pog")
@@ -246,15 +269,25 @@ fn gleam_type_to_decoder(
     gleam.String -> #(state, doc.from_string("decode.string"))
     gleam.BitArray -> #(state, doc.from_string("decode.bit_array"))
     gleam.Json -> #(state, doc.from_string("decode.string"))
-    gleam.Enum(original_name:, name: enum_name, variants:) -> #(
-      add_enum_helpers(state, original_name, enum_name, variants, NeedsDecoder),
-      doc.from_string(enum_decoder_name(enum_name) <> "()"),
+    gleam.Enum(original_name:, name:, variants:) -> #(
+      add_enum_helpers(state, original_name, name, variants, NeedsDecoder),
+      doc.from_string(enum_decoder_name(name) <> "()"),
+    )
+    gleam.Record(original_name:, name:, fields:) -> #(
+      add_record_helpers(state, original_name, name, fields, NeedsDecoder),
+      doc.from_string(record_decoder_name(name) <> "()"),
     )
   }
 }
 
 fn enum_decoder_name(enum_name: TypeIdentifier) -> String {
   gleam.type_identifier_to_value_identifier(enum_name)
+  |> gleam.value_identifier_to_string
+  |> string.append("_decoder")
+}
+
+fn record_decoder_name(record_name: TypeIdentifier) -> String {
+  gleam.type_identifier_to_value_identifier(record_name)
   |> gleam.value_identifier_to_string
   |> string.append("_decoder")
 }
@@ -300,11 +333,29 @@ fn gleam_type_to_encoder(
       add_enum_helpers(state, original_name, enum_name, variants, NeedsEncoder),
       call_doc(enum_encoder_name(enum_name), [name]),
     )
+    gleam.Record(original_name:, name: record_name, fields:) -> {
+      #(
+        add_record_helpers(
+          CodeGenState(..state, needs_coerce_value: True),
+          original_name,
+          record_name,
+          fields,
+          NeedsEncoder,
+        ),
+        call_doc(record_encoder_name(record_name), [name]),
+      )
+    }
   }
 }
 
 fn enum_encoder_name(enum_name: TypeIdentifier) -> String {
   gleam.type_identifier_to_value_identifier(enum_name)
+  |> gleam.value_identifier_to_string
+  |> string.append("_encoder")
+}
+
+fn record_encoder_name(record_name: TypeIdentifier) -> String {
+  gleam.type_identifier_to_value_identifier(record_name)
   |> gleam.value_identifier_to_string
   |> string.append("_encoder")
 }
@@ -366,6 +417,10 @@ fn gleam_type_to_field_type(
       add_enum_helpers(state, original_name, name, variants, NoHelpers),
       gleam.type_identifier_to_string(name) |> doc.from_string,
     )
+    gleam.Record(original_name:, name:, fields:) -> #(
+      add_record_helpers(state, original_name, name, fields, NoHelpers),
+      gleam.type_identifier_to_string(name) |> doc.from_string,
+    )
   }
 }
 
@@ -392,11 +447,18 @@ pub fn generate_code(
   }
   let queries_docs = list.reverse(queries_docs)
 
-  let CodeGenState(imports:, needs_uuid_decoder:, enums:) = state
+  let CodeGenState(
+    imports:,
+    needs_uuid_decoder:,
+    needs_coerce_value:,
+    enums:,
+    records:,
+  ) = state
 
   let utils =
     []
     |> prepend_if(needs_uuid_decoder, doc.from_string(uuid_decoder))
+    |> prepend_if(needs_coerce_value, doc.from_string(coerce_value))
 
   // We always want to output the imports and the code for the queries.
   // But in case we also need some helpers we add a final section to our file
@@ -418,6 +480,19 @@ pub fn generate_code(
         separator_comment("Enums"),
         doc.lines(2),
         enums_doc(version, enums),
+      ]
+      |> doc.concat
+  }
+
+  let code = case dict.is_empty(records) {
+    True -> code
+    False ->
+      [
+        code,
+        doc.lines(2),
+        separator_comment("Records"),
+        doc.lines(2),
+        records_doc(state, version, state.records),
       ]
       |> doc.concat
   }
@@ -505,7 +580,11 @@ fn query_doc(
     |> gleam.type_identifier_to_string
     |> string.append("Row")
 
-  let record_result = record_doc(state, version, constructor_name, query)
+  let assert Ok(constructor_identifier) =
+    gleam.type_identifier(constructor_name)
+
+  let record_result =
+    return_type_doc(state, version, constructor_identifier, query)
   let #(state, record) = case record_result {
     Ok(#(state, record)) -> #(state, doc.append(record, doc.lines(2)))
     Error(_) -> #(state, doc.empty)
@@ -592,17 +671,17 @@ fn function_doc(version: String, query: TypedQuery) -> String {
 /// Otherwise it returns the document defining a commented type definition with
 /// the name passed in as a parameter.
 ///
-fn record_doc(
+fn return_type_doc(
   state: CodeGenState,
   version: String,
-  type_name: String,
+  type_name: TypeIdentifier,
   query: TypedQuery,
 ) -> Result(#(CodeGenState, Document), Nil) {
   let TypedQuery(name:, returns:, file:, ..) = query
   use <- bool.guard(when: returns == [], return: Error(Nil))
 
   let function_name = gleam.value_identifier_to_string(name)
-  let record_doc =
+  let doc_comment =
     "/// A row you get from running the `" <> function_name <> "` query
 /// defined in `" <> file <> "`.
 ///
@@ -610,21 +689,100 @@ fn record_doc(
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///"
 
-  let #(state, fields) = {
-    use #(state, fields), field <- list.fold(returns, from: #(state, []))
-    let label =
-      doc.from_string(gleam.value_identifier_to_string(field.label) <> ": ")
-    let #(state, field_type) =
-      gleam_type_to_field_type(state, field.type_, EnumField)
-    let field = [label, field_type] |> doc.concat |> doc.group
+  // let state =
+  //   list.fold(returns, state, fn(state, field) {
+  //     add_gleam_type(state, field.type_, EnumField)
+  //   })
 
-    #(state, [field, ..fields])
+  Ok(record_doc(state, doc_comment, type_name, NoHelpers, returns))
+}
+
+/// Returns the document for the definition and encoding/decoding of all enums
+/// in the dictionary.
+///
+fn records_doc(
+  state: CodeGenState,
+  version: String,
+  records: Dict(TypeIdentifier, RecordCodeGenData),
+) -> Document {
+  dict.fold(records, doc.empty, fn(acc, name, record_data) {
+    let RecordCodeGenData(required_helpers:, fields:, original_name:) =
+      record_data
+
+    let doc_comment =
+      "/// Corresponds to the Postgres `" <> original_name <> "` record.
+///
+/// > 🐿️ This type definition was generated automatically using " <> version <> " of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///"
+
+    let fields = non_empty_list.to_list(fields)
+    let #(_, record) =
+      record_doc(state, doc_comment, name, required_helpers, fields)
+    doc.append(acc, record)
+  })
+}
+
+fn record_doc(
+  state: CodeGenState,
+  doc_comment: String,
+  record_name: TypeIdentifier,
+  required_helpers: RequiredHelpers,
+  fields: List(Field),
+) -> #(CodeGenState, Document) {
+  let #(state, doc) = case required_helpers {
+    NeedsDecoder -> {
+      let #(state, type_doc) =
+        record_type_definition_doc(state, doc_comment, record_name, fields)
+      let #(state, decoder_doc) = record_decoder_doc(state, record_name, fields)
+      #(state, [type_doc, decoder_doc])
+    }
+    NeedsEncoder -> {
+      let #(state, type_doc) =
+        record_type_definition_doc(state, doc_comment, record_name, fields)
+      let #(state, encoder_doc) = record_encoder_doc(state, record_name, fields)
+      #(state, [type_doc, encoder_doc])
+    }
+    NeedsEncoderAndDecoder -> {
+      let #(state, type_doc) =
+        record_type_definition_doc(state, doc_comment, record_name, fields)
+      let #(state, decoder_doc) = record_decoder_doc(state, record_name, fields)
+      let #(state, encoder_doc) = record_encoder_doc(state, record_name, fields)
+      #(state, [type_doc, decoder_doc, encoder_doc])
+    }
+    NoHelpers -> {
+      let #(state, type_doc) =
+        record_type_definition_doc(state, doc_comment, record_name, fields)
+      #(state, [type_doc])
+    }
   }
-  let fields = list.reverse(fields)
 
-  let result =
+  let doc = doc.join(doc, with: doc.lines(2))
+  #(state, doc)
+}
+
+fn record_type_definition_doc(
+  state: CodeGenState,
+  doc_comment: String,
+  record_name: TypeIdentifier,
+  fields: List(Field),
+) -> #(CodeGenState, Document) {
+  let type_name = gleam.type_identifier_to_string(record_name)
+
+  let #(state, fields) =
+    list.fold_right(fields, #(state, []), fn(acc, field) {
+      let #(state, fields) = acc
+      let label =
+        doc.from_string(gleam.value_identifier_to_string(field.label) <> ": ")
+      let #(state, field_type) =
+        gleam_type_to_field_type(state, field.type_, EnumField)
+      let field = [label, field_type] |> doc.concat |> doc.group
+      #(state, [field, ..fields])
+    })
+
+  let doc =
     [
-      doc.from_string(record_doc),
+      doc.from_string(doc_comment),
       doc.line,
       [
         doc.from_string("pub type " <> type_name <> " {"),
@@ -639,7 +797,47 @@ fn record_doc(
     ]
     |> doc.concat
 
-  Ok(#(state, result))
+  #(state, doc)
+}
+
+fn record_decoder_doc(
+  state: CodeGenState,
+  name: TypeIdentifier,
+  fields: List(Field),
+) -> #(CodeGenState, Document) {
+  let type_name = gleam.type_identifier_to_string(name)
+  let name = record_decoder_name(name)
+  let enum_decoder_type = doc.from_string("decode.Decoder(" <> type_name <> ")")
+  let #(state, body) = decoder_body_doc(state, type_name, fields)
+  #(state, fun_doc(Private, name, [], enum_decoder_type, body))
+}
+
+fn record_encoder_doc(
+  state: CodeGenState,
+  name: TypeIdentifier,
+  fields: List(Field),
+) -> #(CodeGenState, Document) {
+  let #(state, tuple) =
+    list.fold_right(fields, #(state, []), fn(acc, field) {
+      let #(state, docs) = acc
+      let label = gleam.value_identifier_to_string(field.label)
+      let #(state, doc) =
+        gleam_type_to_encoder(state, field.type_, "value" <> "." <> label)
+      #(state, [doc, ..docs])
+    })
+
+  let type_name = gleam.type_identifier_to_string(name)
+
+  let doc =
+    fun_doc(
+      Private,
+      record_encoder_name(name),
+      [doc.from_string("value: " <> type_name)],
+      doc.from_string("pog.Value"),
+      [comma_list("#(", tuple, ")"), doc.from_string("|> coerce_value")],
+    )
+
+  #(state, doc)
 }
 
 /// Returns the document for the definition and encoding/decoding of all enums
@@ -684,6 +882,7 @@ fn enum_doc(
   |> doc.join(with: doc.lines(2))
 }
 
+///
 fn enum_type_definition_doc(
   version: String,
   enum_name: TypeIdentifier,
@@ -809,6 +1008,11 @@ fn uuid_decoder() {
   }
 }"
 
+const coerce_value = "/// Coerce a value to a pog.Value for encoding records.
+///
+@external(erlang, \"pog_ffi\", \"coerce\")
+fn coerce_value(a: anything) -> pog.Value"
+
 /// A decoder that discards its value and always returns `Nil` instead.
 ///
 const nil_decoder = "decode.map(decode.dynamic, fn(_) { Nil })"
@@ -826,7 +1030,16 @@ fn decoder_doc(
 ) -> #(CodeGenState, Document) {
   let fallback = #(state, doc.from_string(nil_decoder))
   use <- bool.guard(when: returns == [], return: fallback)
+  let #(state, body) = decoder_body_doc(state, constructor, returns)
+  let doc = block(body)
+  #(state, doc)
+}
 
+fn decoder_body_doc(
+  state: CodeGenState,
+  constructor: String,
+  returns: List(gleam.Field),
+) -> #(CodeGenState, List(Document)) {
   let #(state, parameters, labelled_names) = {
     use acc, field, i <- list.index_fold(returns, #(state, [], []))
     let #(state, parameters, labelled_names) = acc
@@ -849,8 +1062,7 @@ fn decoder_doc(
   let success_line =
     nested_calls_doc("decode.success", constructor, labelled_names)
 
-  let doc = block(list.append(parameters, [success_line]))
-  #(state, doc)
+  #(state, list.append(parameters, [success_line]))
 }
 
 /// A pretty printed function call where the first argument is piped into
@@ -1067,6 +1279,39 @@ fn add_enum_helpers(
       Some(EnumCodeGenData(required_helpers: helpers, ..) as data) -> {
         let required_helpers = merge_helpers(required_helpers, helpers)
         EnumCodeGenData(..data, required_helpers:)
+      }
+    }
+  })
+}
+
+fn add_record_helpers(
+  state: CodeGenState,
+  original_name: String,
+  name: TypeIdentifier,
+  fields: NonEmptyList(Field),
+  required_helpers: RequiredHelpers,
+) -> CodeGenState {
+  // add helpers for each field
+  let field_helpers = fn(state, field: Field) {
+    let state = case field.type_ {
+      gleam.Enum(original_name, name, variants) ->
+        add_enum_helpers(state, original_name, name, variants, required_helpers)
+      gleam.Record(original_name, name, fields) ->
+        add_record_helpers(state, original_name, name, fields, required_helpers)
+      _ -> state
+    }
+    #(state, field)
+  }
+  let #(state, _) = non_empty_list.map_fold(fields, state, field_helpers)
+
+  // add helpers for the record type
+  CodeGenState(..state, records: {
+    use value <- dict.upsert(state.records, name)
+    case value {
+      None -> RecordCodeGenData(required_helpers:, fields:, original_name:)
+      Some(RecordCodeGenData(required_helpers: helpers, ..) as data) -> {
+        let required_helpers = merge_helpers(required_helpers, helpers)
+        RecordCodeGenData(..data, required_helpers:)
       }
     }
   })

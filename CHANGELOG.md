@@ -1,5 +1,8 @@
 # CHANGELOG
 
+- Squirrel now supports user-defined composite types.
+  ([Julian Schurhammer](https://github.com/schurhammer))
+
 ## 4.4.1 - 2025-08-25
 
 - Squirrel now adds return type annotations to the generated code.

@@ -1,0 +1,56 @@
+---
+version: 1.4.0
+title: record decoding
+file: ./test/squirrel_test.gleam
+test_name: record_decoding_test
+---
+
+import gleam/dynamic/decode
+import pog
+
+pub type QueryRow {
+  QueryRow(row: SquirrelCat)
+}
+
+pub fn query(
+  db: pog.Connection,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
+  let decoder = {
+    use row <- decode.field(0, squirrel_cat_decoder())
+    decode.success(QueryRow(row:))
+  }
+
+  "select ('Julian', 'red')::squirrel_cat"
+  |> pog.query
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+
+pub type SquirrelColour {
+  LightBrown
+  Grey
+  Red
+}
+
+fn squirrel_colour_decoder() -> decode.Decoder(SquirrelColour) {
+  use squirrel_colour <- decode.then(decode.string)
+  case squirrel_colour {
+    "light brown" -> decode.success(LightBrown)
+    "grey" -> decode.success(Grey)
+    "red" -> decode.success(Red)
+    _ -> decode.failure(LightBrown, "SquirrelColour")
+  }
+}
+
+
+pub type SquirrelCat {
+  SquirrelCat(name: String, colour: SquirrelColour)
+}
+
+fn squirrel_cat_decoder() -> decode.Decoder(SquirrelCat) {
+  use name <- decode.field(0, decode.string)
+  use colour <- decode.field(1, squirrel_colour_decoder())
+  decode.success(SquirrelCat(name:, colour:))
+}
+

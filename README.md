@@ -205,6 +205,7 @@ The types that are currently supported are:
 | `timestamp`                                       | [`timestamp.Timestamp`](https://hexdocs.pm/gleam_time/gleam/time/timestamp.html#Timestamp) | [`timestamp.Timestamp`](https://hexdocs.pm/gleam_time/gleam/time/timestamp.html#Timestamp) |
 | `<type>[]` (where `<type>` is any supported type) | `List(<type>)`                                                                             | `List(<type>)`                                                                             |
 | user-defined enum                                 | [Gleam custom type](https://tour.gleam.run/data-types/custom-types/)                       | [Gleam custom type](https://tour.gleam.run/data-types/custom-types/)                       |
+| user-defined composite type                       | [Gleam record](https://tour.gleam.run/data-types/records/)                                 | [Gleam record](https://tour.gleam.run/data-types/records/)                                 |
 
 ### Enums
 
@@ -237,6 +238,39 @@ pub type SquirrelColour {
 > Notice how this transformation might result in having a name that is still not
 > valid Gleam code; for example if you had an enum variant `'1_first'` that
 > would become `1First` which is not valid Gleam!
+>
+> Squirrel won't try and trim invalid characters from the names and instead will
+> fail letting you know you should change those names into something that can be
+> turned into valid Gleam code.
+
+### Records (Composite Types)
+
+If your queries deal with user-defined composite types (records), Squirrel will
+automatically turn each one of those into a corresponding Gleam record type to
+make sure your code is type safe.
+
+For example, consider the following composite type:
+
+```sql
+create type squirrel_cat as (
+  name text,
+  colour squirrel_colour
+);
+```
+
+Squirrel turns that into a Gleam record that looks like this:
+
+```gleam
+pub type SquirrelCat {
+  SquirrelCat(name: String, colour: SquirrelColour)
+}
+```
+
+> Squirrel will convert the composite type name into PascalCase and the field
+> names into snake_case to make sure the generated Gleam code follows Gleam
+> conventions.
+> Just like with enums, this transformation might result in having a name that
+> is still not valid Gleam code.
 >
 > Squirrel won't try and trim invalid characters from the names and instead will
 > fail letting you know you should change those names into something that can be

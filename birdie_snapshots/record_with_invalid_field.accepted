@@ -1,0 +1,20 @@
+---
+version: 1.4.0
+title: record with invalid field
+file: ./test/squirrel_test.gleam
+test_name: record_with_invalid_field_test
+---
+[31m[1mError: [22mQuery with invalid record[39m
+
+    [2m╭─ query.sql[22m
+    [2m│[22m
+[2m  1 │ [22m[36mselect[39m ([33m'invalid', 'Julian'[39m)::invalid_fields [36mas[39m res
+    [2m┆[22m
+
+One of the values in this query is the `invalid_fields` record, but I cannot
+turn it into a Gleam type definition because some of its field names (`1 invalid
+field`) cannot be turned into valid labels.
+
+Hint: A valid field label must start with a letter and can only contain letters,
+underscores and numbers. I will take care of automatically converting any name
+into snake_case so that it can be used as a label in a Gleam type!

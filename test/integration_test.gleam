@@ -93,6 +93,8 @@ const integration_tests = [
     "squirrel_colour",
     [TestValue("sql.LightBrown"), TestValue("sql.Red"), TestValue("sql.Grey")],
   ),
+  // Custom records
+  TestType("squirrel_cat", [TestValue("sql.SquirrelCat(\"Tom\", sql.Grey)")]),
   // Json
   TestType(
     "json",

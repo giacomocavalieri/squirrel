@@ -1,0 +1,60 @@
+---
+version: 1.4.0
+title: record encoding
+file: ./test/squirrel_test.gleam
+test_name: record_encoding_test
+---
+
+import gleam/dynamic/decode
+import pog
+
+pub type QueryRow {
+  QueryRow(res: Int)
+}
+
+pub fn query(
+  db: pog.Connection,
+  arg_1: SquirrelCat,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
+  let decoder = {
+    use res <- decode.field(0, decode.int)
+    decode.success(QueryRow(res:))
+  }
+
+  "select 1 as res where $1::squirrel_cat = ('Luna', 'grey')"
+  |> pog.query
+  |> pog.parameter(squirrel_cat_encoder(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+
+pub type SquirrelColour {
+  LightBrown
+  Grey
+  Red
+}
+
+fn squirrel_colour_encoder(squirrel_colour) -> pog.Value {
+  case squirrel_colour {
+    LightBrown -> "light brown"
+    Grey -> "grey"
+    Red -> "red"
+  }
+  |> pog.text
+}
+
+
+pub type SquirrelCat {
+  SquirrelCat(name: String, colour: SquirrelColour)
+}
+
+fn squirrel_cat_encoder(value: SquirrelCat) -> pog.Value {
+  #(pog.text(value.name), squirrel_colour_encoder(value.colour))
+  |> coerce_value
+}
+
+
+@external(erlang, "pog_ffi", "coerce")
+fn coerce_value(a: anything) -> pog.Value
+

@@ -153,6 +153,17 @@ pub type Error {
     reason: EnumError,
   )
 
+  /// When a query param/return type is a record that cannot be automatically
+  /// converted into a Gleam type definition.
+  ///
+  QueryHasInvalidRecord(
+    file: String,
+    content: String,
+    starting_line: Int,
+    record_name: String,
+    reason: RecordError,
+  )
+
   /// If the query contains an error and cannot be parsed by the DBMS.
   ///
   CannotParseQuery(
@@ -234,6 +245,12 @@ pub type EnumError {
   EnumWithNoVariants
   InvalidEnumName(name: String)
   InvalidEnumVariants(fields: List(String))
+}
+
+pub type RecordError {
+  RecordWithNoFields
+  InvalidRecordName(name: String)
+  InvalidRecordFields(fields: List(String))
 }
 
 /// Used to literally point to a particular piece of a string and attach a
@@ -538,6 +555,51 @@ any snake_case name to PascalCase so that it can be used as the name of a
 Gleam type!",
           )
         EnumWithNoVariants -> None
+      })
+
+    QueryHasInvalidRecord(
+      file:,
+      content:,
+      starting_line:,
+      record_name:,
+      reason:,
+    ) ->
+      printable_error("Query with invalid record")
+      |> add_code_paragraph(file:, content:, point: None, starting_line:)
+      |> add_paragraph(
+        "One of the values in this query is the "
+        <> style_inline_code(record_name)
+        <> " record, but I cannot turn it into a Gleam type definition because "
+        <> case reason {
+          RecordWithNoFields -> "it has no fields."
+          InvalidRecordName(_) ->
+            "its name cannot be turned into a valid type name."
+          InvalidRecordFields(fields) -> {
+            let pretty_fields =
+              list.map(fields, style_inline_code)
+              |> string.join(with: ", ")
+
+            "some of its field names ("
+            <> pretty_fields
+            <> ") cannot be turned into valid labels."
+          }
+        },
+      )
+      |> maybe_hint(case reason {
+        InvalidRecordFields(_) ->
+          Some(
+            "A valid field label must start with a letter and can only contain
+letters, underscores and numbers. I will take care of automatically converting
+any name into snake_case so that it can be used as a label in a Gleam type!",
+          )
+        InvalidRecordName(_) ->
+          Some(
+            "A valid record name must start with a letter and can only contain
+letters, underscores and numbers. I will take care automatically of converting
+any snake_case name to PascalCase so that it can be used as the name of a
+Gleam type!",
+          )
+        RecordWithNoFields -> None
       })
 
     QueryHasUnsupportedType(file:, name: _, content:, type_:, starting_line:) ->

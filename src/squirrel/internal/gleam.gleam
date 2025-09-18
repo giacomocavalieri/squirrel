@@ -4,10 +4,11 @@ import gleam/string
 import justin
 import non_empty_list.{type NonEmptyList}
 import squirrel/internal/error.{
-  type EnumError, type TypeIdentifierError, type ValueIdentifierError,
-  EnumWithNoVariants, InvalidEnumName, InvalidEnumVariants,
-  TypeContainsInvalidGrapheme, TypeIsEmpty, ValueContainsInvalidGrapheme,
-  ValueIsEmpty,
+  type EnumError, type RecordError, type TypeIdentifierError,
+  type ValueIdentifierError, EnumWithNoVariants, InvalidEnumName,
+  InvalidEnumVariants, InvalidRecordFields, InvalidRecordName,
+  RecordWithNoFields, TypeContainsInvalidGrapheme, TypeIsEmpty,
+  ValueContainsInvalidGrapheme, ValueIsEmpty,
 }
 
 /// A Gleam type.
@@ -43,6 +44,20 @@ pub type Type {
     original_name: String,
     name: TypeIdentifier,
     variants: NonEmptyList(EnumVariant),
+  )
+
+  /// A custom type with a single variant with fields. For example:
+  ///
+  /// ```gleam
+  /// pub type SquirrelCat {
+  ///   SquirrelCat(name: String, colour: SquirrelColour)
+  /// }
+  /// ```
+  ///
+  Record(
+    original_name: String,
+    name: TypeIdentifier,
+    fields: NonEmptyList(Field),
   )
 }
 
@@ -257,6 +272,49 @@ pub fn try_make_enum(
         Error(_) -> Error(EnumWithNoVariants)
       }
     _ -> Error(InvalidEnumVariants(errors))
+  }
+}
+
+/// Tries to build a record from the given name and fields list.
+/// This will try its best to convert the type name into PascalCase
+/// and field names into snake_case before failing!
+///
+pub fn try_make_record(
+  raw_name: String,
+  fields: List(#(String, Type)),
+) -> Result(Type, RecordError) {
+  use name <- result.try(
+    // We first try converting the name to pascal case since SQL's standard is
+    // to use snake_case for types and we don't want to fail for that.
+    justin.pascal_case(raw_name)
+    |> type_identifier
+    |> result.replace_error(InvalidRecordName(raw_name)),
+  )
+  let #(fields, errors) =
+    result.partition({
+      use field <- list.map(fields)
+      // Field names need to be snake case
+      let #(name, type_) = field
+      case value_identifier(justin.snake_case(name)) {
+        Ok(label) -> Ok(Field(label:, type_:))
+        Error(_) -> Error(name)
+      }
+    })
+
+  // fix reversal of fields caused by partition
+  let fields = list.reverse(fields)
+
+  case errors {
+    // If any of the variants is invalid we fail reporting the error, otherwise
+    // we can finally build the enum!
+    [] ->
+      case non_empty_list.from_list(fields) {
+        Ok(fields) -> {
+          Ok(Record(original_name: raw_name, name:, fields:))
+        }
+        Error(_) -> Error(RecordWithNoFields)
+      }
+    _ -> Error(InvalidRecordFields(errors))
   }
 }
 

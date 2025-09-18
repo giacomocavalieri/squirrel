@@ -101,6 +101,46 @@ end $$;"
     |> pog.query
     |> pog.execute(db)
 
+  let assert Ok(_) =
+    "
+do $$ begin
+  if not exists (select * from pg_type where typname = 'squirrel_cat') then
+    create type squirrel_cat as (name text, colour squirrel_colour);
+  end if;
+end $$;"
+    |> pog.query
+    |> pog.execute(db)
+
+  let assert Ok(_) =
+    "
+do $$ begin
+  if not exists (select * from pg_type where typname = '1 invalid record') then
+    create type \"1 invalid record\" as (name text, colour squirrel_colour);
+  end if;
+end $$;"
+    |> pog.query
+    |> pog.execute(db)
+
+  let assert Ok(_) =
+    "
+do $$ begin
+  if not exists (select * from pg_type where typname = 'invalid_fields') then
+    create type invalid_fields as (\"1 invalid field\" text, name text);
+  end if;
+end $$;"
+    |> pog.query
+    |> pog.execute(db)
+
+  let assert Ok(_) =
+    "
+do $$ begin
+  if not exists (select * from pg_type where typname = 'no_fields') then
+    create type no_fields as ();
+  end if;
+end $$;"
+    |> pog.query
+    |> pog.execute(db)
+
   // https://github.com/giacomocavalieri/squirrel/issues/41
   let assert Ok(_) =
     "
@@ -559,6 +599,24 @@ pub fn enum_array_decoding_test() {
   |> birdie.snap(title: "enum array decoding")
 }
 
+pub fn record_decoding_test() {
+  "select ('Julian', 'red')::squirrel_cat"
+  |> should_codegen
+  |> birdie.snap(title: "record decoding")
+}
+
+pub fn record_encoding_test() {
+  "select 1 as res where $1::squirrel_cat = ('Luna', 'grey')"
+  |> should_codegen
+  |> birdie.snap(title: "record encoding")
+}
+
+pub fn record_array_decoding_test() {
+  "select array[('Haskell', 'light brown')::squirrel_cat] as res"
+  |> should_codegen
+  |> birdie.snap(title: "record array decoding")
+}
+
 // --- CODEGEN STRUCTURE TESTS -------------------------------------------------
 // This is a group of tests to ensure the generated code has some specific
 // structure (e.g. the names and comments are what we expect...)
@@ -775,6 +833,24 @@ pub fn enum_with_no_variants_is_rejected_test() {
   "select $1::no_variants as res"
   |> should_error
   |> birdie.snap(title: "enum with no variants is rejected")
+}
+
+pub fn record_with_invalid_name_test() {
+  "select ('Bob', 'red')::\"1 invalid record\" as res"
+  |> should_error
+  |> birdie.snap(title: "record with invalid name")
+}
+
+pub fn record_with_invalid_field_test() {
+  "select ('invalid', 'Julian')::invalid_fields as res"
+  |> should_error
+  |> birdie.snap(title: "record with invalid field")
+}
+
+pub fn record_with_no_fields_is_rejected_test() {
+  "select $1::no_fields as res"
+  |> should_error
+  |> birdie.snap(title: "record with no fields is rejected")
 }
 
 pub fn query_returning_columns_with_same_name_test() {
