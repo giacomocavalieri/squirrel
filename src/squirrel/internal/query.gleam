@@ -492,7 +492,7 @@ pub fn generate_code(
         doc.lines(2),
         separator_comment("Records"),
         doc.lines(2),
-        records_doc(state, version, state.records),
+        records_doc(state, version, records),
       ]
       |> doc.concat
   }
@@ -688,11 +688,6 @@ fn return_type_doc(
 /// > 🐿️ This type definition was generated automatically using " <> version <> " of the
 /// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///"
-
-  // let state =
-  //   list.fold(returns, state, fn(state, field) {
-  //     add_gleam_type(state, field.type_, EnumField)
-  //   })
 
   Ok(record_doc(state, doc_comment, type_name, NoHelpers, returns))
 }

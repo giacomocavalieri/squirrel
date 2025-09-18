@@ -842,7 +842,7 @@ pub fn record_with_invalid_name_test() {
 }
 
 pub fn record_with_invalid_field_test() {
-  "select ('invalid', 'Julian')::invalid_fields as res"
+  "select ('invalid', 'Ada')::invalid_fields as res"
   |> should_error
   |> birdie.snap(title: "record with invalid field")
 }
