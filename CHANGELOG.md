@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## 4.4.2 - 2025-10-06
 
 - Fix a bug where squirrel would generate invalid code for enums with a long
   name.
