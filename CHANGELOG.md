@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## Unreleased
+
+- Fix a bug where squirrel would generate invalid code for enums with a long
+  name.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## 4.4.1 - 2025-08-25
 
 - Squirrel now adds return type annotations to the generated code.

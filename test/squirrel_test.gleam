@@ -160,6 +160,17 @@ create table if not exists categories_issue75 (
     |> pog.query
     |> pog.execute(db)
 
+  // https://github.com/giacomocavalieri/squirrel/issues/114
+  let assert Ok(_) =
+    "
+do $$ begin
+  if not exists (select * from pg_type where typname = 'issue_114_aaaaaaaaaaaaaaaaa') then
+    create type issue_114_aaaaaaaaaaaaaaaaa as enum('wibble');
+  end if;
+end $$;"
+    |> pog.query
+    |> pog.execute(db)
+
   let assert Ok(_) =
     "
 create table if not exists items_issue75 (
@@ -973,4 +984,17 @@ pub fn file_with_squirrel_function_comment_is_considered_as_generated_test() {
     |> list.filter(fn(line) { !string.starts_with(line, "////") })
     |> string.join(with: "\n")
     |> squirrel.classify_file_content
+}
+
+// If the length is 80 chars it's enough to generate a decoder with a comma in
+// its empty args list, that's invalid syntax!
+//
+// https://github.com/giacomocavalieri/squirrel/issues/114
+//
+pub fn enum_with_a_long_enoug_name_does_not_generate_invalid_decoder_test() {
+  "select 'wibble'::issue_114_aaaaaaaaaaaaaaaaa"
+  |> should_codegen
+  |> birdie.snap(
+    title: "enum with a long enoug name does not generate invalid decoder",
+  )
 }

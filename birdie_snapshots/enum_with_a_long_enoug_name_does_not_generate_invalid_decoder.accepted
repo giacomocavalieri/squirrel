@@ -1,0 +1,44 @@
+---
+version: 1.4.0
+title: enum with a long enoug name does not generate invalid decoder
+file: ./test/squirrel_test.gleam
+test_name: enum_with_a_long_enoug_name_does_not_generate_invalid_decoder_test
+---
+
+import gleam/dynamic/decode
+import pog
+
+pub type QueryRow {
+  QueryRow(issue_114_aaaaaaaaaaaaaaaaa: Issue114Aaaaaaaaaaaaaaaaa)
+}
+
+pub fn query(
+  db: pog.Connection,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
+  let decoder = {
+    use issue_114_aaaaaaaaaaaaaaaaa <- decode.field(
+      0,
+      issue114_aaaaaaaaaaaaaaaaa_decoder(),
+    )
+    decode.success(QueryRow(issue_114_aaaaaaaaaaaaaaaaa:))
+  }
+
+  "select 'wibble'::issue_114_aaaaaaaaaaaaaaaaa"
+  |> pog.query
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+
+pub type Issue114Aaaaaaaaaaaaaaaaa {
+  Wibble
+}
+
+fn issue114_aaaaaaaaaaaaaaaaa_decoder() -> decode.Decoder(Issue114Aaaaaaaaaaaaaaaaa) {
+  use issue114_aaaaaaaaaaaaaaaaa <- decode.then(decode.string)
+  case issue114_aaaaaaaaaaaaaaaaa {
+    "wibble" -> decode.success(Wibble)
+    _ -> decode.failure(Wibble, "Issue114Aaaaaaaaaaaaaaaaa")
+  }
+}
+

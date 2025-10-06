@@ -1011,20 +1011,24 @@ fn string_doc(content: String) -> Document {
 /// A comma separated list of items with some given open and closed delimiters.
 ///
 fn comma_list(open: String, content: List(Document), close: String) -> Document {
-  [
-    doc.from_string(open),
-    [
-      // We want the first break to be nested
-      // in case the group is broken.
-      doc.soft_break,
-      doc.join(content, doc.break(", ", ",")),
-    ]
+  case content {
+    [] -> doc.from_string(open <> close)
+    _ ->
+      [
+        doc.from_string(open),
+        [
+          // We want the first break to be nested
+          // in case the group is broken.
+          doc.soft_break,
+          doc.join(content, doc.break(", ", ",")),
+        ]
+          |> doc.concat
+          |> doc.nest(by: indent),
+        doc.break("", ","),
+        doc.from_string(close),
+      ]
       |> doc.concat
-      |> doc.nest(by: indent),
-    doc.break("", ","),
-    doc.from_string(close),
-  ]
-  |> doc.concat
+  }
 }
 
 // --- UTILS TO WORK WITH STATE ------------------------------------------------
