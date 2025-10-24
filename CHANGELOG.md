@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## Unreleased
+
+- Squirrel will no longer perform code generation if there's any errors in the
+  queries. Before it would still generate code for the queries with no errors.
+  This would usually lead the codebase in a broken state until all the errors
+  were fixed.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## 4.4.2 - 2025-10-06
 
 - Fix a bug where squirrel would generate invalid code for enums with a long
