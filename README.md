@@ -38,7 +38,7 @@ pub fn find_squirrel(db: pog.Connection, name: String) {
   "
   |> pog.query
   |> pog.parameter(pog.text(name))
-  |> pog.returning(zero.run(_, squirrel_row_decoder))
+  |> pog.returning(squirrel_row_decoder)
   |> pog.execute(db)
 }
 ```
