@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 4.5.0 - 2025-10-24
+
 - Squirrel will no longer perform code generation if there's any errors in the
   queries. Before it would still generate code for the queries with no errors.
   This would usually lead the codebase in a broken state until all the errors
