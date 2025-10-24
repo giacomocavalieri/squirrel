@@ -8,6 +8,10 @@
   were fixed.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
+- When trying to use a `timestamptz`, squirrel will now show a useful hint
+  nudging to use a `timestamp` instead.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## 4.4.2 - 2025-10-06
 
 - Fix a bug where squirrel would generate invalid code for enums with a long

@@ -540,15 +540,38 @@ Gleam type!",
         EnumWithNoVariants -> None
       })
 
-    QueryHasUnsupportedType(file:, name: _, content:, type_:, starting_line:) ->
-      printable_error("Unsupported type")
-      |> add_code_paragraph(file:, content:, point: None, starting_line:)
-      |> add_paragraph(
-        "One of the rows returned by this query has type "
-        <> style_inline_code(type_)
-        <> " which I cannot currently generate code for.",
-      )
-      |> call_to_action(for: "this type to be supported")
+    QueryHasUnsupportedType(file:, name: _, content:, type_:, starting_line:) -> {
+      let base_error =
+        printable_error("Unsupported type")
+        |> add_code_paragraph(file:, content:, point: None, starting_line:)
+        |> add_paragraph(
+          "One of the rows returned by this query has type "
+          <> style_inline_code(type_)
+          <> " which I cannot currently generate code for.",
+        )
+
+      case type_ {
+        // Timestampz usage is highly discouraged as it's only good if your
+        // language is bad with time. In all other cases you're worse off using
+        // it and should favour `timestamp`, so instead of a call to action to
+        // ask for support we point people to an explanation on why this should
+        // be avoided.
+        "timestamptz" ->
+          base_error
+          |> hint(
+            "In Postgres a "
+            <> style_inline_code("timestamptz")
+            <> " is converted to a regular "
+            <> style_inline_code("timestamp")
+            <> " using the connection's time zone. This is very error prone and
+should be avoided in favour of using regular timestamps.",
+          )
+
+        _ ->
+          base_error
+          |> call_to_action(for: "this type to be supported")
+      }
+    }
 
     CannotParseQuery(
       file:,

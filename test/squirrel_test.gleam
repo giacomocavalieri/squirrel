@@ -737,6 +737,12 @@ from
   |> birdie.snap(title: "column with invalid name")
 }
 
+pub fn timestampz_has_a_nice_hint_nudging_to_use_a_timestamp_test() {
+  "select timestamp with time zone '11 oct 1998'"
+  |> should_error
+  |> birdie.snap(title: "timestampz has a nice hint nudging to use a timestamp")
+}
+
 pub fn query_with_syntax_error_test() {
   "
 select

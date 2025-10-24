@@ -1,0 +1,19 @@
+---
+version: 1.4.0
+title: timestampz has a nice hint nudging to use a timestamp
+file: ./test/squirrel_test.gleam
+test_name: timestampz_has_a_nice_hint_nudging_to_use_a_timestamp_test
+---
+[31m[1mError: [22mUnsupported type[39m
+
+    [2m╭─ query.sql[22m
+    [2m│[22m
+[2m  1 │ [22m[36mselect[39m timestamp [36mwith[39m time zone [33m'11 oct 1998'[39m
+    [2m┆[22m
+
+One of the rows returned by this query has type `timestamptz` which I cannot
+currently generate code for.
+
+Hint: In Postgres a `timestamptz` is converted to a regular `timestamp` using
+the connection's time zone. This is very error prone and should be avoided in
+favour of using regular timestamps.
