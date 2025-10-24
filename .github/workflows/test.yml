@@ -20,7 +20,7 @@ jobs:
       fail-fast: true
       matrix:
         erlang: ["27", "28"]
-        postgres: ["postgres:16", "postgres:17"]
+        postgres: ["postgres:17", "postgres:18"]
 
     env:
       DATABASE_URL: postgres://squirrel_test:postgres_password@localhost:5432/squirrel_test
@@ -49,7 +49,7 @@ jobs:
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ matrix.erlang }}
-          gleam-version: "1.12.0"
+          gleam-version: "1.13.0"
           rebar3-version: "3"
       - run: gleam deps download
       - run: ./integration_test
