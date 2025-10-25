@@ -85,8 +85,8 @@ import my_app/sql
 pub fn main() {
   let db = todo as "the pog connection"
   // And it just works as you'd expect:
-  let assert Ok(pog.Returned(_rows_count, rows)) = sql.find_squirrel("sandy")
-  let assert [FindSquirrelRow(name: "sandy", owned_acorns: 11_111)] = rows
+  let assert Ok(pog.Returned(_rows_count, rows)) = sql.find_squirrel(db, "sandy")
+  let assert [sql.FindSquirrelRow(name: "sandy", owned_acorns: 11_111)] = rows
 }
 ```
 
