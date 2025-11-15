@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## 4.6.0 - 2025-11-15
 
 - Added support for the `name` type, represented as a Gleam `String`.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
