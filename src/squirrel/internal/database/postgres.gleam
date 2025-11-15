@@ -47,39 +47,44 @@ fn find_postgres_type_query() -> UntypedQuery {
     name:,
     comment: [],
     content: "
+with recursive types as (
+    -- This selects the initial type, it might be an array!
+    select
+      pg_type.oid as oid,
+      pg_type.typname as name,
+      pg_type.typelem as elem,
+      pg_type.typtype as kind,
+      0 as jumps
+    from pg_type
+    where pg_type.oid = $1
+  union all
+    -- So we keep selecting the type contained in it recursively until we
+    -- reach a base type (where the `elem` field is 0 and can't be joined with
+    -- any other type).
+    select
+      pg_type.oid as oid,
+      pg_type.typname as name,
+      pg_type.typelem as elem,
+      pg_type.typtype as kind,
+      types.jumps + 1 as jumps
+    from pg_type
+    join types
+      on pg_type.oid = types.elem
+      -- We need to special case the built-in `name` type: for some reason
+      -- that's treated as a char array, so we have to stop the recursion
+      -- earlier
+      and types.name != 'name'
+)
+-- Finally we only get the last base type (keeping track of how many jumps we
+-- did to properly wrap it in an array type the correct number of times)
 select
-  -- The name of the type or, if the type is an array, the name of its
-  -- elements' type.
-  case
-    when elem.typname is null then type.typname
-    else elem.typname
- 	end as type,
-
-  -- The oid of the type or the array item type.
-  case
-    when elem.typname is null then type.oid
-    else elem.oid
- 	end as oid,
-
-  -- Tells us how to interpret the first column: if this is true then the first
-  -- column is the type of the elements of the array type.
-  -- Otherwise it means we've found a base type.
-  case
-    when elem.typname is null then false
-    else true
- 	end as is_array,
-
-  -- The type of the type/array item.
-  -- It will be 'e' if the thing is an enum.
-  case
-    when elem.typname is null then type.typtype
-    else elem.typtype
-  end as kind
-from
-  pg_type as type
-  left join pg_type as elem on type.typelem = elem.oid
-where
-  type.oid = $1
+  types.oid,
+  types.name,
+  types.kind,
+  types.jumps
+from types
+order by types.jumps desc
+limit 1
 ",
   )
 }
@@ -93,14 +98,10 @@ fn find_enum_variants_query() -> UntypedQuery {
     name:,
     comment: [],
     content: "
-select
-	enumlabel
-from
-	pg_enum
-where
-	enumtypid = $1
-order by
-	enumsortorder asc
+select enumlabel
+from pg_enum
+where enumtypid = $1
+order by enumsortorder asc
 ",
   )
 }
@@ -117,8 +118,7 @@ fn find_column_nullability_query() -> UntypedQuery {
 select
   -- Whether the column has a not-null constraint.
   attnotnull
-from
-  pg_attribute
+from pg_attribute
 where
   -- The oid of the table the column comes from.
   attrelid = $1
@@ -152,10 +152,6 @@ type PgType {
   ///
   PBase(name: String)
 
-  /// An array type like `int[]`, `text[]`, ...
-  ///
-  PArray(inner: PgType)
-
   /// An enum, for example:
   ///
   /// ```sql
@@ -168,12 +164,6 @@ type PgType {
   ///
   ///
   PEnum(name: String, variants: List(String))
-
-  /// A type that could also be `NULL`, this is particularly common for columns
-  /// that do not have a `not null` constraint; or for those coming from partial
-  /// joins.
-  ///
-  POption(inner: PgType)
 }
 
 /// The context in which all database-related actions will take place.
@@ -261,20 +251,17 @@ pub type ConnectionOptions {
 fn pg_to_gleam_type(
   query: UntypedQuery,
   type_: PgType,
+  // How many times the base type needs to be wrapped in a list type. For
+  // example if we get 2, that means we're dealing with an array of arrays in
+  // postgres (like `text[][]`).
+  list_wrappings: Int,
 ) -> Result(gleam.Type, Error) {
   case type_ {
-    PArray(inner:) ->
-      pg_to_gleam_type(query, inner)
-      |> result.map(gleam.List)
-
-    POption(inner:) ->
-      pg_to_gleam_type(query, inner)
-      |> result.map(gleam.Option)
-
     PBase(name:) ->
       case name {
         "bool" -> Ok(gleam.Bool)
-        "text" | "char" | "bpchar" | "varchar" | "citext" -> Ok(gleam.String)
+        "text" | "char" | "bpchar" | "varchar" | "citext" | "name" ->
+          Ok(gleam.String)
         "float4" | "float8" -> Ok(gleam.Float)
         "numeric" -> Ok(gleam.Numeric)
         "int2" | "int4" | "int8" -> Ok(gleam.Int)
@@ -290,6 +277,17 @@ fn pg_to_gleam_type(
     PEnum(name:, variants:) ->
       gleam.try_make_enum(name, variants)
       |> result.map_error(invalid_enum_error(query, name, _))
+  }
+  |> result.map(wrap_in_list(_, list_wrappings))
+}
+
+/// Wraps a Gleam type in the list type the given number of times.
+/// For example `wrap_in_list(String, 2)` will become `List(List(String))`.
+///
+fn wrap_in_list(value: gleam.Type, times: Int) -> gleam.Type {
+  case times <= 0 {
+    True -> value
+    _ -> wrap_in_list(gleam.List(value), times - 1)
   }
 }
 
@@ -731,26 +729,18 @@ fn find_gleam_type(query: UntypedQuery, oid: Int) -> Db(gleam.Type) {
   // check wether it is an array or not and the type of the type / array item.
   // It's safe to assert because this query is hard coded in our code and the
   // output shape cannot change without us changing that query.
-  let assert [[name, oid, is_array, kind]] = res
+  let assert [[oid, name, kind, list_wrappings]] = res
+  let assert <<oid:size(32)>> = oid
   let assert Ok(name) = bit_array.to_string(name)
   let assert Ok(kind) = bit_array.to_string(kind)
-  let assert <<oid:size(32)>> = oid
+  let assert <<list_wrappings:size(32)>> = list_wrappings
 
   use type_ <- eval.try(case kind {
     "e" -> resolve_enum_type(name, oid)
     _ -> eval.return(PBase(name))
   })
 
-  // We then decode the bitarrays we got as a result:
-  // - `name` is just a string
-  // - `is_array` is a pg boolean
-  //
-  let type_ = case bit_array_to_bool(is_array) {
-    True -> PArray(type_)
-    False -> type_
-  }
-
-  pg_to_gleam_type(query, type_)
+  pg_to_gleam_type(query, type_, list_wrappings)
   |> eval.from_result
 }
 

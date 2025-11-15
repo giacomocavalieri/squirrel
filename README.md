@@ -191,20 +191,20 @@ This is needed in two places:
 
 The types that are currently supported are:
 
-| postgres type                                     | encoded as                                                                                 | decoded as                                                                                 |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
-| `bool`                                            | `Bool`                                                                                     | `Bool`                                                                                     |
-| `text`, `char`, `bpchar`, `varchar`, `citext`     | `String`                                                                                   | `String`                                                                                   |
-| `float4`, `float8`, `numeric`                     | `Float`                                                                                    | `Float`                                                                                    |
-| `int2`, `int4`, `int8`                            | `Int`                                                                                      | `Int`                                                                                      |
-| `json`, `jsonb`                                   | [`json.Json`](https://hexdocs.pm/gleam_json/gleam/json.html#Json)                          | `String`                                                                                   |
-| `uuid`                                            | [`uuid.Uuid`](https://hexdocs.pm/youid/youid/uuid.html#Uuid)                               | [`uuid.Uuid`](https://hexdocs.pm/youid/youid/uuid.html#Uuid)                               |
-| `bytea`                                           | `BitArray`                                                                                 | `BitArray`                                                                                 |
-| `date`                                            | [`calendar.Date`](https://hexdocs.pm/gleam_time/gleam/time/calendar.html#Date)             | [`calendar.Date`](https://hexdocs.pm/gleam_time/gleam/time/calendar.html#Date)             |
-| `time`                                            | [`calendar.TimeOfDay`](https://hexdocs.pm/gleam_time/gleam/time/calendar.html#TimeOfDay)   | [`calendar.TimeOfDay`](https://hexdocs.pm/gleam_time/gleam/time/calendar.html#TimeOfDay)   |
-| `timestamp`                                       | [`timestamp.Timestamp`](https://hexdocs.pm/gleam_time/gleam/time/timestamp.html#Timestamp) | [`timestamp.Timestamp`](https://hexdocs.pm/gleam_time/gleam/time/timestamp.html#Timestamp) |
-| `<type>[]` (where `<type>` is any supported type) | `List(<type>)`                                                                             | `List(<type>)`                                                                             |
-| user-defined enum                                 | [Gleam custom type](https://tour.gleam.run/data-types/custom-types/)                       | [Gleam custom type](https://tour.gleam.run/data-types/custom-types/)                       |
+| postgres type                                         | encoded as                                                                                 | decoded as                                                                                 |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `bool`                                                | `Bool`                                                                                     | `Bool`                                                                                     |
+| `text`, `char`, `bpchar`, `varchar`, `citext`, `name` | `String`                                                                                   | `String`                                                                                   |
+| `float4`, `float8`, `numeric`                         | `Float`                                                                                    | `Float`                                                                                    |
+| `int2`, `int4`, `int8`                                | `Int`                                                                                      | `Int`                                                                                      |
+| `json`, `jsonb`                                       | [`json.Json`](https://hexdocs.pm/gleam_json/gleam/json.html#Json)                          | `String`                                                                                   |
+| `uuid`                                                | [`uuid.Uuid`](https://hexdocs.pm/youid/youid/uuid.html#Uuid)                               | [`uuid.Uuid`](https://hexdocs.pm/youid/youid/uuid.html#Uuid)                               |
+| `bytea`                                               | `BitArray`                                                                                 | `BitArray`                                                                                 |
+| `date`                                                | [`calendar.Date`](https://hexdocs.pm/gleam_time/gleam/time/calendar.html#Date)             | [`calendar.Date`](https://hexdocs.pm/gleam_time/gleam/time/calendar.html#Date)             |
+| `time`                                                | [`calendar.TimeOfDay`](https://hexdocs.pm/gleam_time/gleam/time/calendar.html#TimeOfDay)   | [`calendar.TimeOfDay`](https://hexdocs.pm/gleam_time/gleam/time/calendar.html#TimeOfDay)   |
+| `timestamp`                                           | [`timestamp.Timestamp`](https://hexdocs.pm/gleam_time/gleam/time/timestamp.html#Timestamp) | [`timestamp.Timestamp`](https://hexdocs.pm/gleam_time/gleam/time/timestamp.html#Timestamp) |
+| `<type>[]` (where `<type>` is any supported type)     | `List(<type>)`                                                                             | `List(<type>)`                                                                             |
+| user-defined enum                                     | [Gleam custom type](https://tour.gleam.run/data-types/custom-types/)                       | [Gleam custom type](https://tour.gleam.run/data-types/custom-types/)                       |
 
 ### Enums
 

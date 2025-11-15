@@ -1,0 +1,28 @@
+---
+version: 1.4.0
+title: array of names decoding
+file: ./test/squirrel_test.gleam
+test_name: array_of_names_decoding_test
+---
+
+import gleam/dynamic/decode
+import pog
+
+pub type QueryRow {
+  QueryRow(res: List(String))
+}
+
+pub fn query(
+  db: pog.Connection,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
+  let decoder = {
+    use res <- decode.field(0, decode.list(decode.string))
+    decode.success(QueryRow(res:))
+  }
+
+  "select '{}'::name[] as res"
+  |> pog.query
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+

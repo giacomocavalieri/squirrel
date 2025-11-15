@@ -1,0 +1,30 @@
+---
+version: 1.4.0
+title: name encoding
+file: ./test/squirrel_test.gleam
+test_name: name_encoding_test
+---
+
+import gleam/dynamic/decode
+import pog
+
+pub type QueryRow {
+  QueryRow(res: Int)
+}
+
+pub fn query(
+  db: pog.Connection,
+  arg_1: String,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
+  let decoder = {
+    use res <- decode.field(0, decode.int)
+    decode.success(QueryRow(res:))
+  }
+
+  "select 1 as res where $1 = 'name'::name"
+  |> pog.query
+  |> pog.parameter(pog.text(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+

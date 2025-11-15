@@ -61,6 +61,7 @@ const integration_tests = [
   // Booleans
   TestType("bool", [TestValue("True"), TestValue("False")]),
   // Text data
+  TestType("name", [TestValue("\"hello\"")]),
   TestType("text", [TestValue("\"hello\"")]),
   TestType("char(1)", [TestValue("\"j\"")]),
   TestType("bpchar", [TestValue("\"j\"")]),
@@ -360,11 +361,10 @@ fn test_project(dir: String) -> Result(String, #(Int, String)) {
 }
 
 fn safe_name(string: String) -> String {
-  let assert Ok(regex) = regexp.from_string("[()\\[\\]]")
+  let assert Ok(parens) = regexp.from_string("[()]")
+  let assert Ok(array) = regexp.from_string("\\[\\]")
 
-  let safe_string = regexp.replace(each: regex, with: "_", in: string)
-  case string.ends_with(string, "[]") {
-    False -> safe_string
-    True -> safe_string <> "array"
-  }
+  string
+  |> regexp.replace(each: parens, with: "_")
+  |> regexp.replace(each: array, with: "array")
 }
