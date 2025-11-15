@@ -63,8 +63,8 @@ const squirrel_version = "v4.5.0"
 /// > that dependency to your project.
 ///
 pub fn main() {
-  case parse_cli_args(), connection_options() {
-    Error(Nil), _ -> {
+  case parse_cli_args() {
+    Error(Nil) -> {
       help_text()
       |> doc.to_string(term_width())
       |> io.println
@@ -72,43 +72,43 @@ pub fn main() {
       exit(1)
     }
 
-    // In case we cannot read the connection options we just immediately fail.
-    _, Error(error) -> {
-      error.to_doc(error)
-      |> doc.to_string(term_width())
-      |> io.println
+    Ok(mode) ->
+      case result.try(connection_options(), postgres.connect_and_authenticate) {
+        Error(error) -> {
+          error.to_doc(error)
+          |> doc.to_string(term_width())
+          |> io.println
 
-      exit(1)
-    }
+          exit(1)
+        }
 
-    // Otherwise we can walk through the file system and type all the queries,
-    // connecting to the database.
-    Ok(mode), Ok(options) -> {
-      let generated_queries =
-        walk(project.src())
-        |> dict.merge(walk(project.test_()))
-        |> dict.merge(walk(project.dev()))
-        |> generate_queries(options)
+        Ok(connection) -> {
+          let generated_queries =
+            walk(project.src())
+            |> dict.merge(walk(project.test_()))
+            |> dict.merge(walk(project.dev()))
+            |> generate_queries(connection)
 
-      let #(report, status_code) = case mode {
-        GenerateCode ->
-          case ensure_no_errors(generated_queries) {
-            Error(errors) -> report_errors(errors)
-            Ok(generated_queries) ->
+          let #(report, status_code) = case mode {
+            GenerateCode ->
+              case ensure_no_errors(generated_queries) {
+                Error(errors) -> report_errors(errors)
+                Ok(generated_queries) ->
+                  generated_queries
+                  |> write_queries
+                  |> report_written_queries
+              }
+
+            CheckGeneratedCode ->
               generated_queries
-              |> write_queries
-              |> report_written_queries
+              |> check_queries
+              |> report_checked_queries
           }
 
-        CheckGeneratedCode ->
-          generated_queries
-          |> check_queries
-          |> report_checked_queries
+          io.println(report)
+          exit(status_code)
+        }
       }
-
-      io.println(report)
-      exit(status_code)
-    }
   }
 }
 
@@ -340,7 +340,7 @@ fn walk(from: String) -> Dict(String, List(String)) {
 ///
 fn generate_queries(
   directories: Dict(String, List(String)),
-  connection: postgres.ConnectionOptions,
+  connection: postgres.Context,
 ) -> Dict(String, #(List(TypedQuery), List(Error))) {
   use _directory, files <- dict.map_values(directories)
 

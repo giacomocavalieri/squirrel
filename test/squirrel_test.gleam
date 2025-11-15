@@ -5,6 +5,7 @@ import gleam/erlang/process
 import gleam/list
 import gleam/string
 import gleeunit
+import global_value
 import pog
 import simplifile
 import squirrel
@@ -260,6 +261,23 @@ type CodegenOptions {
   )
 }
 
+fn database_connection() {
+  global_value.create_with_unique_name("squirrel_test.global.database", fn() {
+    let assert Ok(connection) =
+      postgres.connect_and_authenticate(postgres.ConnectionOptions(
+        host: host,
+        port: port,
+        user: user,
+        database: database,
+        password: "",
+        timeout_seconds: 1,
+      ))
+      as "cannot connect to test database"
+
+    connection
+  })
+}
+
 fn type_queries(
   queries: List(#(String, String)),
 ) -> Result(#(List(TypedQuery), List(Error)), Error) {
@@ -282,17 +300,7 @@ fn type_queries(
     }
 
     // We can then ask squirrel to type check all the queries.
-    postgres.main(
-      queries,
-      postgres.ConnectionOptions(
-        host: host,
-        port: port,
-        user: user,
-        database: database,
-        password: "",
-        timeout_seconds: 1,
-      ),
-    )
+    postgres.main(queries, database_connection())
   }
 
   result

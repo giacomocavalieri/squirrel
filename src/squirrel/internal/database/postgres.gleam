@@ -178,7 +178,7 @@ type PgType {
 
 /// The context in which all database-related actions will take place.
 ///
-type Context {
+pub opaque type Context {
   Context(
     /// A connection to the database. Squirrel does nothing fancy and just uses
     /// a single connection to run all the queries.
@@ -295,18 +295,9 @@ fn pg_to_gleam_type(
 
 // --- CLI ENTRY POINT ---------------------------------------------------------
 
-/// Connects to a Postgres database (using the given options) and types a list
-/// of queries.
-///
-/// This might fail with an `Error` if a database connection cannot be
-/// established, making it impossible to type any of the queries.
-/// Otherwise, it will try typing all the queries, retuning a list of typed ones
-/// and a list of possible errors for the ones it couldn't type.
-///
-pub fn main(
-  queries: List(UntypedQuery),
+pub fn connect_and_authenticate(
   connection: ConnectionOptions,
-) -> Result(#(List(TypedQuery), List(Error)), Error) {
+) -> Result(Context, Error) {
   let ConnectionOptions(
     host:,
     port:,
@@ -344,7 +335,21 @@ pub fn main(
 
   let #(context, connection) = eval.step(setup_script, context)
   use _ <- result.try(connection)
+  Ok(context)
+}
 
+/// Connects to a Postgres database (using the given options) and types a list
+/// of queries.
+///
+/// This might fail with an `Error` if a database connection cannot be
+/// established, making it impossible to type any of the queries.
+/// Otherwise, it will try typing all the queries, retuning a list of typed ones
+/// and a list of possible errors for the ones it couldn't type.
+///
+pub fn main(
+  queries: List(UntypedQuery),
+  context: Context,
+) -> Result(#(List(TypedQuery), List(Error)), Error) {
   // After successfully authenticating we can try and type all the queries.
   list.map(queries, infer_types)
   |> eval_extra.run_all(context)
