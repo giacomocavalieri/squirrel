@@ -578,6 +578,31 @@ pub fn enum_array_decoding_test() {
   |> birdie.snap(title: "enum array decoding")
 }
 
+// https://github.com/giacomocavalieri/squirrel/issues/119
+pub fn name_encoding_test() {
+  "select 1 as res where $1 = 'name'::name"
+  |> should_codegen
+  |> birdie.snap(title: "name encoding")
+}
+
+pub fn name_decoding_test() {
+  "select 'name'::name as res"
+  |> should_codegen
+  |> birdie.snap(title: "name decoding")
+}
+
+pub fn array_of_names_encoding_test() {
+  "select 1 as res where $1 = '{}'::name[]"
+  |> should_codegen
+  |> birdie.snap(title: "array of names encoding")
+}
+
+pub fn array_of_names_decoding_test() {
+  "select '{}'::name[] as res"
+  |> should_codegen
+  |> birdie.snap(title: "array of names decoding")
+}
+
 // --- CODEGEN STRUCTURE TESTS -------------------------------------------------
 // This is a group of tests to ensure the generated code has some specific
 // structure (e.g. the names and comments are what we expect...)

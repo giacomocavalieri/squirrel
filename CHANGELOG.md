@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added support for the `name` type, represented as a Gleam `String`.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## 4.5.0 - 2025-10-24
 
 - Squirrel will no longer perform code generation if there's any errors in the
