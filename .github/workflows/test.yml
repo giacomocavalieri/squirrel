@@ -53,4 +53,5 @@ jobs:
           rebar3-version: "3"
       - run: gleam deps download
       - run: ./integration_test
+      - run: gleam run -m birdie stale check
       - run: gleam format --check src test
