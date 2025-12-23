@@ -80,6 +80,8 @@ const integration_tests = [
   TestType("uuid", [TestValue("uuid.v7()")]),
   // Bytea
   TestType("bytea", [TestValue("<<1, 2, 3>>")]),
+  TestType("bit(3)", [TestValue("<<1:1, 0:1, 0:1>>")]),
+  TestType("varbit(24)", [TestValue("<<250, 255>>")]),
   // Date
   TestType("date", [TestValue("calendar.Date(1998, calendar.October, 11)")]),
   // TimeOfDay

@@ -1,0 +1,28 @@
+---
+version: 1.5.1
+title: bit varying decoding
+file: ./test/squirrel_test.gleam
+test_name: bit_varying_decoding_test
+---
+
+import gleam/dynamic/decode
+import pog
+
+pub type QueryRow {
+  QueryRow(bit_varying_value: BitArray)
+}
+
+pub fn query(
+  db: pog.Connection,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
+  let decoder = {
+    use bit_varying_value <- decode.field(0, decode.bit_array)
+    decode.success(QueryRow(bit_varying_value:))
+  }
+
+  "select bit_varying_value from bits"
+  |> pog.query
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+

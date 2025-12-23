@@ -267,7 +267,7 @@ fn pg_to_gleam_type(
         "int2" | "int4" | "int8" -> Ok(gleam.Int)
         "json" | "jsonb" -> Ok(gleam.Json)
         "uuid" -> Ok(gleam.Uuid)
-        "bytea" -> Ok(gleam.BitArray)
+        "bit" | "varbit" | "bytea" -> Ok(gleam.BitArray)
         "date" -> Ok(gleam.Date)
         "time" -> Ok(gleam.TimeOfDay)
         "timestamp" -> Ok(gleam.Timestamp)

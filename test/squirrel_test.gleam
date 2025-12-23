@@ -64,6 +64,15 @@ create table if not exists jsons(
 
   let assert Ok(_) =
     "
+  create table if not exists bits(
+    bit_value bit(5) not null,
+    bit_varying_value bit varying(5) not null
+  )"
+    |> pog.query
+    |> pog.execute(db)
+
+  let assert Ok(_) =
+    "
 do $$ begin
   if not exists (select * from pg_type where typname = 'squirrel_colour') then
     create type squirrel_colour as enum ('red', 'grey', 'light brown');
@@ -576,6 +585,32 @@ pub fn enum_array_decoding_test() {
   "select array['red'::squirrel_colour] as res"
   |> should_codegen
   |> birdie.snap(title: "enum array decoding")
+}
+
+pub fn bit_decoding_test() {
+  "select 11::bit(4) as res"
+  |> should_codegen
+  |> birdie.snap(title: "bit decoding")
+}
+
+pub fn bit_encoding_test() {
+  "select true as res where $1 = 11::bit(4)"
+  |> should_codegen
+  |> birdie.snap(title: "bit encoding")
+}
+
+pub fn bit_varying_decoding_test() {
+  "select bit_varying_value from bits"
+  |> should_codegen
+  |> birdie.snap(title: "bit varying decoding")
+}
+
+pub fn bit_varying_encoding_test() {
+  "select true as res
+  from bits
+  where $1 = bit_varying_value"
+  |> should_codegen
+  |> birdie.snap(title: "bit varying encoding")
 }
 
 // https://github.com/giacomocavalieri/squirrel/issues/119

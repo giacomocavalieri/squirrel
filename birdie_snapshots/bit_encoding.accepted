@@ -1,0 +1,30 @@
+---
+version: 1.5.1
+title: bit encoding
+file: ./test/squirrel_test.gleam
+test_name: bit_encoding_test
+---
+
+import gleam/dynamic/decode
+import pog
+
+pub type QueryRow {
+  QueryRow(res: Bool)
+}
+
+pub fn query(
+  db: pog.Connection,
+  arg_1: BitArray,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
+  let decoder = {
+    use res <- decode.field(0, decode.bool)
+    decode.success(QueryRow(res:))
+  }
+
+  "select true as res where $1 = 11::bit(4)"
+  |> pog.query
+  |> pog.parameter(pog.bytea(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
