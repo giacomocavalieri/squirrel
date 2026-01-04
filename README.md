@@ -259,6 +259,15 @@ This makes it easier to get started with a new project and cuts down on all the
 bike shedding: _"Where should I put my queries?",_
 _"How many queries should go in on file?",_ ...
 
+### Can Squirrel read my `.env` file?
+
+The approach I recommend is either use your shell's built-in functionality for
+loading environment variables or use a convenience tool which builds upon that
+capability, such as [`direnv`](https://direnv.net).
+This way the environment is managed by the environment rather than the
+application itself, and all applications can take advantage of it rather than
+having to rebuild this functionality into each different application.
+
 ## References
 
 This package draws a lot of inspiration from the amazing
