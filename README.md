@@ -7,6 +7,10 @@
 
 ## What's Squirrel?
 
+> For a video introduction on Squirrel's philosophy and general developer
+> experience you can check out my talk from FOSDEM 2026:
+> [You Don't Need an ORM.](https://www.youtube.com/watch?v=8vrEtKc-TBU)
+
 If you need to talk with a database in Gleam you'll have to write something like
 this:
 
