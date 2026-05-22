@@ -5,6 +5,7 @@ import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/regexp
 import gleam/result
 import gleam/set.{type Set}
 import gleam/string
@@ -36,6 +37,9 @@ pub type UntypedQuery {
     /// The text of the query itself.
     ///
     content: String,
+    /// Named parameter mappings extracted from SQL comments (position -> name).
+    ///
+    param_names: Dict(Int, String),
   )
 }
 
@@ -51,6 +55,7 @@ pub type TypedQuery {
     content: String,
     params: List(gleam.Type),
     returns: List(gleam.Field),
+    param_names: Dict(Int, String),
   )
 }
 
@@ -61,7 +66,14 @@ pub fn add_types(
   params params: List(gleam.Type),
   returns returns: List(gleam.Field),
 ) -> Result(TypedQuery, Error) {
-  let UntypedQuery(file:, name:, comment:, content:, starting_line:) = query
+  let UntypedQuery(
+    file:,
+    name:,
+    comment:,
+    content:,
+    starting_line:,
+    param_names:,
+  ) = query
 
   case duplicate_names(returns) {
     [] ->
@@ -73,6 +85,7 @@ pub fn add_types(
         starting_line:,
         params:,
         returns:,
+        param_names:,
       ))
 
     names ->
@@ -127,12 +140,15 @@ pub fn from_file(file: String) -> Result(UntypedQuery, Error) {
     ))
 
   use name <- result.try(name)
+  let comment = take_comment(content)
+  let #(param_names, comment) = extract_param_names(comment)
   Ok(UntypedQuery(
     file:,
     starting_line: 1,
     name:,
     content:,
-    comment: take_comment(content),
+    comment:,
+    param_names:,
   ))
 }
 
@@ -149,6 +165,39 @@ fn do_take_comment(query: String, lines: List(String)) -> List(String) {
       }
     _ -> list.reverse(lines)
   }
+}
+
+/// Extracts named parameter mappings from SQL comments.
+/// Comments like `-- $1 = name` are parsed and removed from the comment list.
+/// The remaining comments are returned as the documentation.
+///
+@internal
+pub fn extract_param_names(
+  comments: List(String),
+) -> #(Dict(Int, String), List(String)) {
+  // $1 = name
+  let assert Ok(pattern) =
+    regexp.from_string("^\\$(\\d+)\\s*=\\s*([a-zA-Z_][a-zA-Z0-9_]*)$")
+
+  let #(name_comments, other_comments) =
+    list.partition(comments, regexp.check(pattern, _))
+
+  let param_names =
+    list.fold(over: name_comments, from: dict.new(), with: fn(acc, comment) {
+      let assert [match] = regexp.scan(pattern, comment)
+
+      case match.submatches {
+        [Some(position), Some(name)] -> {
+          case int.parse(position) {
+            Ok(position) -> dict.insert(acc, position, name)
+            _ -> acc
+          }
+        }
+        _ -> acc
+      }
+    })
+
+  #(param_names, other_comments)
 }
 
 // --- CODE GENERATION ---------------------------------------------------------
@@ -498,6 +547,7 @@ fn query_doc(
     params:,
     returns:,
     starting_line: _,
+    param_names:,
   ) = query
 
   let constructor_name =
@@ -515,12 +565,15 @@ fn query_doc(
     let acc = #(state, [], [])
     use #(state, args, encoders), param, i <- list.index_fold(params, acc)
 
-    let arg = "arg_" <> int.to_string(i + 1)
+    let arg_name = case dict.get(param_names, i + 1) {
+      Ok(name) -> name
+      Error(_) -> "arg_" <> int.to_string(i + 1)
+    }
     let #(state, arg_type) =
       gleam_type_to_field_type(state, param, FunctionArgument)
-    let #(state, encoder) = gleam_type_to_encoder(state, param, arg)
+    let #(state, encoder) = gleam_type_to_encoder(state, param, arg_name)
 
-    let arg = doc.concat([doc.from_string(arg <> ": "), arg_type])
+    let arg = doc.concat([doc.from_string(arg_name <> ": "), arg_type])
     #(state, [arg, ..args], [encoder, ..encoders])
   }
   let args = list.reverse(args)

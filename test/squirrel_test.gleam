@@ -1,10 +1,12 @@
 import birdie
 import filepath
 import glam/doc
+import gleam/dict
 import gleam/erlang/process
 import gleam/list
 import gleam/string
 import gleeunit
+
 import global_value
 import pog
 import simplifile
@@ -1036,4 +1038,65 @@ pub fn enum_with_a_long_enoug_name_does_not_generate_invalid_decoder_test() {
   |> birdie.snap(
     title: "enum with a long enoug name does not generate invalid decoder",
   )
+}
+
+pub fn extract_param_names_empty_test() {
+  let #(names, comments) = query.extract_param_names([])
+  assert dict.is_empty(names)
+  assert list.is_empty(comments)
+}
+
+pub fn extract_param_names_no_naming_test() {
+  let #(names, comments) =
+    query.extract_param_names(["a comment", "another comment"])
+  assert dict.is_empty(names)
+  assert comments == ["a comment", "another comment"]
+}
+
+pub fn extract_param_names_single_test() {
+  let #(names, comments) =
+    query.extract_param_names(["$1 = user_id", "a comment"])
+  assert dict.get(names, 1) == Ok("user_id")
+  assert comments == ["a comment"]
+}
+
+pub fn extract_param_names_multiple_test() {
+  let #(names, comments) =
+    query.extract_param_names(["$1 = user_id", "$2 = status", "some note"])
+  assert dict.get(names, 1) == Ok("user_id")
+  assert dict.get(names, 2) == Ok("status")
+  assert comments == ["some note"]
+}
+
+pub fn extract_param_names_unnamed_preserved_test() {
+  let #(names, comments) =
+    query.extract_param_names(["$1 = user_id", "regular note", "$3 = status"])
+  assert dict.get(names, 1) == Ok("user_id")
+  assert dict.get(names, 3) == Ok("status")
+  assert !list.is_empty(comments)
+}
+
+pub fn named_param_generates_named_argument_test() {
+  "
+-- $1 = my_name
+select true as res where $1 = 11
+"
+  |> should_codegen_with_comments
+  |> birdie.snap(title: "named param generates named argument")
+}
+
+pub fn named_param_fallback_to_arg_when_no_name_test() {
+  "select true as res where $1 = 11"
+  |> should_codegen
+  |> birdie.snap(title: "named param fallback to arg when no name")
+}
+
+pub fn multiple_named_params_test() {
+  "
+-- $1 = user_id
+-- $2 = status
+select true as res where $1 = 11 and $2 = 'active'
+"
+  |> should_codegen_with_comments
+  |> birdie.snap(title: "multiple named params")
 }

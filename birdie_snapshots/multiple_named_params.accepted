@@ -1,0 +1,53 @@
+---
+version: 1.5.1
+title: multiple named params
+file: ./test/squirrel_test.gleam
+test_name: multiple_named_params_test
+---
+//// This module contains the code to run the sql queries defined in
+//// `./test-directory`.
+//// > 🐿️ This module was generated automatically using v-test of
+//// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+////
+
+import gleam/dynamic/decode
+import pog
+
+/// A row you get from running the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type QueryRow {
+  QueryRow(res: Bool)
+}
+
+/// Runs the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This function was generated automatically using v-test of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn query(
+  db: pog.Connection,
+  user_id: Int,
+  status: String,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
+  let decoder = {
+    use res <- decode.field(0, decode.bool)
+    decode.success(QueryRow(res:))
+  }
+
+  "
+-- $1 = user_id
+-- $2 = status
+select true as res where $1 = 11 and $2 = 'active'
+"
+  |> pog.query
+  |> pog.parameter(pog.int(user_id))
+  |> pog.parameter(pog.text(status))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
