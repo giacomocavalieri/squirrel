@@ -1,0 +1,38 @@
+---
+version: 1.5.5
+title: can infer multiple arguments
+file: ./test/squirrel_test.gleam
+test_name: can_infer_multiple_arguments_test
+---
+
+import gleam/dynamic/decode
+import pog
+
+pub type QueryRow {
+  QueryRow(name: String)
+}
+
+pub fn query(
+  db: pog.Connection,
+  squirrel_user_id: Int,
+  squirrel_user_name: String,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
+  let decoder = {
+    use name <- decode.field(0, decode.string)
+    decode.success(QueryRow(name:))
+  }
+
+  "
+with squirrel_user as (select 1 as squirrel_user_id, 'Louis' as name)
+select name
+from squirrel_user
+where $1 = squirrel_user_id
+and squirrel_user.name = $2
+"
+  |> pog.query
+  |> pog.parameter(pog.int(squirrel_user_id))
+  |> pog.parameter(pog.text(squirrel_user_name))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+

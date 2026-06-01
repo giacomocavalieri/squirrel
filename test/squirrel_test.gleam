@@ -877,6 +877,164 @@ pub fn comparing_different_snippets_of_code_test() {
     squirrel.compare_code_snippets(expected_code, actual_code)
 }
 
+// --- PARAMETER NAME INFERENCE ------------------------------------------------
+// This is to make sure we can infer names correctly from queries, and that we
+// generate proper code for those.
+//
+
+pub fn can_infer_simple_name_on_left_of_equality_test() {
+  should_codegen(
+    "
+with squirrel_user as (select 1 as id, 'Louis' as name)
+select name from squirrel_user where id = $1
+",
+  )
+  |> birdie.snap(title: "can infer simple name on left of equality")
+}
+
+pub fn can_infer_simple_quoted_name_on_left_of_equality_test() {
+  should_codegen(
+    "
+with squirrel_user as (select 1 as \"squirrel id\", 'Louis' as name)
+select name from squirrel_user where \"squirrel id\" = $1
+",
+  )
+  |> birdie.snap(title: "can infer simple quoted name on left of equality")
+}
+
+pub fn can_infer_simple_name_on_right_of_equality_test() {
+  should_codegen(
+    "
+with squirrel_user as (select 1 as id, 'Louis' as name)
+select name from squirrel_user where $1 = id
+",
+  )
+  |> birdie.snap(title: "can infer simple name on right of equality")
+}
+
+pub fn can_infer_simple_quoted_name_on_right_of_equality_test() {
+  should_codegen(
+    "
+with squirrel_user as (select 1 as \"squirrel id\", 'Louis' as name)
+select name from squirrel_user where $1 = \"squirrel id\"
+",
+  )
+  |> birdie.snap(title: "can infer simple quoted name on right of equality")
+}
+
+pub fn can_infer_table_access_on_left_of_equality_test() {
+  should_codegen(
+    "
+with squirrel_user as (select 1 as id, 'Louis' as name)
+select name from squirrel_user where squirrel_user.id = $1
+",
+  )
+  |> birdie.snap(title: "can infer table access on left of equality")
+}
+
+pub fn can_infer_quoted_table_access_on_left_of_equality_test() {
+  should_codegen(
+    "
+with squirrel_user as (select 1 as \"special id\", 'Louis' as name)
+select name from squirrel_user where squirrel_user.\"special id\" = $1
+",
+  )
+  |> birdie.snap(title: "can infer quoted table access on left of equality")
+}
+
+pub fn can_infer_table_access_on_right_of_equality_test() {
+  should_codegen(
+    "
+with squirrel_user as (select 1 as id, 'Louis' as name)
+select name from squirrel_user where $1 = squirrel_user.id
+",
+  )
+  |> birdie.snap(title: "can infer table access on right of equality")
+}
+
+pub fn can_infer_quoted_table_access_on_right_of_equality_test() {
+  should_codegen(
+    "
+with squirrel_user as (select 1 as \"special id\", 'Louis' as name)
+select name from squirrel_user where $1 = squirrel_user.\"special id\"
+",
+  )
+  |> birdie.snap(title: "can infer quoted table access on right of equality")
+}
+
+pub fn can_infer_multiple_arguments_test() {
+  should_codegen(
+    "
+with squirrel_user as (select 1 as squirrel_user_id, 'Louis' as name)
+select name
+from squirrel_user
+where $1 = squirrel_user_id
+and squirrel_user.name = $2
+",
+  )
+  |> birdie.snap(title: "can infer multiple arguments")
+}
+
+pub fn comments_are_ignored_when_inferring_parameters_names_test() {
+  should_codegen(
+    "
+with squirrel_user as (select 1 as squirrel_user_id, 'Louis' as name)
+select name
+from squirrel_user
+-- $1 = id
+where $1 = name
+-- $1 = id
+",
+  )
+  |> birdie.snap(title: "comments are ignored when inferring parameters names")
+}
+
+pub fn multiline_comments_are_ignored_when_inferring_parameters_names_test() {
+  should_codegen(
+    "
+with squirrel_user as (select 1 as squirrel_user_id, 'Louis' as name)
+select name
+from squirrel_user
+/* $1 = id */
+where $1 = name
+/* $1 = id */
+",
+  )
+  |> birdie.snap(
+    title: "multiline comments are ignored when inferring parameters names",
+  )
+}
+
+pub fn multiline_nested_comments_are_ignored_when_inferring_parameters_names_test() {
+  should_codegen(
+    "
+with squirrel_user as (select 1 as squirrel_user_id, 'Louis' as name)
+select name
+from squirrel_user
+/* $1 = id /* $1 = id */ */
+where $1 = name
+/* $1 = id /* $1 = id */ */
+",
+  )
+  |> birdie.snap(
+    title: "multiline nested comments are ignored when inferring parameters names",
+  )
+}
+
+pub fn strings_are_ignored_when_inferring_parameters_names_test() {
+  should_codegen(
+    "
+with squirrel_user as (select 1 as squirrel_user_id, 'Louis' as name)
+select name
+from squirrel_user
+where $1 = '$1 = id'
+and $1 = name
+and $1 = '$1 = id'
+",
+  )
+  |> birdie.snap(title: "strings are ignored when inferring parameters names")
+}
+
 // --- REGRESSIONS -------------------------------------------------------------
 // Bugs reported from GitHub issues so I make sure those will no longer pop up.
 //

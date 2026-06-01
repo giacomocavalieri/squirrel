@@ -1,0 +1,33 @@
+---
+version: 1.5.5
+title: can infer quoted table access on left of equality
+file: ./test/squirrel_test.gleam
+test_name: can_infer_quoted_table_access_on_left_of_equality_test
+---
+
+import gleam/dynamic/decode
+import pog
+
+pub type QueryRow {
+  QueryRow(name: String)
+}
+
+pub fn query(
+  db: pog.Connection,
+  squirrel_user_special_id: Int,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
+  let decoder = {
+    use name <- decode.field(0, decode.string)
+    decode.success(QueryRow(name:))
+  }
+
+  "
+with squirrel_user as (select 1 as \"special id\", 'Louis' as name)
+select name from squirrel_user where squirrel_user.\"special id\" = $1
+"
+  |> pog.query
+  |> pog.parameter(pog.int(squirrel_user_special_id))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+

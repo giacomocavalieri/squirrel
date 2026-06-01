@@ -1070,7 +1070,10 @@ fn do_accumulate_data_rows_until_command_complete(
   }
 }
 
-fn expect_parse_complete(msg: pg.BackendMessage, query: UntypedQuery) -> Db(Nil) {
+fn expect_parse_complete(
+  msg: pg.BackendMessage,
+  query: UntypedQuery,
+) -> Db(Nil) {
   case msg {
     pg.BeParseComplete -> eval.return(Nil)
 
@@ -1283,7 +1286,11 @@ fn unsupported_type_error(query: UntypedQuery, type_: String) -> Error {
   )
 }
 
-fn invalid_enum_error(query: UntypedQuery, enum_name: String, reason: EnumError) {
+fn invalid_enum_error(
+  query: UntypedQuery,
+  enum_name: String,
+  reason: EnumError,
+) {
   let UntypedQuery(content:, file:, name: _, starting_line:, comment: _) = query
   error.QueryHasInvalidEnum(
     file:,

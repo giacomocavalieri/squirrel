@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 1.5.5
 title: array encoding
 file: ./test/squirrel_test.gleam
 test_name: array_encoding_test
@@ -14,7 +14,7 @@ pub type QueryRow {
 
 pub fn query(
   db: pog.Connection,
-  arg_1: List(Int),
+  array: List(Int),
 ) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use res <- decode.field(0, decode.bool)
@@ -23,7 +23,7 @@ pub fn query(
 
   "select true as res where $1 = array[1, 2, 3]"
   |> pog.query
-  |> pog.parameter(pog.array(fn(value) { pog.int(value) }, arg_1))
+  |> pog.parameter(pog.array(fn(value) { pog.int(value) }, array))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

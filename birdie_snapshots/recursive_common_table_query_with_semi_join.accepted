@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 1.5.5
 title: recursive common table query with semi join
 file: ./test/squirrel_test.gleam
 test_name: recursive_common_table_query_with_semi_join_test
@@ -15,7 +15,7 @@ pub type QueryRow {
 
 pub fn query(
   db: pog.Connection,
-  arg_1: Uuid,
+  id: Uuid,
 ) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use id <- decode.field(0, uuid_decoder())
@@ -40,7 +40,7 @@ from items_issue75 i
 left join items_categories_issue75 ic on ic.item_id = i.id
 where ic.category_id in (select id from subcategories);"
   |> pog.query
-  |> pog.parameter(pog.text(uuid.to_string(arg_1)))
+  |> pog.parameter(pog.text(uuid.to_string(id)))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

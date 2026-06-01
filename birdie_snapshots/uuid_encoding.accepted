@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 1.5.5
 title: uuid encoding
 file: ./test/squirrel_test.gleam
 test_name: uuid_encoding_test
@@ -15,7 +15,7 @@ pub type QueryRow {
 
 pub fn query(
   db: pog.Connection,
-  arg_1: Uuid,
+  gen_random_uuid: Uuid,
 ) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use res <- decode.field(0, decode.bool)
@@ -24,7 +24,7 @@ pub fn query(
 
   "select true as res where $1 = gen_random_uuid()"
   |> pog.query
-  |> pog.parameter(pog.text(uuid.to_string(arg_1)))
+  |> pog.parameter(pog.text(uuid.to_string(gen_random_uuid)))
   |> pog.returning(decoder)
   |> pog.execute(db)
 }

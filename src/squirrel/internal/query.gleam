@@ -4,12 +4,14 @@ import gleam/bool
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/set.{type Set}
 import gleam/string
+import justin
 import non_empty_list.{type NonEmptyList}
 import simplifile
+import splitter.{type Splitter}
 import squirrel/internal/error.{
   type Error, CannotReadFile, QueryFileHasInvalidName,
   QueryReturnsMultipleValuesWithTheSameName,
@@ -49,8 +51,16 @@ pub type TypedQuery {
     name: gleam.ValueIdentifier,
     comment: List(String),
     content: String,
-    params: List(gleam.Type),
+    params: List(Parameter),
     returns: List(gleam.Field),
+  )
+}
+
+pub type Parameter {
+  Parameter(
+    /// The name inferred for this parameter.
+    name: Option(gleam.ValueIdentifier),
+    type_: gleam.Type,
   )
 }
 
@@ -62,7 +72,7 @@ pub fn add_types(
   returns returns: List(gleam.Field),
 ) -> Result(TypedQuery, Error) {
   let UntypedQuery(file:, name:, comment:, content:, starting_line:) = query
-
+  let params = infer_parameter_names(query, params)
   case duplicate_names(returns) {
     [] ->
       Ok(TypedQuery(
@@ -394,9 +404,10 @@ pub fn generate_code(
 
   let CodeGenState(imports:, needs_uuid_decoder:, enums:) = state
 
-  let utils =
-    []
-    |> prepend_if(needs_uuid_decoder, doc.from_string(uuid_decoder))
+  let utils = case needs_uuid_decoder {
+    True -> [doc.from_string(uuid_decoder)]
+    False -> []
+  }
 
   // We always want to output the imports and the code for the queries.
   // But in case we also need some helpers we add a final section to our file
@@ -515,10 +526,10 @@ fn query_doc(
     let acc = #(state, [], [])
     use #(state, args, encoders), param, i <- list.index_fold(params, acc)
 
-    let arg = "arg_" <> int.to_string(i + 1)
+    let arg = generate_argument_name(param, i)
     let #(state, arg_type) =
-      gleam_type_to_field_type(state, param, FunctionArgument)
-    let #(state, encoder) = gleam_type_to_encoder(state, param, arg)
+      gleam_type_to_field_type(state, param.type_, FunctionArgument)
+    let #(state, encoder) = gleam_type_to_encoder(state, param.type_, arg)
 
     let arg = doc.concat([doc.from_string(arg <> ": "), arg_type])
     #(state, [arg, ..args], [encoder, ..encoders])
@@ -551,6 +562,22 @@ fn query_doc(
     ])
 
   #(state, code)
+}
+
+fn generate_argument_name(param: Parameter, position: Int) -> String {
+  let name = case param.name {
+    Some(name) -> gleam.value_identifier_to_string(name)
+    None -> "arg_" <> int.to_string(position + 1)
+  }
+
+  // There's some names we don't want to use, and if some identifier is a
+  // keyword.
+  case name {
+    "true" | "false" | "null" -> "arg_" <> int.to_string(position + 1)
+    _ -> name
+  }
+  // We need to rename things to avoid conflicting with stuff that exists in
+  // this scope!
 }
 
 fn pipe_all_encoders(doc: Document, decoders: List(Document)) -> Document {
@@ -1010,7 +1037,11 @@ fn string_doc(content: String) -> Document {
 
 /// A comma separated list of items with some given open and closed delimiters.
 ///
-fn comma_list(open: String, content: List(Document), close: String) -> Document {
+fn comma_list(
+  open: String,
+  content: List(Document),
+  close: String,
+) -> Document {
   case content {
     [] -> doc.from_string(open <> close)
     _ ->
@@ -1076,11 +1107,501 @@ fn add_enum_helpers(
   })
 }
 
-// --- MISC UTILS --------------------------------------------------------------
+// --- SQL QUERY PARAMETERS ANALYSIS -------------------------------------------
+// This code analyses SQL queries to try and understand the names of the query
+// parameters used in each.
 
-fn prepend_if(list: List(a), condition: Bool, item: a) -> List(a) {
-  case condition {
-    True -> [item, ..list]
-    False -> list
+type Context {
+  NoIdentifier
+
+  // We've found `$1 ...`
+  QueryParameter(Int)
+  // We've found `$1 = ...`
+  QueryParameterEquality(Int)
+
+  // We've found `wibble ...`
+  Identifier(Name)
+  // We've found `wibble = ...`
+  IdentifierEquality(Name)
+}
+
+type Name {
+  Column(String)
+  TableAndColumn(String, String)
+}
+
+type Splitters {
+  Splitters(whitespace: Splitter, comments: Splitter, strings: Splitter)
+}
+
+fn infer_parameter_names(
+  query: UntypedQuery,
+  params: List(gleam.Type),
+) -> List(Parameter) {
+  let names = parameter_names(query.content)
+  list.index_map(params, fn(type_, i) {
+    case dict.get(names, i + 1) {
+      Ok(name) -> Parameter(name: Some(name), type_:)
+      Error(_) -> Parameter(name: None, type_:)
+    }
+  })
+}
+
+fn parameter_names(query: String) -> Dict(Int, gleam.ValueIdentifier) {
+  let query = string.lowercase(query)
+  let splitters =
+    Splitters(
+      whitespace: splitter.new([" ", "\n", "\t", "\r"]),
+      comments: splitter.new(["/*", "*/"]),
+      strings: splitter.new(["''", "\\'", "'"]),
+    )
+
+  parameter_names_loop(splitters, query, NoIdentifier, dict.new())
+  |> dict.fold(dict.new(), fn(acc, parameter, names) {
+    case pick_name(names) {
+      Ok(name) -> dict.insert(acc, parameter, name)
+      Error(_) -> acc
+    }
+  })
+}
+
+fn pick_name(names: List(Name)) -> Result(gleam.ValueIdentifier, Nil) {
+  list.find_map(list.reverse(names), fn(name) {
+    let name = case name {
+      Column(name) -> justin.snake_case(name)
+      TableAndColumn(table, column) -> {
+        let column = string.remove_prefix(table, from: column)
+        justin.snake_case(table) <> "_" <> justin.snake_case(column)
+      }
+    }
+    gleam.value_identifier(name)
+  })
+}
+
+fn add_name(
+  names: Dict(a, List(b)),
+  parameter: a,
+  name: b,
+) -> Dict(a, List(b)) {
+  dict.upsert(names, parameter, fn(existing) {
+    case existing {
+      Some(existing) -> [name, ..existing]
+      None -> [name]
+    }
+  })
+}
+
+fn parameter_names_loop(
+  splitters: Splitters,
+  query: String,
+  context: Context,
+  names: Dict(Int, List(Name)),
+) -> Dict(Int, List(Name)) {
+  case query {
+    // COMMENTS
+    // We strip those out totally ignoring their content.
+    // A comment also won't change the current context.
+    "/*" <> query -> multiline_comment_loop(splitters, query, context, 1, names)
+    "--" <> query ->
+      case string.split_once(query, on: "\n") {
+        Error(_) -> names
+        Ok(#(_comment, query)) ->
+          parameter_names_loop(splitters, query, context, names)
+      }
+
+    // STRINGS
+    // We strip those out ignoring their content.
+    "'" <> query -> string_loop(splitters, query, names)
+
+    // WHITESPACE
+    // Whitespace is ignored and we just move forward.
+    // It also doesn't change the current context.
+    " " <> query | "\n" <> query | "\r" <> query | "\t" <> query ->
+      parameter_names_loop(splitters, query, context, names)
+
+    // QUOTED IDENTIFIERS
+    // Any sequence of characters in between double quotes.
+    "\"" <> query ->
+      case string.split_once(query, "\"") {
+        // The identifier is not closed, this is a syntax error, we just return
+        // all the names we've figured out so far
+        Error(_) -> names
+        // This could be a dotted identifier!!
+        Ok(#(identifier, "." <> query)) ->
+          dotted_identifier(splitters, query, context, identifier, names)
+        // We've found an identifier, and so update the names and context
+        // accordingly.
+        Ok(#(identifier, query)) ->
+          add_identifier(splitters, query, Column(identifier), context, names)
+      }
+
+    // IDENTIFIERS/KEYWORDS
+    // If we see the start of an identifier we're gonna have to parse the whole
+    // word and then keep going to see if it is the name of a query parameter.
+    "a" as letter <> query
+    | "b" as letter <> query
+    | "c" as letter <> query
+    | "d" as letter <> query
+    | "e" as letter <> query
+    | "f" as letter <> query
+    | "g" as letter <> query
+    | "h" as letter <> query
+    | "i" as letter <> query
+    | "j" as letter <> query
+    | "k" as letter <> query
+    | "l" as letter <> query
+    | "m" as letter <> query
+    | "n" as letter <> query
+    | "o" as letter <> query
+    | "p" as letter <> query
+    | "q" as letter <> query
+    | "r" as letter <> query
+    | "s" as letter <> query
+    | "t" as letter <> query
+    | "u" as letter <> query
+    | "v" as letter <> query
+    | "w" as letter <> query
+    | "x" as letter <> query
+    | "y" as letter <> query
+    | "z" as letter <> query
+    | "_" as letter <> query ->
+      identifier_loop(splitters, query, letter, context, names)
+
+    // QUERY PARAMETERS
+    "$1" <> query -> parameter_loop(splitters, query, context, 1, names)
+    "$2" <> query -> parameter_loop(splitters, query, context, 2, names)
+    "$3" <> query -> parameter_loop(splitters, query, context, 3, names)
+    "$4" <> query -> parameter_loop(splitters, query, context, 4, names)
+    "$5" <> query -> parameter_loop(splitters, query, context, 5, names)
+    "$6" <> query -> parameter_loop(splitters, query, context, 6, names)
+    "$7" <> query -> parameter_loop(splitters, query, context, 7, names)
+    "$8" <> query -> parameter_loop(splitters, query, context, 8, names)
+    "$9" <> query -> parameter_loop(splitters, query, context, 9, names)
+
+    // EQUALITY OPERATOR
+    // If we see a check for equality we need to update the current state
+    // accordingly.
+    "=" <> query ->
+      case context {
+        NoIdentifier | QueryParameterEquality(_) | IdentifierEquality(_) ->
+          recover_from_error(splitters, query, names)
+        QueryParameter(parameter) ->
+          parameter_names_loop(
+            splitters,
+            query,
+            QueryParameterEquality(parameter),
+            names,
+          )
+        Identifier(identifier) ->
+          parameter_names_loop(
+            splitters,
+            query,
+            IdentifierEquality(identifier),
+            names,
+          )
+      }
+
+    // EMPTY STRING
+    // That means we're done, there's nothing left to do and we can return all
+    // the names we've figured out.
+    "" -> names
+
+    // UNEXPECTED CHARACTER
+    // If we see anything strange that doesn't really look like an identifier
+    // or a keyword we will just ignore them and jump forward to the end of the
+    // word/operator/number/unexpected character.
+    _ -> recover_from_error(splitters, query, names)
   }
+}
+
+fn parameter_loop(
+  splitters: Splitters,
+  query: String,
+  context: Context,
+  number: Int,
+  names: Dict(Int, List(Name)),
+) -> Dict(Int, List(Name)) {
+  case query {
+    "0" <> query ->
+      parameter_loop(splitters, query, context, number * 10, names)
+    "1" <> query ->
+      parameter_loop(splitters, query, context, number * 10 + 1, names)
+    "2" <> query ->
+      parameter_loop(splitters, query, context, number * 10 + 2, names)
+    "3" <> query ->
+      parameter_loop(splitters, query, context, number * 10 + 3, names)
+    "4" <> query ->
+      parameter_loop(splitters, query, context, number * 10 + 4, names)
+    "5" <> query ->
+      parameter_loop(splitters, query, context, number * 10 + 5, names)
+    "6" <> query ->
+      parameter_loop(splitters, query, context, number * 10 + 6, names)
+    "7" <> query ->
+      parameter_loop(splitters, query, context, number * 10 + 7, names)
+    "8" <> query ->
+      parameter_loop(splitters, query, context, number * 10 + 8, names)
+    "9" <> query ->
+      parameter_loop(splitters, query, context, number * 10 + 9, names)
+
+    // We've found a whitespace, so we know the query parameter is over with, we
+    // can now check the context and see if we can record any name for it.
+    "" | " " <> _ | "\n" <> _ | "\r" <> _ | "\t" <> _ ->
+      add_parameter(splitters, query, number, context, names)
+
+    // We've found a strange character meaning that this is not actually a query
+    // parameter, but most likely a syntax error. We just bail out and go back
+    // to the main loop with a new empty context to avoid this error propagating
+    // further and having us infer invalid names.
+    _ -> recover_from_error(splitters, query, names)
+  }
+}
+
+fn string_loop(
+  splitters: Splitters,
+  query: String,
+  names: Dict(Int, List(Name)),
+) -> Dict(Int, List(Name)) {
+  case splitter.split(splitters.strings, query) {
+    // The string is over
+    #(_, "'", query) ->
+      parameter_names_loop(splitters, query, NoIdentifier, names)
+
+    // We've found the escaped closing character, that means we're still inside
+    // the string and have to keep going.
+    #(_, "''", query) | #(_, "\\'", query) ->
+      string_loop(splitters, query, names)
+
+    // This is a string that is not closed, we just return the names we've
+    // figured out so far
+    #(_, _, _) -> names
+  }
+}
+
+fn multiline_comment_loop(
+  splitters: Splitters,
+  query: String,
+  context: Context,
+  expected_closing_sequences: Int,
+  names: Dict(Int, List(Name)),
+) -> Dict(Int, List(Name)) {
+  case expected_closing_sequences {
+    0 -> parameter_names_loop(splitters, query, context, names)
+    _ ->
+      case splitter.split(splitters.comments, query) {
+        #(_, "*/", query) ->
+          multiline_comment_loop(
+            splitters,
+            query,
+            context,
+            expected_closing_sequences - 1,
+            names,
+          )
+        #(_, "/*", query) ->
+          multiline_comment_loop(
+            splitters,
+            query,
+            context,
+            expected_closing_sequences + 1,
+            names,
+          )
+        // This means the comments are unbalanced, so the query is not right.
+        // We just return the names we've found so far!
+        _ -> names
+      }
+  }
+}
+
+fn identifier_loop(
+  splitters: Splitters,
+  query: String,
+  identifier: String,
+  context: Context,
+  names: Dict(Int, List(Name)),
+) -> Dict(Int, List(Name)) {
+  case query {
+    "a" as letter <> query
+    | "b" as letter <> query
+    | "c" as letter <> query
+    | "d" as letter <> query
+    | "e" as letter <> query
+    | "f" as letter <> query
+    | "g" as letter <> query
+    | "h" as letter <> query
+    | "i" as letter <> query
+    | "j" as letter <> query
+    | "k" as letter <> query
+    | "l" as letter <> query
+    | "m" as letter <> query
+    | "n" as letter <> query
+    | "o" as letter <> query
+    | "p" as letter <> query
+    | "q" as letter <> query
+    | "r" as letter <> query
+    | "s" as letter <> query
+    | "t" as letter <> query
+    | "u" as letter <> query
+    | "v" as letter <> query
+    | "w" as letter <> query
+    | "x" as letter <> query
+    | "y" as letter <> query
+    | "z" as letter <> query
+    | "0" as letter <> query
+    | "1" as letter <> query
+    | "2" as letter <> query
+    | "3" as letter <> query
+    | "4" as letter <> query
+    | "5" as letter <> query
+    | "6" as letter <> query
+    | "7" as letter <> query
+    | "8" as letter <> query
+    | "9" as letter <> query
+    | "_" as letter <> query ->
+      identifier_loop(splitters, query, identifier <> letter, context, names)
+
+    "." <> query ->
+      dotted_identifier(splitters, query, context, identifier, names)
+
+    // The identifier is over, we can update the context accordingly!
+    _ -> add_identifier(splitters, query, Column(identifier), context, names)
+  }
+}
+
+fn dotted_identifier(
+  splitters: Splitters,
+  query: String,
+  context: Context,
+  table: String,
+  names: Dict(Int, List(Name)),
+) -> Dict(Int, List(Name)) {
+  case query {
+    // This is a quoted dotted identifier: `user."table"`
+    "\"" <> query ->
+      case string.split_once(query, "\"") {
+        // The identifier is not closed, this is a syntax error, we just return
+        // all the names we've figured out so far
+        Error(_) -> names
+        // We've found an identifier, and so update the names and context
+        // accordingly.
+        Ok(#(column, query)) -> {
+          let name = TableAndColumn(table, column)
+          add_identifier(splitters, query, name, context, names)
+        }
+      }
+
+    // Otherwise we treat it as a regular dotted identifier.
+    _ -> dotted_identifier_loop(splitters, query, context, table, "", names)
+  }
+}
+
+fn dotted_identifier_loop(
+  splitters: Splitters,
+  query: String,
+  context: Context,
+  table: String,
+  column: String,
+  names: Dict(Int, List(Name)),
+) -> Dict(Int, List(Name)) {
+  case query {
+    "a" as letter <> query
+    | "b" as letter <> query
+    | "c" as letter <> query
+    | "d" as letter <> query
+    | "e" as letter <> query
+    | "f" as letter <> query
+    | "g" as letter <> query
+    | "h" as letter <> query
+    | "i" as letter <> query
+    | "j" as letter <> query
+    | "k" as letter <> query
+    | "l" as letter <> query
+    | "m" as letter <> query
+    | "n" as letter <> query
+    | "o" as letter <> query
+    | "p" as letter <> query
+    | "q" as letter <> query
+    | "r" as letter <> query
+    | "s" as letter <> query
+    | "t" as letter <> query
+    | "u" as letter <> query
+    | "v" as letter <> query
+    | "w" as letter <> query
+    | "x" as letter <> query
+    | "y" as letter <> query
+    | "z" as letter <> query
+    | "0" as letter <> query
+    | "1" as letter <> query
+    | "2" as letter <> query
+    | "3" as letter <> query
+    | "4" as letter <> query
+    | "5" as letter <> query
+    | "6" as letter <> query
+    | "7" as letter <> query
+    | "8" as letter <> query
+    | "9" as letter <> query
+    | "_" as letter <> query -> {
+      let column = column <> letter
+      dotted_identifier_loop(splitters, query, context, table, column, names)
+    }
+
+    // The identifier is over, we can update the context accordingly!
+    _ -> {
+      let name = TableAndColumn(table, column)
+      add_identifier(splitters, query, name, context, names)
+    }
+  }
+}
+
+fn add_identifier(
+  splitters: Splitters,
+  query: String,
+  identifier: Name,
+  context: Context,
+  names: Dict(Int, List(Name)),
+) -> Dict(Int, List(Name)) {
+  case context {
+    // We're not comparing the identifier agains a query parameter, so we keep
+    // track of this new latest identifier we might be interested in!
+    IdentifierEquality(_) | Identifier(_) | NoIdentifier | QueryParameter(_) ->
+      parameter_names_loop(splitters, query, Identifier(identifier), names)
+
+    // We've found `$1 = identifier`, that means we have to record the new
+    // name and reset the context!
+    QueryParameterEquality(number) -> {
+      let names = add_name(names, number, identifier)
+      parameter_names_loop(splitters, query, NoIdentifier, names)
+    }
+  }
+}
+
+fn add_parameter(
+  splitters: Splitters,
+  query: String,
+  parameter: Int,
+  context: Context,
+  names: Dict(Int, List(Name)),
+) -> Dict(Int, List(Name)) {
+  case context {
+    NoIdentifier | Identifier(_) | QueryParameter(_) ->
+      parameter_names_loop(splitters, query, QueryParameter(parameter), names)
+
+    // We've found something like `$1 = $2`
+    QueryParameterEquality(_) ->
+      parameter_names_loop(splitters, query, NoIdentifier, names)
+
+    // We've found something like `wibble = $1`, we have to keep track of
+    // this new name we've found for the parameter we've just parsed.
+    IdentifierEquality(identifier) -> {
+      let names = add_name(names, parameter, identifier)
+      parameter_names_loop(splitters, query, NoIdentifier, names)
+    }
+  }
+}
+
+fn recover_from_error(
+  splitters: Splitters,
+  query: String,
+  names: Dict(Int, List(Name)),
+) -> Dict(Int, List(Name)) {
+  let #(_, _, query) = splitter.split(splitters.whitespace, query)
+  parameter_names_loop(splitters, query, NoIdentifier, names)
 }
