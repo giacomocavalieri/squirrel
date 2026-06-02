@@ -1035,6 +1035,74 @@ and $1 = '$1 = id'
   |> birdie.snap(title: "strings are ignored when inferring parameters names")
 }
 
+pub fn renames_arguments_to_avoid_shadowing_functions_in_scope_test() {
+  should_codegen(
+    "
+with wibble as (select gen_random_uuid() as uuid_decoder)
+select uuid_decoder
+from wibble
+where $1 = uuid_decoder
+",
+  )
+  |> birdie.snap(
+    title: "renames arguments to avoid shadowing functions in scope",
+  )
+}
+
+pub fn renames_arguments_to_avoid_shadowing_decoder_test() {
+  should_codegen(
+    "
+with wibble as (select 1 as decoder)
+select decoder
+from wibble
+where $1 = decoder
+",
+  )
+  |> birdie.snap(title: "renames arguments to avoid shadowing decoder")
+}
+
+pub fn renames_arguments_to_avoid_shadowing_db_test() {
+  should_codegen(
+    "
+with wibble as (select 1 as db)
+select db
+from wibble
+where $1 = db
+",
+  )
+  |> birdie.snap(title: "renames arguments to avoid shadowing db")
+}
+
+pub fn renames_arguments_to_avoid_two_arguments_with_the_same_name_test() {
+  should_codegen(
+    "
+with wibble as (select 1 as number)
+select *
+from wibble
+where $1 = number
+and $2 = number
+",
+  )
+  |> birdie.snap(
+    title: "renames arguments to avoid two arguments with the same name",
+  )
+}
+
+pub fn renames_arguments_to_avoid_two_arguments_with_the_same_name_2_test() {
+  should_codegen(
+    "
+with wibble as (select 1 as arg_1)
+select *
+from wibble
+where $1 = 1
+and $2 = arg_1
+",
+  )
+  |> birdie.snap(
+    title: "renames arguments to avoid two arguments with the same name 2",
+  )
+}
+
 // --- REGRESSIONS -------------------------------------------------------------
 // Bugs reported from GitHub issues so I make sure those will no longer pop up.
 //

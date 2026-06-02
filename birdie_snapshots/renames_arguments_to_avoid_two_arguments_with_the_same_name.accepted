@@ -1,0 +1,38 @@
+---
+version: 1.5.5
+title: renames arguments to avoid two arguments with the same name
+file: ./test/squirrel_test.gleam
+test_name: renames_arguments_to_avoid_two_arguments_with_the_same_name_test
+---
+
+import gleam/dynamic/decode
+import pog
+
+pub type QueryRow {
+  QueryRow(number: Int)
+}
+
+pub fn query(
+  db: pog.Connection,
+  number: Int,
+  number_1: Int,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
+  let decoder = {
+    use number <- decode.field(0, decode.int)
+    decode.success(QueryRow(number:))
+  }
+
+  "
+with wibble as (select 1 as number)
+select *
+from wibble
+where $1 = number
+and $2 = number
+"
+  |> pog.query
+  |> pog.parameter(pog.int(number))
+  |> pog.parameter(pog.int(number_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+

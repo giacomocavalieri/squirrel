@@ -1,0 +1,35 @@
+---
+version: 1.5.5
+title: renames arguments to avoid shadowing db
+file: ./test/squirrel_test.gleam
+test_name: renames_arguments_to_avoid_shadowing_db_test
+---
+
+import gleam/dynamic/decode
+import pog
+
+pub type QueryRow {
+  QueryRow(db: Int)
+}
+
+pub fn query(
+  db: pog.Connection,
+  db_1: Int,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
+  let decoder = {
+    use db <- decode.field(0, decode.int)
+    decode.success(QueryRow(db:))
+  }
+
+  "
+with wibble as (select 1 as db)
+select db
+from wibble
+where $1 = db
+"
+  |> pog.query
+  |> pog.parameter(pog.int(db_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+

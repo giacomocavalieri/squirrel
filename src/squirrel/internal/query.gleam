@@ -522,23 +522,26 @@ fn query_doc(
     Error(_) -> #(state, doc.empty)
   }
 
-  let #(state, args, encoders) = {
-    let acc = #(state, [], [])
-    use #(state, args, encoders), param, i <- list.index_fold(params, acc)
+  let #(state, decoder) = decoder_doc(state, constructor_name, returns)
+  let #(state, _, args, encoders) = {
+    // "decoder" and "db" are two arguments that are always defined in the
+    // generated function, so we always have them as already used!
+    let used_names = set.from_list(["decoder", "db"])
+    use acc, param, i <- list.index_fold(params, #(state, used_names, [], []))
+    let #(state, used_names, args, encoders) = acc
 
-    let arg = generate_argument_name(param, i)
+    let arg = generate_argument_name(used_names, param, i)
+    let used_names = set.insert(used_names, arg)
     let #(state, arg_type) =
       gleam_type_to_field_type(state, param.type_, FunctionArgument)
     let #(state, encoder) = gleam_type_to_encoder(state, param.type_, arg)
 
     let arg = doc.concat([doc.from_string(arg <> ": "), arg_type])
-    #(state, [arg, ..args], [encoder, ..encoders])
+    #(state, used_names, [arg, ..args], [encoder, ..encoders])
   }
-  let args = list.reverse(args)
-  let encoders = list.reverse(encoders)
 
-  let #(state, decoder) = decoder_doc(state, constructor_name, returns)
-  let args = [doc.from_string("db: pog.Connection"), ..args]
+  let encoders = list.reverse(encoders)
+  let args = [doc.from_string("db: pog.Connection"), ..list.reverse(args)]
 
   let returned = case returns {
     [] -> doc.from_string("pog.Returned(Nil)")
@@ -564,20 +567,61 @@ fn query_doc(
   #(state, code)
 }
 
-fn generate_argument_name(param: Parameter, position: Int) -> String {
+fn generate_argument_name(
+  used_names: Set(String),
+  param: Parameter,
+  position: Int,
+) -> String {
   let name = case param.name {
     Some(name) -> gleam.value_identifier_to_string(name)
     None -> "arg_" <> int.to_string(position + 1)
   }
 
-  // There's some names we don't want to use, and if some identifier is a
-  // keyword.
-  case name {
+  // Any name ending with "encoder", "decoder" might not be safe to use as there
+  // might be decoders/encoders in scope that would end up being shadowed.
+  // The perfect approach would require traversing over the query twice, first
+  // to understand which encoder/decoder names it needs in scope and then
+  // renaming parameters with that same name to avoid shadowing them.
+  // However, that's not something I can see happening frequently (how many
+  // queries do something like `$1 = uuid_decoder`?) so I do something simpler:
+  // if a name ends with `encoder`, `decoder` we always rename it by adding a
+  // safe suffix.
+  let name = case
+    string.ends_with(name, "encoder") || string.ends_with(name, "decoder")
+  {
+    True -> rename_to_avoid_shadowing_loop(used_names, name, 1)
+    False -> name
+  }
+
+  // We don't want to use SQL literals as names, in that case we fall back to
+  // calling things as "arg_"
+  let name = case name {
     "true" | "false" | "null" -> "arg_" <> int.to_string(position + 1)
     _ -> name
   }
-  // We need to rename things to avoid conflicting with stuff that exists in
-  // this scope!
+
+  // Now we want to rename the argument to avoid it shadowing other names that
+  // have already been used.
+  rename_to_avoid_shadowing(used_names, name)
+}
+
+fn rename_to_avoid_shadowing(used_names: Set(String), name: String) -> String {
+  case set.contains(used_names, name) {
+    False -> name
+    True -> rename_to_avoid_shadowing_loop(used_names, name, 1)
+  }
+}
+
+fn rename_to_avoid_shadowing_loop(
+  used_names: Set(String),
+  name: String,
+  tries: Int,
+) -> String {
+  let candidate = name <> "_" <> int.to_string(tries)
+  case set.contains(used_names, candidate) {
+    False -> candidate
+    True -> rename_to_avoid_shadowing_loop(used_names, name, tries + 1)
+  }
 }
 
 fn pipe_all_encoders(doc: Document, decoders: List(Document)) -> Document {

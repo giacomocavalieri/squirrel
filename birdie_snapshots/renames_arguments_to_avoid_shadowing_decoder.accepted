@@ -1,0 +1,35 @@
+---
+version: 1.5.5
+title: renames arguments to avoid shadowing decoder
+file: ./test/squirrel_test.gleam
+test_name: renames_arguments_to_avoid_shadowing_decoder_test
+---
+
+import gleam/dynamic/decode
+import pog
+
+pub type QueryRow {
+  QueryRow(decoder: Int)
+}
+
+pub fn query(
+  db: pog.Connection,
+  decoder_1: Int,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
+  let decoder = {
+    use decoder <- decode.field(0, decode.int)
+    decode.success(QueryRow(decoder:))
+  }
+
+  "
+with wibble as (select 1 as decoder)
+select decoder
+from wibble
+where $1 = decoder
+"
+  |> pog.query
+  |> pog.parameter(pog.int(decoder_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
