@@ -603,6 +603,35 @@ fn generate_argument_name(
   // Now we want to rename the argument to avoid it shadowing other names that
   // have already been used.
   rename_to_avoid_shadowing(used_names, name)
+  |> rename_to_avoid_reserved_keywords
+}
+
+fn rename_to_avoid_reserved_keywords(string: String) -> String {
+  case string {
+    "as"
+    | "assert"
+    | "auto"
+    | "case"
+    | "const"
+    | "delegate"
+    | "derive"
+    | "echo"
+    | "else"
+    | "fn"
+    | "if"
+    | "implement"
+    | "import"
+    | "let"
+    | "macro"
+    | "opaque"
+    | "panic"
+    | "pub"
+    | "test"
+    | "todo"
+    | "type"
+    | "use" -> string <> "_"
+    _ -> string
+  }
 }
 
 fn rename_to_avoid_shadowing(used_names: Set(String), name: String) -> String {
@@ -902,7 +931,9 @@ fn decoder_doc(
     use acc, field, i <- list.index_fold(returns, #(state, [], []))
     let #(state, parameters, labelled_names) = acc
 
-    let label = gleam.value_identifier_to_string(field.label)
+    let label =
+      gleam.value_identifier_to_string(field.label)
+      |> rename_to_avoid_reserved_keywords
     let labelled_names = [doc.from_string(label <> ":"), ..labelled_names]
 
     let position = int.to_string(i) |> doc.from_string

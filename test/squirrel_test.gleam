@@ -1117,6 +1117,18 @@ where $1 = this_is_a_very_very_very_long_parameter_name_test_aa
   )
 }
 
+pub fn parameter_name_keyword_is_not_used_in_gleam_code_test() {
+  should_codegen(
+    "
+with wibble as (select 1 as \"type\")
+select *
+from wibble
+where $1 = \"type\"
+",
+  )
+  |> birdie.snap(title: "parameter name keyword is not used in gleam code")
+}
+
 //|> pog.parameter(pog.int(this_is_a_very_very_very_long_parameter_name_test___))
 
 // --- REGRESSIONS -------------------------------------------------------------

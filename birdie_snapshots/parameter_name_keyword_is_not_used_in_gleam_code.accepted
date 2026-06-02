@@ -1,0 +1,35 @@
+---
+version: 1.5.5
+title: parameter name keyword is not used in gleam code
+file: ./test/squirrel_test.gleam
+test_name: parameter_name_keyword_is_not_used_in_gleam_code_test
+---
+
+import gleam/dynamic/decode
+import pog
+
+pub type QueryRow {
+  QueryRow(type: Int)
+}
+
+pub fn query(
+  db: pog.Connection,
+  type_: Int,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
+  let decoder = {
+    use type_ <- decode.field(0, decode.int)
+    decode.success(QueryRow(type_:))
+  }
+
+  "
+with wibble as (select 1 as \"type\")
+select *
+from wibble
+where $1 = \"type\"
+"
+  |> pog.query
+  |> pog.parameter(pog.int(type_))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
