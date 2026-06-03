@@ -1103,6 +1103,22 @@ and $2 = arg_1
   )
 }
 
+pub fn very_long_argument_name_is_broken_when_passed_as_pipeline_argument_test() {
+  should_codegen(
+    "
+with wibble as (select 1 as this_is_a_very_very_very_long_parameter_name_test_aa)
+select *
+from wibble
+where $1 = this_is_a_very_very_very_long_parameter_name_test_aa
+",
+  )
+  |> birdie.snap(
+    title: "very long argument name is broken when passed as pipeline argument",
+  )
+}
+
+//|> pog.parameter(pog.int(this_is_a_very_very_very_long_parameter_name_test___))
+
 // --- REGRESSIONS -------------------------------------------------------------
 // Bugs reported from GitHub issues so I make sure those will no longer pop up.
 //
