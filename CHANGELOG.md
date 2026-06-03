@@ -26,6 +26,9 @@
   generic `arg_1` name.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
+- Squirrel no longer adds whitespaces on empty comment lines.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## 4.6.0 - 2025-11-15
 
 - Added support for the `name` type, represented as a Gleam `String`.

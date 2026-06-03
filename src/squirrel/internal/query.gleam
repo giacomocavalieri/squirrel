@@ -674,7 +674,9 @@ fn function_doc(version: String, query: TypedQuery) -> String {
     [] -> "/// Runs the `" <> function_name <> "` query
 /// defined in `" <> file <> "`."
     [_, ..] ->
-      list.map(comment, string.append("/// ", _))
+      list.map(comment, fn(comment_line) {
+        string.trim_end("/// " <> comment_line)
+      })
       |> string.join(with: "\n")
   }
 
