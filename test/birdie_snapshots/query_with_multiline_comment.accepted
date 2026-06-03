@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 2.0.0
 title: query with multiline comment
 file: ./test/squirrel_test.gleam
 test_name: query_with_multiline_comment_test
@@ -30,7 +30,7 @@ pub type QueryRow {
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub fn query(
-  db: pog.Connection,
+  connection: pog.Connection,
 ) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use res <- decode.field(0, decode.bool)
@@ -44,6 +44,6 @@ select true as res
 "
   |> pog.query
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 

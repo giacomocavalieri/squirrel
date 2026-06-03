@@ -524,9 +524,9 @@ fn query_doc(
 
   let #(state, decoder) = decoder_doc(state, constructor_name, returns)
   let #(state, _, args, encoders) = {
-    // "decoder" and "db" are two arguments that are always defined in the
+    // "decoder" and "connection" are two arguments that are always defined in the
     // generated function, so we always have them as already used!
-    let used_names = set.from_list(["decoder", "db"])
+    let used_names = set.from_list(["decoder", "connection"])
     use acc, param, i <- list.index_fold(params, #(state, used_names, [], []))
     let #(state, used_names, args, encoders) = acc
 
@@ -541,7 +541,10 @@ fn query_doc(
   }
 
   let encoders = list.reverse(encoders)
-  let args = [doc.from_string("db: pog.Connection"), ..list.reverse(args)]
+  let args = [
+    doc.from_string("connection: pog.Connection"),
+    ..list.reverse(args)
+  ]
 
   let returned = case returns {
     [] -> doc.from_string("pog.Returned(Nil)")
@@ -560,7 +563,7 @@ fn query_doc(
           |> pipe_call_doc("pog.query", _, [])
           |> pipe_all_encoders(encoders)
           |> pipe_call_doc("pog.returning", _, [doc.from_string("decoder")])
-          |> pipe_call_doc("pog.execute", _, [doc.from_string("db")]),
+          |> pipe_call_doc("pog.execute", _, [doc.from_string("connection")]),
       ]),
     ])
 

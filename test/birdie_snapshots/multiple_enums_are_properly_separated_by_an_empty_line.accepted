@@ -30,7 +30,7 @@ pub type QueryRow {
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub fn query(
-  db: pog.Connection,
+  connection: pog.Connection,
   arg_1: SquirrelMood,
 ) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
@@ -45,7 +45,7 @@ where $1 = 'gleamy'::squirrel_mood
   |> pog.query
   |> pog.parameter(squirrel_mood_encoder(arg_1))
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 
 // --- Enums -------------------------------------------------------------------

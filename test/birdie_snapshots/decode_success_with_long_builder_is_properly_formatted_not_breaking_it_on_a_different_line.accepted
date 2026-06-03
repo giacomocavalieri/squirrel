@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 2.0.0
 title: decode.success with long builder is properly formatted not breaking it on a different line
 file: ./test/squirrel_test.gleam
 test_name: decode_success_with_long_builder_is_properly_formatted_not_breaking_it_on_a_different_line_test
@@ -20,7 +20,7 @@ pub type QueryRow {
 }
 
 pub fn query(
-  db: pog.Connection,
+  connection: pog.Connection,
 ) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use first_column <- decode.field(0, decode.int)
@@ -48,6 +48,6 @@ pub fn query(
   6 as sixth_column;"
   |> pog.query
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 

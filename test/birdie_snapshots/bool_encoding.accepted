@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 2.0.0
 title: bool encoding
 file: ./test/squirrel_test.gleam
 test_name: bool_encoding_test
@@ -13,7 +13,7 @@ pub type QueryRow {
 }
 
 pub fn query(
-  db: pog.Connection,
+  connection: pog.Connection,
   arg_1: Bool,
 ) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
@@ -25,6 +25,6 @@ pub fn query(
   |> pog.query
   |> pog.parameter(pog.bool(arg_1))
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 

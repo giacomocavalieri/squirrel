@@ -1,5 +1,5 @@
 ---
-version: 1.5.5
+version: 2.0.0
 title: very long argument name is broken when passed as pipeline argument
 file: ./test/squirrel_test.gleam
 test_name: very_long_argument_name_is_broken_when_passed_as_pipeline_argument_test
@@ -13,7 +13,7 @@ pub type QueryRow {
 }
 
 pub fn query(
-  db: pog.Connection,
+  connection: pog.Connection,
   this_is_a_very_very_very_long_parameter_name_test_aa: Int,
 ) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
@@ -37,6 +37,6 @@ where $1 = this_is_a_very_very_very_long_parameter_name_test_aa
     pog.int(this_is_a_very_very_very_long_parameter_name_test_aa),
   )
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 

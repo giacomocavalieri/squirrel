@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 2.0.0
 title: right join columns are optional
 file: ./test/squirrel_test.gleam
 test_name: right_join_columns_are_optional_test
@@ -14,7 +14,7 @@ pub type QueryRow {
 }
 
 pub fn query(
-  db: pog.Connection,
+  connection: pog.Connection,
 ) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use optional <- decode.field(0, decode.optional(decode.string))
@@ -32,6 +32,6 @@ from
 "
   |> pog.query
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 

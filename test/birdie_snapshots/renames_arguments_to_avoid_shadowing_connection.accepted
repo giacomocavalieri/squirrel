@@ -1,0 +1,35 @@
+---
+version: 2.0.0
+title: renames arguments to avoid shadowing connection
+file: ./test/squirrel_test.gleam
+test_name: renames_arguments_to_avoid_shadowing_connection_test
+---
+
+import gleam/dynamic/decode
+import pog
+
+pub type QueryRow {
+  QueryRow(connection: Int)
+}
+
+pub fn query(
+  connection: pog.Connection,
+  connection_1: Int,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
+  let decoder = {
+    use connection <- decode.field(0, decode.int)
+    decode.success(QueryRow(connection:))
+  }
+
+  "
+with wibble as (select 1 as connection)
+select connection
+from wibble
+where $1 = connection
+"
+  |> pog.query
+  |> pog.parameter(pog.int(connection_1))
+  |> pog.returning(decoder)
+  |> pog.execute(connection)
+}
+

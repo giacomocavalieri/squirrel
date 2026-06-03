@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 2.0.0
 title: there is only one empty line between code generated for different queries
 file: ./test/squirrel_test.gleam
 test_name: there_is_only_one_empty_line_between_code_generated_for_different_queries_test
@@ -29,7 +29,9 @@ pub type OneRow {
 /// > 🐿️ This function was generated automatically using v-test of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn one(db: pog.Connection) -> Result(pog.Returned(OneRow), pog.QueryError) {
+pub fn one(
+  connection: pog.Connection,
+) -> Result(pog.Returned(OneRow), pog.QueryError) {
   let decoder = {
     use res <- decode.field(0, decode.int)
     decode.success(OneRow(res:))
@@ -38,7 +40,7 @@ pub fn one(db: pog.Connection) -> Result(pog.Returned(OneRow), pog.QueryError) {
   "select 1 as res"
   |> pog.query
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 
 /// A row you get from running the `two` query
@@ -57,7 +59,9 @@ pub type TwoRow {
 /// > 🐿️ This function was generated automatically using v-test of
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
-pub fn two(db: pog.Connection) -> Result(pog.Returned(TwoRow), pog.QueryError) {
+pub fn two(
+  connection: pog.Connection,
+) -> Result(pog.Returned(TwoRow), pog.QueryError) {
   let decoder = {
     use res <- decode.field(0, decode.int)
     decode.success(TwoRow(res:))
@@ -66,6 +70,6 @@ pub fn two(db: pog.Connection) -> Result(pog.Returned(TwoRow), pog.QueryError) {
   "select 2 as res"
   |> pog.query
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 

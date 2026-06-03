@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 2.0.0
 title: query that needs utils and enums has two sections
 file: ./test/squirrel_test.gleam
 test_name: query_that_needs_utils_and_enums_has_two_sections_test
@@ -14,7 +14,7 @@ pub type QueryRow {
 }
 
 pub fn query(
-  db: pog.Connection,
+  connection: pog.Connection,
 ) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use squirrel_colour <- decode.field(0, squirrel_colour_decoder())
@@ -25,7 +25,7 @@ pub fn query(
   "select 'red'::squirrel_colour, 'Jan-2-1970'::date"
   |> pog.query
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 
 

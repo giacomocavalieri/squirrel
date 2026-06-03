@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 2.0.0
 title: jsonb decoding
 file: ./test/squirrel_test.gleam
 test_name: jsonb_decoding_test
@@ -13,7 +13,7 @@ pub type QueryRow {
 }
 
 pub fn query(
-  db: pog.Connection,
+  connection: pog.Connection,
 ) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use res <- decode.field(0, decode.string)
@@ -23,6 +23,6 @@ pub fn query(
   "select '{\"a\": 1}'::jsonb as res"
   |> pog.query
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 

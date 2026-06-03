@@ -1,5 +1,5 @@
 ---
-version: 1.5.5
+version: 2.0.0
 title: parameter name keyword is not used in gleam code
 file: ./test/squirrel_test.gleam
 test_name: parameter_name_keyword_is_not_used_in_gleam_code_test
@@ -13,7 +13,7 @@ pub type QueryRow {
 }
 
 pub fn query(
-  db: pog.Connection,
+  connection: pog.Connection,
   type_: Int,
 ) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
@@ -30,6 +30,6 @@ where $1 = \"type\"
   |> pog.query
   |> pog.parameter(pog.int(type_))
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 

@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 2.0.0
 title: enum with a long enoug name does not generate invalid decoder
 file: ./test/squirrel_test.gleam
 test_name: enum_with_a_long_enoug_name_does_not_generate_invalid_decoder_test
@@ -13,7 +13,7 @@ pub type QueryRow {
 }
 
 pub fn query(
-  db: pog.Connection,
+  connection: pog.Connection,
 ) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use issue_114_aaaaaaaaaaaaaaaaa <- decode.field(
@@ -26,7 +26,7 @@ pub fn query(
   "select 'wibble'::issue_114_aaaaaaaaaaaaaaaaa"
   |> pog.query
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 
 

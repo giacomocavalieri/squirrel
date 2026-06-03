@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 2.0.0
 title: query with many arguments returning nil
 file: ./test/squirrel_test.gleam
 test_name: query_with_many_arguments_returning_nil_comment_test
@@ -20,7 +20,7 @@ import pog
 /// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
 ///
 pub fn query(
-  db: pog.Connection,
+  connection: pog.Connection,
   arg_1: String,
   arg_2: List(String),
   arg_3: List(String),
@@ -60,6 +60,6 @@ select
   |> pog.parameter(pog.array(fn(value) { pog.text(value) }, arg_8))
   |> pog.parameter(pog.array(fn(value) { pog.text(value) }, arg_9))
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 

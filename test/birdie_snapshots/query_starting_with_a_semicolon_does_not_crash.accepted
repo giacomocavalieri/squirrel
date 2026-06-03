@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 2.0.0
 title: query starting with a semicolon does not crash
 file: ./test/squirrel_test.gleam
 test_name: query_starting_with_a_semicolon_does_not_crash_test
@@ -13,7 +13,7 @@ pub type QueryRow {
 }
 
 pub fn query(
-  db: pog.Connection,
+  connection: pog.Connection,
 ) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use result <- decode.field(0, decode.int)
@@ -23,6 +23,6 @@ pub fn query(
   ";select 1 as result"
   |> pog.query
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 

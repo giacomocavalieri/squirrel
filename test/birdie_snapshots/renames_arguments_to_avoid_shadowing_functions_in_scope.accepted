@@ -1,5 +1,5 @@
 ---
-version: 1.5.5
+version: 2.0.0
 title: renames arguments to avoid shadowing functions in scope
 file: ./test/squirrel_test.gleam
 test_name: renames_arguments_to_avoid_shadowing_functions_in_scope_test
@@ -14,7 +14,7 @@ pub type QueryRow {
 }
 
 pub fn query(
-  db: pog.Connection,
+  connection: pog.Connection,
   uuid_decoder_1: Uuid,
 ) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
@@ -31,7 +31,7 @@ where $1 = uuid_decoder
   |> pog.query
   |> pog.parameter(pog.text(uuid.to_string(uuid_decoder_1)))
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 
 

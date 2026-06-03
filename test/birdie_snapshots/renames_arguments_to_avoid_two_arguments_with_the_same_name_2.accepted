@@ -1,5 +1,5 @@
 ---
-version: 1.5.5
+version: 2.0.0
 title: renames arguments to avoid two arguments with the same name 2
 file: ./test/squirrel_test.gleam
 test_name: renames_arguments_to_avoid_two_arguments_with_the_same_name_2_test
@@ -13,7 +13,7 @@ pub type QueryRow {
 }
 
 pub fn query(
-  db: pog.Connection,
+  connection: pog.Connection,
   arg_1: Int,
   arg_1_1: Int,
 ) -> Result(pog.Returned(QueryRow), pog.QueryError) {
@@ -33,6 +33,6 @@ and $2 = arg_1
   |> pog.parameter(pog.int(arg_1))
   |> pog.parameter(pog.int(arg_1_1))
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 

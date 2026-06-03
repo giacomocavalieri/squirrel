@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 2.0.0
 title: squirrel supports do blocks
 file: ./test/squirrel_test.gleam
 test_name: squirrel_supports_do_blocks_test
@@ -8,7 +8,9 @@ test_name: squirrel_supports_do_blocks_test
 import gleam/dynamic/decode
 import pog
 
-pub fn query(db: pog.Connection) -> Result(pog.Returned(Nil), pog.QueryError) {
+pub fn query(
+  connection: pog.Connection,
+) -> Result(pog.Returned(Nil), pog.QueryError) {
   let decoder = decode.map(decode.dynamic, fn(_) { Nil })
 
   "
@@ -18,6 +20,6 @@ pub fn query(db: pog.Connection) -> Result(pog.Returned(Nil), pog.QueryError) {
   "
   |> pog.query
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 

@@ -1082,16 +1082,16 @@ where $1 = decoder
   |> birdie.snap(title: "renames arguments to avoid shadowing decoder")
 }
 
-pub fn renames_arguments_to_avoid_shadowing_db_test() {
+pub fn renames_arguments_to_avoid_shadowing_connection_test() {
   should_codegen(
     "
-with wibble as (select 1 as db)
-select db
+with wibble as (select 1 as connection)
+select connection
 from wibble
-where $1 = db
+where $1 = connection
 ",
   )
-  |> birdie.snap(title: "renames arguments to avoid shadowing db")
+  |> birdie.snap(title: "renames arguments to avoid shadowing connection")
 }
 
 pub fn renames_arguments_to_avoid_two_arguments_with_the_same_name_test() {

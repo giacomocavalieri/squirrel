@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 2.0.0
 title: using uuids more than once results in a single uuid decoder helper
 file: ./test/squirrel_test.gleam
 test_name: using_uuids_more_than_once_results_in_a_single_uuid_decoder_helper_test
@@ -13,7 +13,9 @@ pub type OneRow {
   OneRow(gen_random_uuid: Uuid)
 }
 
-pub fn one(db: pog.Connection) -> Result(pog.Returned(OneRow), pog.QueryError) {
+pub fn one(
+  connection: pog.Connection,
+) -> Result(pog.Returned(OneRow), pog.QueryError) {
   let decoder = {
     use gen_random_uuid <- decode.field(0, uuid_decoder())
     decode.success(OneRow(gen_random_uuid:))
@@ -22,7 +24,7 @@ pub fn one(db: pog.Connection) -> Result(pog.Returned(OneRow), pog.QueryError) {
   "select gen_random_uuid()"
   |> pog.query
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 
 pub type OtherRow {
@@ -30,7 +32,7 @@ pub type OtherRow {
 }
 
 pub fn other(
-  db: pog.Connection,
+  connection: pog.Connection,
 ) -> Result(pog.Returned(OtherRow), pog.QueryError) {
   let decoder = {
     use gen_random_uuid <- decode.field(0, uuid_decoder())
@@ -40,7 +42,7 @@ pub fn other(
   "select gen_random_uuid()"
   |> pog.query
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 
 

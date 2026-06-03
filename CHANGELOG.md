@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## Unreleased
+
+- Squirrel now uses a better name for the generated function connection
+  parameter.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## 4.7.0 - 2026-06-03
 
 - Squirrel can now pick some better argument names based on the structure of the

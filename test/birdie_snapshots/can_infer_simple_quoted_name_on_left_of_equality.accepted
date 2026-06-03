@@ -1,5 +1,5 @@
 ---
-version: 1.5.5
+version: 2.0.0
 title: can infer simple quoted name on left of equality
 file: ./test/squirrel_test.gleam
 test_name: can_infer_simple_quoted_name_on_left_of_equality_test
@@ -13,7 +13,7 @@ pub type QueryRow {
 }
 
 pub fn query(
-  db: pog.Connection,
+  connection: pog.Connection,
   squirrel_id: Int,
 ) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
@@ -28,6 +28,6 @@ select name from squirrel_user where \"squirrel id\" = $1
   |> pog.query
   |> pog.parameter(pog.int(squirrel_id))
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 

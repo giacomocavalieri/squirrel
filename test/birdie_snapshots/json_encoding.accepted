@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 2.0.0
 title: json encoding
 file: ./test/squirrel_test.gleam
 test_name: json_encoding_test
@@ -10,7 +10,7 @@ import gleam/json.{type Json}
 import pog
 
 pub fn query(
-  db: pog.Connection,
+  connection: pog.Connection,
   arg_1: Json,
 ) -> Result(pog.Returned(Nil), pog.QueryError) {
   let decoder = decode.map(decode.dynamic, fn(_) { Nil })
@@ -19,6 +19,6 @@ pub fn query(
   |> pog.query
   |> pog.parameter(pog.text(json.to_string(arg_1)))
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 

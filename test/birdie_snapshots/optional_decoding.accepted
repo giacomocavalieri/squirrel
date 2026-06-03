@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 2.0.0
 title: optional decoding
 file: ./test/squirrel_test.gleam
 test_name: optional_decoding_test
@@ -14,7 +14,7 @@ pub type QueryRow {
 }
 
 pub fn query(
-  db: pog.Connection,
+  connection: pog.Connection,
 ) -> Result(pog.Returned(QueryRow), pog.QueryError) {
   let decoder = {
     use acorns <- decode.field(0, decode.optional(decode.int))
@@ -24,6 +24,6 @@ pub fn query(
   "select acorns from squirrel"
   |> pog.query
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 

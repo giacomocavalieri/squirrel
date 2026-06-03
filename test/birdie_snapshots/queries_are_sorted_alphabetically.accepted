@@ -1,5 +1,5 @@
 ---
-version: 1.4.0
+version: 2.0.0
 title: queries are sorted alphabetically
 file: ./test/squirrel_test.gleam
 test_name: queries_are_sorted_alphabetically_test
@@ -13,7 +13,7 @@ pub type FirstRow {
 }
 
 pub fn first(
-  db: pog.Connection,
+  connection: pog.Connection,
 ) -> Result(pog.Returned(FirstRow), pog.QueryError) {
   let decoder = {
     use wibble <- decode.field(0, decode.int)
@@ -23,7 +23,7 @@ pub fn first(
   "select 1 as wibble"
   |> pog.query
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 
 pub type LastRow {
@@ -31,7 +31,7 @@ pub type LastRow {
 }
 
 pub fn last(
-  db: pog.Connection,
+  connection: pog.Connection,
 ) -> Result(pog.Returned(LastRow), pog.QueryError) {
   let decoder = {
     use wibble <- decode.field(0, decode.int)
@@ -41,6 +41,6 @@ pub fn last(
   "select 1 as wibble"
   |> pog.query
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(connection)
 }
 
