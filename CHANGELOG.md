@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 4.7.0 - unreleased
+## 4.7.0 - 2026-06-03
 
 - Squirrel can now pick some better argument names based on the structure of the
   SQL queries in the generated code. For example:

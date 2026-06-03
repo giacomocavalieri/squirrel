@@ -888,7 +888,10 @@ fn pointer_doc(
   Ok(#(line, from, doc))
 }
 
-fn find_span(kind: PointerKind, string: String) -> Result(#(Int, Int, Int), Nil) {
+fn find_span(
+  kind: PointerKind,
+  string: String,
+) -> Result(#(Int, Int, Int), Nil) {
   case kind {
     Name(name) -> find_name_span(name, string.length(name), string, 0, 0)
     ByteIndex(n) -> find_byte_span(n - 1, string, 0, 0)

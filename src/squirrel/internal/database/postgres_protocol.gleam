@@ -820,7 +820,9 @@ fn decode_parameter_object_ids_rec(binary, count, result) {
   }
 }
 
-fn decode_function_call(binary) -> Result(FrontendMessage, MessageDecodingError) {
+fn decode_function_call(
+  binary,
+) -> Result(FrontendMessage, MessageDecodingError) {
   case binary {
     <<object_id:32, rest:bytes>> -> {
       use #(argument_format, rest) <- try(read_parameter_format(rest))
@@ -959,7 +961,8 @@ fn read_parameters_rec(
     _, [_, ..rest_formats], <<-1:32-signed, rest:bytes>> -> {
       read_parameters_rec(rest_formats, count - 1, rest, [Null, ..result])
     }
-    _, [format, ..rest_formats], <<len:32, value:bytes-size(len), rest:bytes>> ->
+    _, [format, ..rest_formats], <<len:32, value:bytes-size(len), rest:bytes>>
+    ->
       read_parameters_rec(rest_formats, count - 1, rest, [
         read_parameter(format, value),
         ..result

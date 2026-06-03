@@ -24,7 +24,7 @@ import squirrel/internal/project
 import squirrel/internal/query.{type TypedQuery}
 import term_size
 
-const squirrel_version = "v4.6.0"
+const squirrel_version = "v4.7.0"
 
 /// 🐿️ Performs code generation for your Gleam project.
 ///
@@ -237,7 +237,9 @@ fn connection_options_from_variables() -> postgres.ConnectionOptions {
 /// Parses a connection string into a `ConnectionOptions` failing if it has an
 /// invalid format instead of silently producing a default one.
 ///
-fn parse_connection_url(raw: String) -> Result(postgres.ConnectionOptions, Nil) {
+fn parse_connection_url(
+  raw: String,
+) -> Result(postgres.ConnectionOptions, Nil) {
   use uri <- result.try(uri.parse(raw))
   let Uri(scheme:, userinfo:, host:, port:, path:, query:, ..) = uri
 
@@ -383,7 +385,10 @@ fn write_queries_to_file(
   |> result.replace(list.length(queries))
 }
 
-fn safely_overwrite(to file: String, content code: String) -> Result(Nil, Error) {
+fn safely_overwrite(
+  to file: String,
+  content code: String,
+) -> Result(Nil, Error) {
   case simplifile.read(file) |> result.map(classify_file_content) {
     // If the file is generated, empty, or doesn't exist at all then it's safe
     // to overwrite it!
