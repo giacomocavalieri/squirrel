@@ -29,6 +29,10 @@
 - Squirrel no longer adds whitespaces on empty comment lines.
   ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
 
+- Fixed a bug where Squirrel would not properly format generated dealing with
+  more than a single enum.
+  ([Giacomo Cavalieri](https://github.com/giacomocavalieri))
+
 ## 4.6.0 - 2025-11-15
 
 - Added support for the `name` type, represented as a Gleam `String`.

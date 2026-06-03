@@ -1,0 +1,93 @@
+---
+version: 2.0.0
+title: multiple enums are properly separated by an empty line
+file: ./test/squirrel_test.gleam
+test_name: multiple_enums_are_properly_separated_by_an_empty_line_test
+---
+//// This module contains the code to run the sql queries defined in
+//// `./test-directory`.
+//// > 🐿️ This module was generated automatically using v-test of
+//// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+////
+
+import gleam/dynamic/decode
+import pog
+
+/// A row you get from running the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type QueryRow {
+  QueryRow(squirrel_colour: SquirrelColour)
+}
+
+/// Runs the `query` query
+/// defined in `query.sql`.
+///
+/// > 🐿️ This function was generated automatically using v-test of
+/// > the [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub fn query(
+  db: pog.Connection,
+  arg_1: SquirrelMood,
+) -> Result(pog.Returned(QueryRow), pog.QueryError) {
+  let decoder = {
+    use squirrel_colour <- decode.field(0, squirrel_colour_decoder())
+    decode.success(QueryRow(squirrel_colour:))
+  }
+
+  "
+select 'red'::squirrel_colour
+where $1 = 'gleamy'::squirrel_mood
+"
+  |> pog.query
+  |> pog.parameter(squirrel_mood_encoder(arg_1))
+  |> pog.returning(decoder)
+  |> pog.execute(db)
+}
+
+// --- Enums -------------------------------------------------------------------
+
+/// Corresponds to the Postgres `squirrel_colour` enum.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type SquirrelColour {
+  LightBrown
+  Grey
+  Red
+}
+
+fn squirrel_colour_decoder() -> decode.Decoder(SquirrelColour) {
+  use squirrel_colour <- decode.then(decode.string)
+  case squirrel_colour {
+    "light brown" -> decode.success(LightBrown)
+    "grey" -> decode.success(Grey)
+    "red" -> decode.success(Red)
+    _ -> decode.failure(LightBrown, "SquirrelColour")
+  }
+}
+
+/// Corresponds to the Postgres `squirrel_mood` enum.
+///
+/// > 🐿️ This type definition was generated automatically using v-test of the
+/// > [squirrel package](https://github.com/giacomocavalieri/squirrel).
+///
+pub type SquirrelMood {
+  Desperate
+  Gleamy
+  Feisty
+}
+
+fn squirrel_mood_encoder(squirrel_mood) -> pog.Value {
+  case squirrel_mood {
+    Desperate -> "desperate"
+    Gleamy -> "gleamy"
+    Feisty -> "feisty"
+  }
+  |> pog.text
+}
+

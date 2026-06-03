@@ -75,6 +75,16 @@ end $$;"
   let assert Ok(_) =
     "
 do $$ begin
+  if not exists (select * from pg_type where typname = 'squirrel_mood') then
+    create type squirrel_mood as enum ('feisty', 'gleamy', 'desperate');
+  end if;
+end $$;"
+    |> pog.query
+    |> pog.execute(db)
+
+  let assert Ok(_) =
+    "
+do $$ begin
   if not exists (select * from pg_type where typname = '1 invalid enum') then
     create type \"1 invalid enum\" as enum ('value');
   end if;
@@ -750,6 +760,17 @@ select
   |> birdie.snap(title: "query with many arguments returning nil")
 }
 
+pub fn multiple_enums_are_properly_separated_by_an_empty_line_test() {
+  "
+select 'red'::squirrel_colour
+where $1 = 'gleamy'::squirrel_mood
+"
+  |> should_codegen_with_comments
+  |> birdie.snap(
+    title: "multiple enums are properly separated by an empty line",
+  )
+}
+
 // --- ERRROR TESTS ------------------------------------------------------------
 // This is a group of tests to ensure that the errors look good when something
 // goes wrong.
@@ -1128,8 +1149,6 @@ where $1 = \"type\"
   )
   |> birdie.snap(title: "parameter name keyword is not used in gleam code")
 }
-
-//|> pog.parameter(pog.int(this_is_a_very_very_very_long_parameter_name_test___))
 
 // --- REGRESSIONS -------------------------------------------------------------
 // Bugs reported from GitHub issues so I make sure those will no longer pop up.

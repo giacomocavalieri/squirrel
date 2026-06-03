@@ -751,8 +751,11 @@ fn enums_doc(
   version: String,
   enums: Dict(TypeIdentifier, EnumCodeGenData),
 ) -> Document {
-  use doc, name, enum_data <- dict.fold(enums, doc.empty)
-  doc.append(doc, enum_doc(version, name, enum_data))
+  dict.fold(enums, [], fn(docs, name, enum_data) {
+    [enum_doc(version, name, enum_data), ..docs]
+  })
+  |> list.reverse
+  |> doc.join(with: doc.lines(2))
 }
 
 /// Returns the document with the enum definition and any additional helper that
