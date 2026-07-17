@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        erlang: ["27", "28"]
+        erlang: ["28", "29"]
         postgres: ["postgres:17", "postgres:18"]
 
     env:
@@ -49,7 +49,7 @@ jobs:
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ matrix.erlang }}
-          gleam-version: "1.13.0"
+          gleam-version: "1.17.0"
           rebar3-version: "3"
       - run: gleam deps download
       - run: ./integration_test
