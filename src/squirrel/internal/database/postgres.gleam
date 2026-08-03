@@ -1270,7 +1270,6 @@ fn with_cached_gleam_type(
   use context: Context <- eval.from
   case dict.get(context.gleam_types, oid) {
     Ok(type_) -> #(context, Ok(type_))
-
     Error(_) ->
       case eval.step(do(), context) {
         #(_, Error(_)) as result -> result
