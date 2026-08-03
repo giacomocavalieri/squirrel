@@ -554,26 +554,10 @@ fn infer_types(query: UntypedQuery) -> Db(TypedQuery) {
   // - The parameters' types are just OIDs so we need to interrogate the
   //   database to learn the actual corresponding Gleam type.
 
-  let param_nullables = case query.comment {
-    ["$nullable_hint: " <> param_list_str, ..] ->
-      param_list_str
-      |> string.split(",")
-      |> list.map(fn(p) {
-        case p |> string.trim |> int.parse {
-          Ok(n) -> n
-          _ -> 0
-        }
-      })
-      |> list.filter(fn(p) { p >= 0 })
-      |> set.from_list
-    _ -> set.new()
-  }
+  use parameters <- eval.try(resolve_parameters(query, parameters))
 
-  use parameters <- eval.try(resolve_parameters(
-    query,
-    parameters,
-    param_nullables,
-  ))
+  let param_nullables = nullable_from_comments(query)
+  let parameters = wrap_param_nullables(parameters, param_nullables)
 
   // - The returns' types are just OIDs so we have to do the same for those.
   // - Here comes the tricky part: we can't know if a column is nullable just
@@ -600,6 +584,19 @@ fn infer_types(query: UntypedQuery) -> Db(TypedQuery) {
   query
   |> query.add_types(parameters, returns)
   |> eval.from_result
+}
+
+fn nullable_from_comments(query: UntypedQuery) -> Set(Int) {
+  case query.comment {
+    ["$nullable_hint: " <> param_list_str, ..] ->
+      param_list_str
+      |> string.split(",")
+      |> list.map(fn(p) { p |> string.trim |> int.parse })
+      |> result.values
+      |> list.map(fn(p) { p - 1 })
+      |> set.from_list
+    _ -> set.new()
+  }
 }
 
 fn parameters_and_returns(query: UntypedQuery) -> Db(_) {
@@ -726,10 +723,9 @@ fn error_fields_to_parse_error(
 fn resolve_parameters(
   query: UntypedQuery,
   parameters: List(Int),
-  nullables: Set(Int),
 ) -> Db(List(gleam.Type)) {
-  use oid, idx <- eval_extra.try_index_map(parameters)
-  find_gleam_type(query, oid, set.contains(nullables, idx + 1))
+  use oid <- eval_extra.try_map(parameters)
+  find_gleam_type(query, oid)
 }
 
 /// Looks up a type with the given id in the Postgres registry.
@@ -738,14 +734,10 @@ fn resolve_parameters(
 /// > will crash otherwise. This should only be called with oids coming from
 /// > a database interrogation.
 ///
-fn find_gleam_type(
-  query: UntypedQuery,
-  oid: Int,
-  is_nullable: Bool,
-) -> Db(gleam.Type) {
+fn find_gleam_type(query: UntypedQuery, oid: Int) -> Db(gleam.Type) {
   // We first look for the Gleam type corresponding to this id in the cache to
   // avoid hammering the db with needless queries.
-  use <- with_cached_gleam_type(oid, is_nullable)
+  use <- with_cached_gleam_type(oid)
 
   // The only parameter to this query is the oid of the type to lookup:
   // that's a 32bit integer (its oid needed to prepare the query is 23).
@@ -935,7 +927,7 @@ fn resolve_returns(
     ..,
   ) = column
 
-  use type_ <- eval.try(find_gleam_type(query, type_oid, False))
+  use type_ <- eval.try(find_gleam_type(query, type_oid))
 
   let ends_with_exclamation_mark = string.ends_with(name, "!")
   let ends_with_question_mark = string.ends_with(name, "?")
@@ -1257,19 +1249,17 @@ fn unsupported_authentication(auth: String) -> Db(a) {
 ///
 fn with_cached_gleam_type(
   lookup oid: Int,
-  is_nullable is_nullable: Bool,
   otherwise do: fn() -> Db(gleam.Type),
 ) -> Db(gleam.Type) {
   use context: Context <- eval.from
   case dict.get(context.gleam_types, oid) {
-    Ok(type_) -> #(context, Ok(wrap_nullable(type_, is_nullable)))
+    Ok(type_) -> #(context, Ok(type_))
 
     Error(_) ->
       case eval.step(do(), context) {
         #(_, Error(_)) as result -> result
         #(Context(gleam_types:, ..) as context, Ok(type_)) -> {
           let gleam_types = dict.insert(gleam_types, oid, type_)
-          let type_ = wrap_nullable(type_, is_nullable)
           let new_context = Context(..context, gleam_types:)
           #(new_context, Ok(type_))
         }
@@ -1277,11 +1267,17 @@ fn with_cached_gleam_type(
   }
 }
 
-fn wrap_nullable(type_: gleam.Type, is_nullable: Bool) -> gleam.Type {
-  case is_nullable {
-    True -> gleam.Option(type_)
-    False -> type_
-  }
+fn wrap_param_nullables(
+  types: List(gleam.Type),
+  nullables: Set(Int),
+) -> List(gleam.Type) {
+  types
+  |> list.index_map(fn(type_, idx) {
+    case set.contains(nullables, idx) {
+      True -> gleam.Option(type_)
+      False -> type_
+    }
+  })
 }
 
 /// Looks up for the nullability of table's column.
