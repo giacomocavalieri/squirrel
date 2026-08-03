@@ -20,7 +20,7 @@ pub fn query(
   let decoder = decode.map(decode.dynamic, fn(_) { Nil })
 
   "
--- $nullable_hint: 2, 4
+-- @nullable: 2, 4
   insert into nullable_hint values ($1, $2, $3, $4, $5)
   "
   |> pog.query

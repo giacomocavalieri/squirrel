@@ -589,7 +589,7 @@ fn infer_types(query: UntypedQuery) -> Db(TypedQuery) {
 /// list of parameter numbers that will be handled as nullable.
 fn nullables_from_comments(query: UntypedQuery) -> Set(Int) {
   case query.comment {
-    ["$nullable_hint: " <> param_list_str, ..] ->
+    ["@nullable: " <> param_list_str, ..] ->
       param_list_str
       |> string.split(",")
       |> list.map(fn(p) { p |> string.trim |> int.parse })

@@ -479,7 +479,7 @@ pub fn array_encoding_test() {
 
 pub fn nullable_hint_test() {
   "
--- $nullable_hint: 2, 4
+-- @nullable: 2, 4
   insert into nullable_hint values ($1, $2, $3, $4, $5)
   "
   |> should_codegen
