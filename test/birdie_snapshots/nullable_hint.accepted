@@ -21,7 +21,7 @@ pub fn query(
 
   "
 -- @nullable: 2, 4
-  insert into nullable_hint values ($1, $2, $3, $4, $5)
+insert into nullable_hint values ($1, $2, $3, $4, $5)
   "
   |> pog.query
   |> pog.parameter(pog.text(arg_1))

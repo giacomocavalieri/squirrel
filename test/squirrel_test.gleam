@@ -480,7 +480,7 @@ pub fn array_encoding_test() {
 pub fn nullable_hint_test() {
   "
 -- @nullable: 2, 4
-  insert into nullable_hint values ($1, $2, $3, $4, $5)
+insert into nullable_hint values ($1, $2, $3, $4, $5)
   "
   |> should_codegen
   |> birdie.snap(title: "nullable hint")
