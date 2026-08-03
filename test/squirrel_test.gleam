@@ -54,6 +54,18 @@ create table if not exists squirrel(
 
   let assert Ok(_) =
     "
+create table if not exists nullable_hint(
+  name text primary key,
+  text2 text,
+  text3 text not null,
+  int1 int,
+  int2 int not null
+    )"
+    |> pog.query
+    |> pog.execute(db)
+
+  let assert Ok(_) =
+    "
 create table if not exists jsons(
   id bigserial primary key,
   json json,
@@ -463,6 +475,15 @@ pub fn array_encoding_test() {
   "select true as res where $1 = array[1, 2, 3]"
   |> should_codegen
   |> birdie.snap(title: "array encoding")
+}
+
+pub fn nullable_hint_test() {
+  "
+-- $nullable_hint: 2, 4
+  insert into nullable_hint values ($1, $2, $3, $4, $5)
+  "
+  |> should_codegen
+  |> birdie.snap(title: "nullable hint")
 }
 
 pub fn optional_decoding_test() {

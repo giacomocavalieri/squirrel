@@ -1268,8 +1268,8 @@ fn with_cached_gleam_type(
       case eval.step(do(), context) {
         #(_, Error(_)) as result -> result
         #(Context(gleam_types:, ..) as context, Ok(type_)) -> {
-          let type_ = wrap_nullable(type_, is_nullable)
           let gleam_types = dict.insert(gleam_types, oid, type_)
+          let type_ = wrap_nullable(type_, is_nullable)
           let new_context = Context(..context, gleam_types:)
           #(new_context, Ok(type_))
         }

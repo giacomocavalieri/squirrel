@@ -1,0 +1,35 @@
+---
+version: 2.0.2
+title: nullable hint
+file: ./test/squirrel_test.gleam
+test_name: nullable_hint_test
+---
+
+import gleam/dynamic/decode
+import gleam/option.{type Option}
+import pog
+
+pub fn query(
+  connection: pog.Connection,
+  arg_1: String,
+  arg_2: Option(String),
+  arg_3: String,
+  arg_4: Option(Int),
+  arg_5: Int,
+) -> Result(pog.Returned(Nil), pog.QueryError) {
+  let decoder = decode.map(decode.dynamic, fn(_) { Nil })
+
+  "
+-- $nullable_hint: 2, 4
+  insert into nullable_hint values ($1, $2, $3, $4, $5)
+  "
+  |> pog.query
+  |> pog.parameter(pog.text(arg_1))
+  |> pog.parameter(pog.nullable(fn(value) { pog.text(value) }, arg_2))
+  |> pog.parameter(pog.text(arg_3))
+  |> pog.parameter(pog.nullable(fn(value) { pog.int(value) }, arg_4))
+  |> pog.parameter(pog.int(arg_5))
+  |> pog.returning(decoder)
+  |> pog.execute(connection)
+}
+
