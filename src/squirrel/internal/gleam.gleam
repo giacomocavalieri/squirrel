@@ -182,11 +182,9 @@ pub fn value_identifier_to_type_identifier(
 
   let type_identifier =
     justin.pascal_case(name)
-    |> string.to_graphemes
     // We want to remove any leftover "_" that might still be present after the
     // conversion if the identifier had consecutive "_".
-    |> list.filter(keeping: fn(c) { c != "_" })
-    |> string.join(with: "")
+    |> string.replace(each: "_", with: "")
 
   TypeIdentifier(type_identifier)
 }
