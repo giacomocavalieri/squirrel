@@ -340,7 +340,7 @@ So what can one do to work around this problem?
        end,
      description =
        case $2
-         when "" then null
+         when '' then null
          else $2
        end
    where id = $3;
@@ -361,7 +361,7 @@ So what can one do to work around this problem?
      returns text
      language sql
      immutable
-     return nullif(value, "");
+     return nullif(value, '');
    ```
 
 ## References
